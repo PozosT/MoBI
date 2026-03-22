@@ -1,0 +1,359 @@
+\documentclass[12pt, letterpaper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+\definecolor{uniandes}{RGB}{0,51,102}
+
+% Encabezado y pie de página
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{uniandes}{Universidad de los Andes}}
+\fancyhead[R]{\small\textcolor{uniandes}{Modelado de Sistemas bajo Incertidumbre}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Estilos de sección
+\titleformat{\section}{\large\bfseries\color{uniandes}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{uniandes!80!black}}{\thesubsection.}{0.5em}{}
+
+% Entornos
+\theoremstyle{definition}
+\newtheorem{definicion}{Definición}[section]
+\newtheorem{teorema}{Teorema}[section]
+\newtheorem{ejemplo}{Ejemplo}[section]
+\newtheorem{propiedad}{Propiedad}[section]
+
+\setstretch{1.15}
+
+\begin{document}
+
+% ===================== PORTADA =====================
+\begin{center}
+    {\Large\bfseries\textcolor{uniandes}{Universidad de los Andes}}\\[0.2cm]
+    {\normalsize Departamento de Ingeniería Industrial}\\[0.5cm]
+    \rule{\textwidth}{1pt}\\[0.5cm]
+    {\LARGE\bfseries Lectura: El Proceso de Poisson}\\[0.3cm]
+    {\large Fundamentos, Distribuciones Asociadas y Propiedades}\\[0.5cm]
+    \rule{\textwidth}{1pt}\\[0.5cm]
+    {\normalsize\textbf{Curso:} Modelado de Sistemas bajo Incertidumbre \hfill \textbf{Semestre:} 2026-I}\\[0.8cm]
+\end{center}
+
+% ===================== SECCIÓN 1 =====================
+\section{Introducción y motivación}
+
+En ingeniería industrial es habitual encontrar fenómenos donde \emph{eventos} ocurren de manera aparentemente aleatoria a lo largo del tiempo: las llamadas que llegan a un centro de atención, los clientes que entran a una sucursal bancaria, los accidentes en una carretera, las fallas de un servidor o los correos electrónicos que recibe un buzón. A primera vista, estos fenómenos parecen muy distintos entre sí, pero comparten un conjunto de características comunes que los hacen susceptibles de ser modelados con una misma herramienta matemática: el \textbf{proceso de Poisson}.
+
+¿Qué tienen en común todos estos ejemplos? En primer lugar, los eventos ocurren \emph{uno a la vez}; es prácticamente imposible que dos llamadas lleguen en el mismo instante exacto. En segundo lugar, cada evento individual es ``impredecible'': no podemos saber con certeza cuándo ocurrirá el próximo. En tercer lugar, existe una \emph{tasa promedio} de ocurrencia razonablemente estable en el período de observación. Y, por último, lo que haya ocurrido en el pasado reciente no altera la probabilidad de lo que sucederá en el futuro inmediato. Estas cuatro intuiciones se formalizan de manera rigurosa en el proceso de Poisson, convirtiéndolo en el modelo fundamental para eventos aleatorios en el tiempo y en la piedra angular del modelado de sistemas bajo incertidumbre.
+
+Consideremos un ejemplo concreto para fijar ideas. La línea de emergencias 123 de una ciudad recibe, en promedio, $\lambda = 4$ llamadas por minuto. Si observamos una línea de tiempo, veremos marcas distribuidas de forma irregular: en algunos intervalos de un minuto habrá 7 llamadas, en otros apenas 2. Las preguntas que naturalmente surgen son del tipo: ¿cuál es la probabilidad de recibir exactamente 10 llamadas en los próximos 2 minutos?, ¿cuánto tiempo transcurrirá hasta la próxima llamada?, ¿cuánto habrá que esperar hasta que se acumulen 5 llamadas? El proceso de Poisson, junto con las distribuciones que se derivan de él, proporciona respuestas precisas a cada una de estas preguntas.
+
+
+% ===================== SECCIÓN 2 =====================
+\section{Proceso de conteo y definición formal}
+
+\subsection{Proceso de conteo}
+
+Antes de definir el proceso de Poisson, es necesario establecer el concepto más general de \emph{proceso de conteo}.
+
+\begin{definicion}[Proceso de conteo]
+Un \textbf{proceso de conteo} $\{N(t),\; t \geq 0\}$ es un proceso estocástico donde $N(t)$ representa el número total de eventos que han ocurrido hasta (e incluyendo) el tiempo $t$.
+\end{definicion}
+
+Todo proceso de conteo satisface las siguientes propiedades básicas: (i)~$N(t) \geq 0$ para todo $t$; (ii)~$N(t)$ toma valores enteros no negativos; (iii)~si $s < t$, entonces $N(s) \leq N(t)$, dado que el conteo no puede disminuir; y (iv)~la diferencia $N(t) - N(s)$ representa el número de eventos ocurridos en el intervalo $(s, t]$.
+
+Gráficamente, la trayectoria de $N(t)$ es una función escalonada creciente que salta en $+1$ cada vez que ocurre un evento. En el ejemplo del 123, si a las 10:00 se han registrado 15 llamadas acumuladas y a las 10:03 se han registrado 27, entonces $N(3)-N(0) = 12$ llamadas ocurrieron en esos tres minutos.
+
+\subsection{Axiomas del proceso de Poisson}
+
+\begin{definicion}[Proceso de Poisson]
+Un proceso de conteo $\{N(t),\; t \geq 0\}$ es un \textbf{proceso de Poisson} con tasa $\lambda > 0$ si cumple las siguientes condiciones:
+\begin{enumerate}[label=(\roman*)]
+    \item \textbf{Inicio en cero:} $N(0) = 0$.
+    \item \textbf{Incrementos independientes:} el número de eventos en intervalos de tiempo disjuntos son variables aleatorias independientes.
+    \item \textbf{Incrementos estacionarios:} la distribución de $N(t+s) - N(s)$ depende únicamente de la longitud del intervalo $t$, no de la posición $s$ en la que se inicia.
+    \item \textbf{No simultaneidad:} para $h$ suficientemente pequeño,
+    \[
+        P(N(h)=1) = \lambda h + o(h), \qquad P(N(h) \geq 2) = o(h),
+    \]
+    donde $o(h)/h \to 0$ cuando $h \to 0$.
+\end{enumerate}
+\end{definicion}
+
+¿Qué significan estos axiomas en la práctica? La condición de \emph{incrementos independientes} implica que las llamadas registradas entre las 10:00 y las 10:05 no afectan en absoluto la cantidad de llamadas que llegarán entre las 10:05 y las 10:10; que hayan llegado muchas llamadas recientemente no modifica la probabilidad de llamadas futuras. La condición de \emph{incrementos estacionarios} dice que la probabilidad de recibir, por ejemplo, 3 llamadas en un minuto es la misma a las 10:00 que a las 15:00 (lo cual constituye una idealización; en la realidad las tasas pueden variar a lo largo del día). Finalmente, la \emph{no simultaneidad} garantiza que en un instante infinitesimal $dt$ la probabilidad de que llegue una llamada es aproximadamente $\lambda\,dt$, la de que lleguen dos o más es despreciable, y la de que no llegue ninguna es $1 - \lambda\,dt$.
+
+Una consecuencia directa de estos axiomas es que el número de eventos en cualquier intervalo de longitud $t$ sigue una distribución de Poisson con parámetro $\lambda t$:
+\[
+    P(N(t) = k) = \frac{e^{-\lambda t}(\lambda t)^k}{k!}, \qquad k = 0, 1, 2, \ldots
+\]
+De hecho, esta propiedad sirve como \emph{definición alternativa equivalente} del proceso: $\{N(t)\}$ es un proceso de Poisson de tasa $\lambda$ si y solo si $N(0)=0$, tiene incrementos independientes y estacionarios, y $N(t) \sim \text{Poisson}(\lambda t)$.
+
+
+% ===================== SECCIÓN 3 =====================
+\section{Distribuciones asociadas al proceso de Poisson}
+
+El proceso de Poisson no vive de manera aislada; está íntimamente ligado a un conjunto de distribuciones de probabilidad que describen distintos aspectos del mismo fenómeno.
+
+\subsection{Distribución de Poisson: el conteo de eventos}
+
+La distribución de Poisson modela el \emph{número de eventos} que ocurren en un intervalo fijo de tiempo (o espacio).
+
+Si $X \sim \text{Poisson}(\mu)$, su función de masa de probabilidad es $P(X=k) = e^{-\mu}\mu^k / k!$ para $k = 0,1,2,\ldots$ Sus propiedades más importantes son: $E[X] = \mu$ y $\text{Var}(X) = \mu$. Nótese que la media y la varianza son \emph{iguales}, una característica distintiva que en la práctica puede usarse como diagnóstico para verificar si datos de conteo son razonablemente modelados por una Poisson. Además, la suma de Poisson independientes es Poisson: si $X_1 \sim \text{Poisson}(\mu_1)$ y $X_2 \sim \text{Poisson}(\mu_2)$ son independientes, entonces $X_1 + X_2 \sim \text{Poisson}(\mu_1 + \mu_2)$.
+
+A medida que $\mu$ crece, la distribución de Poisson se desplaza a la derecha y se vuelve más simétrica, aproximándose a una distribución normal, un hecho que resulta útil para aproximaciones computacionales cuando $\mu$ es grande.
+
+\begin{ejemplo}
+Un sitio web recibe en promedio $\lambda = 3$ visitas por segundo. La probabilidad de no recibir ninguna visita en un segundo es $P(N(1)=0) = e^{-3} \approx 0{,}050$, apenas un 5\%. La probabilidad de recibir más de 5 visitas en un segundo es $P(N(1)>5) = 1 - \sum_{k=0}^{5} e^{-3}\cdot 3^k/k! \approx 0{,}084$, alrededor del 8{,}4\%.
+\end{ejemplo}
+
+\subsection{Distribución exponencial: el tiempo entre eventos}
+
+Si los eventos siguen un proceso de Poisson de tasa $\lambda$, el tiempo que transcurre entre dos eventos consecutivos sigue una distribución exponencial. Este resultado se obtiene directamente: si $T_1$ es el tiempo hasta el primer evento, la probabilidad de que $T_1$ exceda un valor $t$ es exactamente la probabilidad de que no ocurra ningún evento en el intervalo $[0,t]$, es decir, $P(T_1 > t) = P(N(t) = 0) = e^{-\lambda t}$. Por tanto, $T_1 \sim \text{Exp}(\lambda)$ con función de densidad $f(t) = \lambda e^{-\lambda t}$ para $t \geq 0$.
+
+Las propiedades de la distribución exponencial incluyen: $E[T] = 1/\lambda$, $\text{Var}(T) = 1/\lambda^2$ y coeficiente de variación $CV = 1$ (siempre). La mediana es $\ln(2)/\lambda \approx 0{,}693/\lambda$ y la moda es 0, lo que refleja que los tiempos cortos son los más probables.
+
+\begin{teorema}[Propiedad de falta de memoria]
+Si $T \sim \text{Exp}(\lambda)$, entonces para todo $s, t > 0$:
+\[
+    P(T > s+t \mid T > s) = P(T > t).
+\]
+La distribución exponencial es la \textbf{única} distribución continua que posee esta propiedad.
+\end{teorema}
+
+La demostración es elemental: $P(T > s+t \mid T > s) = e^{-\lambda(s+t)}/e^{-\lambda s} = e^{-\lambda t} = P(T > t)$.
+
+En el ejemplo del 123, si han pasado 20 segundos sin que llegue una llamada, la probabilidad de esperar al menos 10 segundos más es exactamente la misma que si acabara de llegar una llamada: el sistema ``no recuerda'' cuánto lleva esperando. Esta propiedad es lo que hace \emph{markovianos} a los modelos de colas del tipo $M/M/c$: el estado futuro del sistema depende solo del estado actual y no de la historia. Es una enorme simplificación analítica, pero también una limitación: en la realidad, muchos tiempos de servicio no son ``sin memoria''. Un médico que lleva 30 minutos atendiendo a un paciente probablemente terminará pronto, lo cual motiva el uso de distribuciones más generales.
+
+\begin{ejemplo}
+Un cajero de banco atiende clientes con tiempo de servicio $S \sim \text{Exp}(\mu = 6)$ clientes por hora (media de 10 minutos). La probabilidad de que un servicio dure más de 15 minutos es $P(S > 0{,}25) = e^{-1{,}5} \approx 0{,}223$. Si el cajero ya lleva 10 minutos con un cliente, la probabilidad de demorar al menos 5 minutos más es $P(S > 15 \mid S > 10) = P(S > 5) = e^{-0{,}5} \approx 0{,}607$ --- la falta de memoria en acción.
+\end{ejemplo}
+
+\subsection{Distribución Gamma y Erlang: el tiempo hasta el $n$-ésimo evento}
+
+Si nos interesa no solo el tiempo entre eventos consecutivos, sino el tiempo total hasta que se acumulen los primeros $n$ eventos, necesitamos sumar $n$ exponenciales independientes. Sea $S_n = T_1 + T_2 + \cdots + T_n$ donde $T_i \overset{\text{iid}}{\sim} \text{Exp}(\lambda)$. Entonces $S_n$ sigue una distribución Gamma:
+\[
+    S_n \sim \text{Gamma}(n, \lambda), \qquad f_{S_n}(t) = \frac{\lambda^n t^{n-1} e^{-\lambda t}}{(n-1)!}, \quad t > 0.
+\]
+Sus propiedades son: $E[S_n] = n/\lambda$, $\text{Var}(S_n) = n/\lambda^2$ y $CV(S_n) = 1/\sqrt{n}$, que decrece con $n$ (la suma se concentra cada vez más alrededor de su media, reflejo del Teorema Central del Límite). Cuando $n$ es un entero positivo, la distribución $\text{Gamma}(n,\lambda)$ se conoce como distribución \textbf{Erlang-$n$}; cuando $n=1$, se reduce a la exponencial.
+
+\subsubsection*{Dualidad Poisson--Gamma}
+
+Existe una elegante relación de dualidad entre las distribuciones Poisson y Gamma:
+\[
+P(N(t) \geq n) = P(S_n \leq t).
+\]
+Es decir, afirmar que ``al menos $n$ eventos ocurren antes del tiempo $t$'' es equivalente a decir que ``el $n$-ésimo evento ocurre antes de $t$''. Esta dualidad permite elegir la vía de cálculo más conveniente según el problema.
+
+\begin{ejemplo}[Línea 123 --- tiempo hasta la 5\textsuperscript{a} llamada]
+Con $\lambda = 4$ llamadas/min, el tiempo hasta la quinta llamada es $S_5 \sim \text{Gamma}(5, 4) = \text{Erlang}(5, 4)$. Entonces $E[S_5] = 5/4 = 1{,}25$ minutos y $\text{DE}(S_5) = \sqrt{5}/4 \approx 0{,}559$ minutos. La probabilidad de que las 5 primeras llamadas ocurran en menos de 2 minutos puede calcularse por dualidad: $P(S_5 \leq 2) = P(N(2) \geq 5) = 1 - \sum_{k=0}^{4} e^{-8}\cdot 8^k/k! \approx 0{,}900$.
+\end{ejemplo}
+
+\begin{ejemplo}[Estación de servicio --- llenado de tanques]
+Una estación de gasolina atiende vehículos cuyo tiempo de llenado es $\text{Exp}(\lambda = 10)$ por hora (media de 6 minutos por vehículo). El gerente quiere saber cuánto tarda en atender a los primeros 3 vehículos de la mañana. El tiempo total es $S_3 \sim \text{Erlang}(3, 10)$ con $E[S_3] = 3/10 = 0{,}3$ horas $= 18$ minutos y $\text{DE}(S_3) = \sqrt{3}/10 \approx 10{,}4$ minutos. ¿Cuál es la probabilidad de atender a los 3 vehículos en menos de 12 minutos ($= 0{,}2$ horas)? Por dualidad: $P(S_3 \leq 0{,}2) = P(N(0{,}2) \geq 3)$ donde $N(0{,}2) \sim \text{Poisson}(2)$. Así, $P(N \geq 3) = 1 - [e^{-2}(1 + 2 + 2)] = 1 - 5e^{-2} \approx 1 - 0{,}677 = 0{,}323$. Hay un 32{,}3\% de probabilidad de lograrlo.
+\end{ejemplo}
+
+\begin{ejemplo}[Centro de datos --- acumulación de fallas]
+Un centro de datos experimenta fallas de disco a una tasa de $\lambda = 0{,}5$ fallas por día. El protocolo de emergencia se activa cuando se acumulan 4 fallas. El tiempo hasta la activación es $S_4 \sim \text{Erlang}(4, 0{,}5)$ con media $4/0{,}5 = 8$ días y desviación estándar $\sqrt{4}/0{,}5 = 4$ días. La probabilidad de que el protocolo se active en la primera semana (7 días) es $P(S_4 \leq 7) = P(N(7) \geq 4)$ donde $N(7) \sim \text{Poisson}(3{,}5)$:
+\[
+P(N \geq 4) = 1 - \sum_{k=0}^{3} \frac{e^{-3{,}5}\cdot 3{,}5^k}{k!} = 1 - e^{-3{,}5}\left(1 + 3{,}5 + 6{,}125 + 7{,}146\right) \approx 1 - 0{,}537 = 0{,}463.
+\]
+Hay un 46{,}3\% de probabilidad de activar el protocolo en la primera semana.
+\end{ejemplo}
+
+\subsubsection*{La Erlang como modelo de servicio}
+
+La distribución Erlang tiene una importancia adicional más allá de la conexión con el proceso de Poisson: en la práctica, cuando se observa que los tiempos de servicio tienen un coeficiente de variación menor que 1 (es decir, son menos variables que una exponencial), la Erlang con $n > 1$ fases es un modelo natural. Un servicio Erlang-$n$ puede interpretarse como un proceso de $n$ etapas secuenciales, cada una exponencial con tasa $n\lambda$. El tiempo total tiene media $1/\lambda$ (la misma que una $\text{Exp}(\lambda)$) pero varianza $1/(n\lambda^2)$, que es $n$ veces menor. A mayor $n$, menor variabilidad y la distribución se acerca a la forma de campana. Este es el fundamento de los modelos de colas $M/E_n/c$ (notación de Kendall), donde la ``$E_n$'' indica un servicio Erlang con $n$ fases.
+
+\begin{ejemplo}[Cola en farmacia]
+En una farmacia, el tiempo de despacho de medicamentos tiene media de 4 minutos y los datos sugieren poca variabilidad ($CV \approx 0{,}58$). Un modelo razonable es $\text{Erlang}(3, 0{,}75)$ por minuto: la media es $3/0{,}75 = 4$ min y el $CV = 1/\sqrt{3} \approx 0{,}577$, que coincide con lo observado. La probabilidad de que un despacho tome más de 8 minutos es $P(S_3 > 8)$ donde $S_3 \sim \text{Gamma}(3, 0{,}75)$. Por dualidad con un Poisson de parámetro $0{,}75 \times 8 = 6$: $P(S_3 > 8) = P(N(8) < 3) = \sum_{k=0}^{2} e^{-6}\cdot 6^k/k! = e^{-6}(1 + 6 + 18) = 25 \cdot e^{-6} \approx 0{,}062$, apenas un 6{,}2\%.
+\end{ejemplo}
+
+
+% ===================== SECCIÓN 4 =====================
+\section{Propiedades del proceso de Poisson}
+
+Más allá de las distribuciones que lo componen, el proceso de Poisson posee un conjunto de propiedades estructurales que lo hacen extraordinariamente versátil para modelar sistemas complejos.
+
+
+\subsection{Superposición (merging)}
+
+\begin{teorema}[Superposición]
+Si $N_1(t)$ y $N_2(t)$ son procesos de Poisson independientes con tasas $\lambda_1$ y $\lambda_2$, entonces su unión $N(t) = N_1(t) + N_2(t)$ es un proceso de Poisson con tasa $\lambda_1 + \lambda_2$. Se generaliza a $k$ procesos: si $N_1(t), \ldots, N_k(t)$ son Poisson independientes con tasas $\lambda_1, \ldots, \lambda_k$, entonces $\sum_{i=1}^{k} N_i(t) \sim \text{Poisson}\!\left(\sum_{i=1}^{k} \lambda_i\right)$.
+\end{teorema}
+
+La superposición permite combinar múltiples fuentes de eventos en un solo flujo. Es una herramienta indispensable cuando un sistema recibe entradas desde varias fuentes independientes y se necesita analizar el comportamiento agregado.
+
+\begin{ejemplo}[Sistema de urgencias hospitalarias]
+Un hospital recibe pacientes de tres fuentes independientes: ambulancias ($\lambda_1 = 2$/h), pacientes que llegan caminando ($\lambda_2 = 8$/h) y remisiones de otras clínicas ($\lambda_3 = 1{,}5$/h). El flujo total de pacientes es Poisson con tasa $\lambda = 2 + 8 + 1{,}5 = 11{,}5$/h. El tiempo promedio entre llegadas al sistema es $1/11{,}5 \approx 5{,}22$ minutos.
+
+¿Cuál es la probabilidad de recibir más de 15 pacientes en 1 hora? Con $N(1) \sim \text{Poisson}(11{,}5)$:
+\[
+P(N(1) > 15) = 1 - \sum_{k=0}^{15} \frac{e^{-11{,}5}\cdot 11{,}5^k}{k!} \approx 0{,}109.
+\]
+Aproximadamente un 10{,}9\% del tiempo la demanda horaria supera los 15 pacientes.
+\end{ejemplo}
+
+\begin{ejemplo}[Peaje con múltiples vías de acceso]
+Un peaje en la autopista Bogotá--Tunja recibe vehículos desde tres accesos: la vía principal ($\lambda_1 = 40$ veh/h), un retorno secundario ($\lambda_2 = 12$ veh/h) y una vía local ($\lambda_3 = 8$ veh/h). Todos los flujos son Poisson independientes. El proceso combinado en la caseta de cobro es Poisson con tasa $\lambda = 60$ veh/h, lo que equivale a un vehículo cada minuto en promedio.
+
+Si la capacidad del peaje es de 70 veh/h, ¿cuál es la probabilidad de que en una hora lleguen más vehículos de los que se pueden atender? Buscamos $P(N(1) > 70)$ con $N(1) \sim \text{Poisson}(60)$. Para $\mu$ grande, podemos usar la aproximación normal: $N(1) \approx N(60, 60)$. Entonces:
+\[
+P(N > 70) \approx P\!\left(Z > \frac{70{,}5 - 60}{\sqrt{60}}\right) = P(Z > 1{,}356) \approx 0{,}087.
+\]
+Hay un 8{,}7\% de probabilidad de congestión en una hora cualquiera.
+\end{ejemplo}
+
+\begin{ejemplo}[Plataforma de comercio electrónico]
+Una plataforma de e-commerce en Colombia recibe pedidos desde su aplicación móvil ($\lambda_1 = 50$/h), su sitio web ($\lambda_2 = 35$/h) y un marketplace aliado ($\lambda_3 = 15$/h). Por superposición, el flujo total es Poisson con $\lambda = 100$ pedidos/h. El equipo de logística quiere dimensionar la capacidad del centro de distribución para los próximos 30 minutos.
+
+En 30 minutos, $N(0{,}5) \sim \text{Poisson}(50)$. El número esperado de pedidos es 50, con desviación estándar $\sqrt{50} \approx 7{,}07$. Si el centro puede procesar como máximo 60 pedidos en media hora, la probabilidad de exceder la capacidad es $P(N > 60) \approx P(Z > (60{,}5-50)/7{,}07) \approx P(Z > 1{,}485) \approx 0{,}069$, un 6{,}9\%.
+\end{ejemplo}
+
+\begin{ejemplo}[Red de telecomunicaciones]
+Un nodo de red recibe paquetes de datos desde 5 enlaces independientes con tasas $\lambda_i = 200, 150, 180, 120, 250$ paquetes/segundo. El flujo agregado es Poisson con tasa $\lambda = 900$ paquetes/segundo.
+
+¿Cuántos paquetes se esperan en un intervalo de 10 milisegundos ($t = 0{,}01$~s)? $E[N(0{,}01)] = 900 \times 0{,}01 = 9$ paquetes. ¿Cuál es la probabilidad de que lleguen más de 15 paquetes en ese intervalo? Con $N(0{,}01) \sim \text{Poisson}(9)$: $P(N > 15) = 1 - \sum_{k=0}^{15} e^{-9}\cdot 9^k/k! \approx 0{,}011$, apenas un 1{,}1\%. Esto ayuda a dimensionar el búfer del nodo.
+\end{ejemplo}
+
+
+\subsection{Descomposición (thinning / splitting)}
+
+\begin{teorema}[Descomposición]
+Si $N(t)$ es un proceso de Poisson con tasa $\lambda$ y cada evento se clasifica de forma independiente en una de $m$ categorías con probabilidades $p_1, p_2, \ldots, p_m$ (donde $\sum p_i = 1$), entonces los procesos resultantes $N_1(t), N_2(t), \ldots, N_m(t)$ son procesos de Poisson \textbf{independientes} con tasas $\lambda p_1, \lambda p_2, \ldots, \lambda p_m$.
+\end{teorema}
+
+La descomposición es el complemento natural de la superposición: mientras la primera combina flujos, la segunda los separa. Es particularmente útil cuando un sistema clasifica o enruta eventos según algún criterio probabilístico.
+
+\begin{ejemplo}[Servidor de correo electrónico]
+Un servidor de correo recibe $\lambda = 20$ correos/minuto. Cada correo tiene probabilidad $p = 0{,}15$ de ser spam (independiente de los demás). Por descomposición, los correos spam llegan según un Poisson de tasa $20 \times 0{,}15 = 3$/min y los legítimos según uno de tasa $20 \times 0{,}85 = 17$/min. Ambos flujos son independientes.
+
+La probabilidad de no recibir spam durante un minuto es $P(N_{\text{spam}}(1)=0) = e^{-3} \approx 0{,}050$. La probabilidad de recibir exactamente 2 spam \emph{y} 15 legítimos en 1 minuto es, por independencia:
+\[
+\frac{e^{-3}\cdot 3^2}{2!} \times \frac{e^{-17}\cdot 17^{15}}{15!} \approx 0{,}224 \times 0{,}085 \approx 0{,}019.
+\]
+\end{ejemplo}
+
+\begin{ejemplo}[Supermercado con dos cajas]
+Un supermercado tiene dos cajas registradoras. Los clientes llegan según un proceso de Poisson con $\lambda = 10$/h. El 40\% se dirige a la caja rápida y el 60\% a la caja regular, de manera independiente. Por descomposición:
+\begin{itemize}[nosep]
+    \item Llegadas a la caja rápida: $\text{Poisson}(10 \times 0{,}4 = 4$/h).
+    \item Llegadas a la caja regular: $\text{Poisson}(10 \times 0{,}6 = 6$/h).
+    \item Ambos procesos son independientes.
+\end{itemize}
+
+¿Probabilidad de que no llegue nadie a la caja rápida en 30 minutos? $N_R(0{,}5) \sim \text{Poisson}(2)$, así que $P(N_R = 0) = e^{-2} \approx 0{,}135$. El tiempo promedio entre clientes en la caja regular es $1/6$ h $= 10$ minutos. ¿Probabilidad de que lleguen exactamente 5 clientes en total a ambas cajas en 30 minutos? El total es $N(0{,}5) \sim \text{Poisson}(5)$: $P(N=5) = e^{-5}\cdot 5^5/5! \approx 0{,}176$.
+\end{ejemplo}
+
+\begin{ejemplo}[Clasificación de pacientes por triaje]
+El servicio de urgencias del ejemplo anterior recibe $\lambda = 11{,}5$ pacientes/hora. El triaje clasifica independientemente a cada paciente en tres niveles: urgencia alta con probabilidad $p_1 = 0{,}10$, urgencia media con $p_2 = 0{,}35$ y urgencia baja con $p_3 = 0{,}55$. Por descomposición:
+\begin{itemize}[nosep]
+    \item Urgencia alta: $\text{Poisson}(11{,}5 \times 0{,}10 = 1{,}15$/h).
+    \item Urgencia media: $\text{Poisson}(11{,}5 \times 0{,}35 = 4{,}025$/h).
+    \item Urgencia baja: $\text{Poisson}(11{,}5 \times 0{,}55 = 6{,}325$/h).
+\end{itemize}
+Los tres flujos son independientes. ¿Cuál es la probabilidad de que en 2 horas no llegue ningún paciente de urgencia alta? $N_{\text{alta}}(2) \sim \text{Poisson}(2{,}3)$: $P(N_{\text{alta}} = 0) = e^{-2{,}3} \approx 0{,}100$, un 10\%. El tiempo medio entre pacientes de urgencia alta es $1/1{,}15 \approx 52{,}2$ minutos.
+\end{ejemplo}
+
+\begin{ejemplo}[Planta de manufactura --- clasificación de defectos]
+Una línea de producción genera artículos defectuosos según un proceso de Poisson con tasa $\lambda = 6$ defectos/hora. Cada defecto es, independientemente, de tipo cosmético (prob.\ $0{,}60$), funcional (prob.\ $0{,}30$) o estructural (prob.\ $0{,}10$). Por descomposición:
+\begin{itemize}[nosep]
+    \item Defectos cosméticos: $\text{Poisson}(3{,}6$/h).
+    \item Defectos funcionales: $\text{Poisson}(1{,}8$/h).
+    \item Defectos estructurales: $\text{Poisson}(0{,}6$/h).
+\end{itemize}
+
+El turno de 8 horas espera en promedio $0{,}6 \times 8 = 4{,}8$ defectos estructurales. ¿Probabilidad de al menos un defecto estructural en un turno? $P(N_E(8) \geq 1) = 1 - e^{-4{,}8} \approx 0{,}992$. Prácticamente seguro. ¿Probabilidad de 0 defectos funcionales en las 2 primeras horas? $P(N_F(2)=0) = e^{-3{,}6} \approx 0{,}027$, muy baja.
+\end{ejemplo}
+
+\begin{ejemplo}[Estación TransMilenio --- rutas]
+En la estación de la Calle 72 de TransMilenio, los pasajeros llegan según un proceso de Poisson con $\lambda = 30$/minuto durante hora pico. El 25\% toma la ruta B73, el 40\% toma la ruta K86 y el 35\% toma otras rutas. Los tres flujos resultantes son Poisson independientes con tasas 7{,}5, 12 y 10{,}5 pasajeros/min respectivamente.
+
+Si un bus de la ruta B73 tiene capacidad para 20 personas y pasa cada 3 minutos, ¿cuál es la probabilidad de que los pasajeros acumulados superen la capacidad del bus? En 3 minutos se acumulan $N_{B73}(3) \sim \text{Poisson}(22{,}5)$ pasajeros para esa ruta. $P(N > 20) \approx P(Z > (20{,}5 - 22{,}5)/\sqrt{22{,}5}) \approx P(Z > -0{,}422) \approx 0{,}663$. Hay un 66{,}3\% de probabilidad de que el bus no sea suficiente, señal de que la frecuencia debería aumentarse.
+\end{ejemplo}
+
+
+\subsection{Competencia entre exponenciales}
+
+\begin{teorema}[Mínimo de exponenciales]
+Si $T_1 \sim \text{Exp}(\lambda_1)$ y $T_2 \sim \text{Exp}(\lambda_2)$ son independientes, entonces:
+\begin{enumerate}[label=(\roman*)]
+    \item $\min(T_1, T_2) \sim \text{Exp}(\lambda_1 + \lambda_2)$.
+    \item $P(T_1 < T_2) = \lambda_1/(\lambda_1 + \lambda_2)$.
+\end{enumerate}
+Se generaliza a $n$ exponenciales: $\min(T_1, \ldots, T_n) \sim \text{Exp}(\sum_i \lambda_i)$.
+\end{teorema}
+
+Esta propiedad es el mecanismo central de los simuladores de eventos discretos. En un sistema de colas $M/M/2$ con tasa de llegadas $\lambda = 5$ y tasas de servicio $\mu_1 = \mu_2 = 3$, cuando ambos servidores están ocupados hay tres ``relojes'' exponenciales compitiendo. El primer evento ocurrirá en un tiempo $\text{Exp}(11)$ y la probabilidad de que sea una nueva llegada es $5/11 \approx 45{,}5\%$, mientras que la de que alguno de los dos servidores termine es $6/11 \approx 54{,}5\%$.
+
+\begin{ejemplo}[Máquinas en paralelo]
+Tres máquinas funcionan en paralelo con tiempos de vida exponenciales de tasas $\lambda_1 = 0{,}01$, $\lambda_2 = 0{,}02$ y $\lambda_3 = 0{,}015$ fallas/hora. El tiempo hasta la primera falla del sistema es $\text{Exp}(0{,}045)$ con media $22{,}2$ horas. La máquina 2 tiene la mayor probabilidad de fallar primero: $0{,}02/0{,}045 = 44{,}4\%$.
+\end{ejemplo}
+
+
+% ===================== SECCIÓN 5 =====================
+\section{Ejercicios integradores}
+
+\begin{ejemplo}[Aeropuerto]
+Un aeropuerto pequeño con una sola pista recibe aviones según un proceso de Poisson con $\lambda = 8$ aviones/hora. Cada aterrizaje toma un tiempo $\text{Exp}(\mu = 12)$/hora.
+
+\textbf{(a)} La probabilidad de que lleguen más de 3 aviones en 15 minutos: $N(0{,}25) \sim \text{Poisson}(2)$, luego $P(N>3) = 1 - \sum_{k=0}^{3} e^{-2}\cdot 2^k/k! = 1 - 0{,}857 = 0{,}143$.
+
+\textbf{(b)} El tiempo medio entre llegadas es $1/\lambda = 7{,}5$ minutos.
+
+\textbf{(c)} La probabilidad de que un aterrizaje dure más de 10 minutos: $P(S > 1/6) = e^{-12/6} = e^{-2} \approx 0{,}135$.
+
+\textbf{(d)} La intensidad de tráfico es $\rho = \lambda/\mu = 8/12 \approx 0{,}667 < 1$, por lo que el sistema es estable.
+\end{ejemplo}
+
+\begin{ejemplo}[Integrador: supermercado con superposición, descomposición y Erlang]
+Un supermercado recibe clientes por dos accesos independientes: la entrada principal ($\lambda_1 = 20$/h) y la entrada del estacionamiento ($\lambda_2 = 12$/h).
+
+\textbf{Superposición:} el flujo total es Poisson con $\lambda = 32$/h. El tiempo esperado entre clientes es $1/32$ h $\approx 1{,}88$ minutos.
+
+Cada cliente, independientemente, va a la sección de frutas (prob.\ $0{,}30$), a la panadería (prob.\ $0{,}20$) o a las cajas directamente (prob.\ $0{,}50$).
+
+\textbf{Descomposición:} las llegadas a frutas son Poisson($9{,}6$/h), a panadería Poisson($6{,}4$/h) y a cajas Poisson($16$/h), todos independientes.
+
+El tiempo de servicio en la caja registradora tiene media de 3 minutos con poca variabilidad, modelado como $\text{Erlang}(4, 80)$ por hora ($E = 4/80 = 0{,}05$ h $= 3$ min, $CV = 1/\sqrt{4} = 0{,}5$).
+
+\textbf{Erlang:} la probabilidad de que un servicio de caja tome más de 6 minutos ($= 0{,}1$ h) se calcula por dualidad con $\text{Poisson}(80 \times 0{,}1 = 8)$: $P(S_4 > 0{,}1) = P(N(0{,}1) < 4) = \sum_{k=0}^{3} e^{-8}\cdot 8^k/k! = e^{-8}(1+8+32+85{,}33) \approx 0{,}0424$. Solo un 4{,}2\% de los servicios excede 6 minutos.
+\end{ejemplo}
+
+
+% ===================== SECCIÓN 6 =====================
+\section{Conclusiones}
+
+El proceso de Poisson constituye la base sobre la cual se construyen la gran mayoría de modelos de colas, de confiabilidad y de simulación de eventos discretos. Sus axiomas --- incrementos independientes y estacionarios, ausencia de eventos simultáneos --- formalizan la intuición de ``eventos aleatorios con tasa constante''. La distribución de Poisson cuenta eventos en intervalos fijos, la exponencial mide tiempos entre eventos y la Gamma (o Erlang, cuando el parámetro de forma es entero) mide el tiempo hasta el $n$-ésimo evento; las tres están ligadas de manera indisoluble a través de la dualidad Poisson--Gamma.
+
+Las propiedades de \textbf{superposición} y \textbf{descomposición} permiten analizar sistemas complejos donde múltiples fuentes alimentan un sistema o donde un flujo se separa en categorías. Como vimos en los ejemplos, estas herramientas se aplican en contextos tan variados como hospitales, peajes, plataformas de comercio electrónico, centros de manufactura y sistemas de transporte masivo.
+
+La distribución \textbf{Erlang} extiende la exponencial al permitir modelar tiempos de servicio con menor variabilidad: con $n$ fases se obtiene un $CV = 1/\sqrt{n}$, lo cual se ajusta mejor a operaciones que tienen cierta regularidad sin ser determinísticas. Finalmente, la \textbf{competencia entre exponenciales} es el mecanismo que utiliza el simulador de eventos discretos para decidir qué evento ocurre primero, cerrando así el vínculo entre la teoría y la práctica computacional.
+
+Comprender a fondo estos conceptos proporciona al estudiante de ingeniería industrial las herramientas necesarias para modelar, analizar y simular sistemas reales que operan bajo incertidumbre.
+
+\vfill
+
+\section*{Referencias}
+
+\begin{enumerate}[label={[\arabic*]}]
+    \item Ross, S.\,M. (2014). \textit{Introduction to Probability Models}, 11th ed. Academic Press. Cap.~5.
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~8.
+    \item Banks, J. et al. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~5--6.
+    \item Gross, D. et al. (2008). \textit{Fundamentals of Queueing Theory}, 4th ed. Wiley.
+    \item \c{C}inlar, E. (2013). \textit{Introduction to Stochastic Processes}. Dover. Cap.~4.
+    \item Kingman, J.\,F.\,C. (1993). \textit{Poisson Processes}. Oxford University Press.
+\end{enumerate}
+
+\end{document}

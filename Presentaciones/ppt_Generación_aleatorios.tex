@@ -1,0 +1,834 @@
+% !TEX program = pdflatex
+\documentclass[aspectratio=1610,9pt]{beamer}
+
+% -----------------------------------------------------------------------------
+% TEMA Y FORMATO
+% -----------------------------------------------------------------------------
+\usetheme{Madrid}
+\usecolortheme{dolphin}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+% -----------------------------------------------------------------------------
+% PAQUETES
+% -----------------------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+% -----------------------------------------------------------------------------
+% METADATOS
+% -----------------------------------------------------------------------------
+\title{Congruencia lineal y transformada inversa}
+\subtitle{Alejandra Tabares}
+\date{2026}
+
+\begin{document}
+
+% -----------------------------------------------------------------------------
+% SECCIÓN 1: EL GANCHO
+% -----------------------------------------------------------------------------
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}{El Caso de Estudio: Auditoría al Casino Andino}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \textbf{El problema}\\
+        Una plataforma de apuestas en línea, ``Casino Andino'', ha sido acusada de fraude.
+        Jugadores afirman que las tragamonedas son predecibles y que los premios grandes
+        no salen según las probabilidades anunciadas.
+
+        \vspace{0.45cm}
+
+        \textbf{Tu misión}\\
+        Como ingenieras e ingenieros, debemos auditar el \textbf{motor de simulación}:
+        \begin{itemize}
+            \item ¿Cómo genera el computador la ``suerte''?
+            \item ¿Qué significa ``aleatorio'' en un sistema determinístico?
+            \item ¿Cómo se traducen números uniformes en premios y tiempos de juego?
+        \end{itemize}
+
+        \column{0.4\textwidth}
+        \centering
+        \textbf{¿Azar o algoritmo?}
+        \begin{tikzpicture}
+            \node[draw, circle, minimum size=2cm, fill=red!20] (A) at (0,2) {7};
+            \node[draw, circle, minimum size=2cm, fill=blue!20] (B) at (0,0) {Bar};
+            \node[draw, circle, minimum size=2cm, fill=yellow!20] (C) at (0,-2) {Cereza};
+            \draw[-{Stealth[length=3mm]}, thick] (-2, 0) -- node[above] {\small Entrada} (-1,0);
+        \end{tikzpicture}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{La Paradoja del Computador Determinístico}
+    \begin{alertblock}{Obstáculo fundamental}
+    Un computador es una máquina de estados finitos y determinísticos.
+    Si le pides que calcule $2+2$, siempre dará $4$.
+    \end{alertblock}
+
+    \vspace{0.45cm}
+
+    \textbf{Pregunta}\\
+    Si el hardware es determinístico, ¿cómo podemos simular incertidumbre estocástica
+    para modelar el juego?
+
+    \vspace{0.25cm}
+    \textit{Necesitamos un mecanismo matemático que produzca secuencias con comportamiento estadístico parecido al azar.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECCIÓN 2: ANATOMÍA DE LA SIMULACIÓN
+% -----------------------------------------------------------------------------
+\section{Anatomía de la simulación}
+
+\begin{frame}{Definición Formal de Simulación Estocástica}
+    Antes de auditar el código, fijemos el marco. Según \textbf{Banks et al.}:
+
+    \begin{quote}
+        La simulación es la imitación de la operación de un proceso o sistema a través del tiempo,
+        generando una historia artificial para inferir características operacionales.
+    \end{quote}
+
+    \vspace{0.25cm}
+    \textbf{Diferencia clave}
+    \begin{itemize}
+        \item \textbf{Optimización determinística:} busca $x^\star$ analíticamente.
+        \item \textbf{Simulación estocástica:} estima cantidades como $E[Y]$ a partir de repeticiones.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Los Elementos Constitutivos del Modelo}
+    Para el casino, formalizamos:
+    \[
+    Y=f(X_1,X_2,\dots,X_n).
+    \]
+
+    \vspace{0.2cm}
+    \begin{enumerate}
+        \item \textbf{Entradas $X_i$}\\
+        Variables aleatorias que impulsan el sistema.
+        \begin{itemize}
+            \item Ejemplos: tiempo entre apuestas, monto apostado, evento de premio grande.
+        \end{itemize}
+
+        \item \textbf{Mecanismo $f$}\\
+        La lógica del proceso.
+        \begin{itemize}
+            \item Ejemplos: reglas del tragamonedas, tabla de pagos, validaciones del servidor.
+        \end{itemize}
+
+        \item \textbf{Salidas $Y$}\\
+        Métricas de desempeño que también son aleatorias.
+        \begin{itemize}
+            \item Ejemplos: ganancia neta diaria, retorno al jugador, frecuencia de premios grandes.
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{El Algoritmo General de Simulación}
+    \begin{center}
+    \begin{tikzpicture}[node distance=1.35cm]
+        \node (start) [draw, rectangle, rounded corners] {Inicio};
+        \node (rng) [draw, rectangle, below=of start, fill=blue!10] {1. Generar $U \in [0,1)$};
+        \node (variate) [draw, rectangle, below=of rng, fill=yellow!20] {2. Transformar $U$ en $X$};
+        \node (model) [draw, rectangle, below=of variate] {3. Evaluar $Y=f(X)$};
+        \node (stats) [draw, rectangle, below=of model] {4. Recolectar estadísticas};
+        \node (end) [draw, rectangle, rounded corners, below=of stats] {Análisis de salida};
+
+        \draw[-{Stealth[length=3mm]}] (start) -- (rng);
+        \draw[-{Stealth[length=3mm]}] (rng) -- (variate);
+        \draw[-{Stealth[length=3mm]}] (variate) -- (model);
+        \draw[-{Stealth[length=3mm]}] (model) -- (stats);
+        \draw[-{Stealth[length=3mm]}] (stats) -- (end);
+
+        \node [right=2.6cm of rng, text width=4.8cm] {\small \textbf{Hoy}\\De dónde sale $U$\\Aritmética de reloj y LCG};
+        \node [right=2.6cm of variate, text width=4.8cm] {\small \textbf{Hoy}\\Cómo pasar de $U$ a $X$\\Transformada inversa};
+    \end{tikzpicture}
+    \end{center}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECCIÓN 3: ARITMÉTICA DE RELOJ
+% -----------------------------------------------------------------------------
+\section{Aritmética de reloj}
+
+\begin{frame}{Imagen mental: aritmética de reloj}
+    \textbf{Pensemos en un reloj de 12 horas}
+
+    \vspace{0.35cm}
+    \begin{itemize}
+        \item Si son las 10 y pasan 5 horas, no dices 15; dices 3.
+        \item La razón es simple: al llegar a 12, el reloj vuelve a empezar.
+        \item El reloj no guarda el número total, guarda la \textbf{posición} después de dar vueltas completas.
+    \end{itemize}
+
+    \vspace{0.35cm}
+    \begin{block}{Idea que vamos a formalizar}
+    ``Quedarse con la posición'' equivale a \textbf{quedarse con el residuo} al dividir por el tamaño del reloj.
+    \end{block}
+\end{frame}
+
+\begin{frame}{Residuo y operador módulo}
+    Cuando dividimos un entero $a$ entre un entero positivo $m$, existe un único par de enteros $(q,r)$ tal que:
+    \[
+    a = qm + r,
+    \qquad 0\le r \le m-1.
+    \]
+
+    \vspace{0.25cm}
+    \begin{block}{Definición}
+    Llamamos \textbf{residuo} a $r$ y lo escribimos como:
+    \[
+    r = a \bmod m.
+    \]
+    \end{block}
+
+    \vspace{0.25cm}
+    \begin{exampleblock}{Ejemplo con $m=12$}
+        \[
+        15 = 1\cdot 12 + 3 \Rightarrow 15\bmod 12 = 3,
+        \qquad
+        27 = 2\cdot 12 + 3 \Rightarrow 27\bmod 12 = 3.
+        \]
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Congruencia como ``mismo residuo''}
+    Diremos que dos números son \textbf{iguales en el reloj de tamaño $m$} si dejan el mismo residuo al dividir por $m$.
+
+    \vspace{0.25cm}
+    \begin{block}{Definición equivalente}
+    \[
+    a \equiv b \pmod m
+    \quad \Longleftrightarrow \quad
+    a \bmod m = b \bmod m.
+    \]
+    \end{block}
+
+    \vspace{0.25cm}
+    \textbf{Regla práctica}
+    \[
+    a \equiv b \pmod m
+    \quad \Longleftrightarrow \quad
+    a-b \text{ es múltiplo de } m.
+    \]
+
+    \vspace{0.15cm}
+    \begin{exampleblock}{Ejemplo con $m=12$}
+        $15\equiv 3\pmod{12}$ porque $15\bmod 12=3\bmod 12=3$ (y $15-3=12$).
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Operaciones en el reloj}
+    En aritmética de reloj operamos en enteros, pero el resultado final se reduce con $\bmod m$.
+
+    \vspace{0.25cm}
+    \begin{block}{Suma y multiplicación}
+    \[
+    (a+b)\bmod m \quad \text{y} \quad (ab)\bmod m
+    \]
+    son las posiciones finales del reloj después de sumar o multiplicar.
+    \end{block}
+
+    \vspace{0.25cm}
+    \begin{exampleblock}{Ejemplo de suma en reloj 12}
+        \[
+        (10+5)\bmod 12 = 15\bmod 12 = 3.
+        \]
+    \end{exampleblock}
+
+    \vspace{0.15cm}
+    \begin{exampleblock}{Ejemplo de multiplicación en reloj 7}
+        \[
+        (6\cdot 5)\bmod 7 = 30\bmod 7 = 2.
+        \]
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{El reloj produce estados en $\{0,1,\dots,m-1\}$}
+    En simulación vamos a trabajar con un \textbf{estado} $Z$ que siempre viva dentro del reloj.
+
+    \vspace{0.25cm}
+    \begin{block}{Hecho fundamental}
+    Para cualquier entero $t$,
+    \[
+    Z = t \bmod m \quad \Rightarrow \quad Z\in\{0,1,\dots,m-1\}.
+    \]
+    \end{block}
+
+    \vspace{0.25cm}
+    \begin{exampleblock}{Ejemplo con $m=12$}
+        \[
+        0\bmod 12=0,\ 1\bmod 12=1,\ \dots,\ 11\bmod 12=11,\ 12\bmod 12=0,\ 13\bmod 12=1.
+        \]
+        El reloj obliga a ``volver'' cuando se completa una vuelta.
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Una secuencia de estados usando el reloj}
+    Un solo estado no basta: necesitamos una \textbf{secuencia} $Z_0,Z_1,Z_2,\dots$.
+
+    \vspace{0.25cm}
+    \begin{block}{Regla mínima para entender el mecanismo}
+    \[
+    Z_{n+1} = (Z_n+1)\bmod m.
+    \]
+    \end{block}
+
+    \vspace{0.2cm}
+    \begin{exampleblock}{Ejemplo con $m=10$ y $Z_0=7$}
+        \[
+        7,\ 8,\ 9,\ 0,\ 1,\ 2,\ 3,\ 4,\ 5,\ 6,\ 7,\dots
+        \]
+    \end{exampleblock}
+
+    \vspace{0.2cm}
+    \begin{alertblock}{Lectura}
+    Ya tenemos lo esencial: \textbf{actualizar} y luego \textbf{recortar con $\bmod m$}.
+    Lo que falta es que la secuencia no sea un patrón obvio.
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{De estados $Z_n$ a números $U_n$ en $[0,1)$}
+    En simulación, el algoritmo general comienza generando $U\in[0,1)$.
+
+    \vspace{0.25cm}
+    \begin{block}{Normalización}
+    Si $Z_n\in\{0,1,\dots,m-1\}$, definimos:
+    \[
+    U_n=\frac{Z_n}{m}.
+    \]
+    Entonces $U_n\in[0,1)$.
+    \end{block}
+
+    \vspace{0.2cm}
+    \begin{exampleblock}{Ejemplo con $m=10$}
+        \[
+        Z_n: 7,\ 8,\ 9,\ 0,\ 1,\dots
+        \quad\Rightarrow\quad
+        U_n: 0.7,\ 0.8,\ 0.9,\ 0.0,\ 0.1,\dots
+        \]
+    \end{exampleblock}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECCIÓN 4: ECUACIONES LINEALES EN EL RELOJ
+% -----------------------------------------------------------------------------
+\section{Ecuaciones lineales en el reloj}
+
+\begin{frame}{La pregunta central}
+    Ahora viene lo importante para auditoría y para entender generadores.
+
+    \vspace{0.35cm}
+    \begin{block}{Problema}
+    Encontrar $x$ tal que
+    \[
+    ax \equiv b \pmod m.
+    \]
+    \end{block}
+
+    \vspace{0.25cm}
+    \textbf{Traducción en español}
+    \begin{itemize}
+        \item Multiplico $a\cdot x$.
+        \item Me quedo con el residuo al dividir por $m$.
+        \item Quiero que esa posición sea $b$.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo guiado en reloj 12}
+    Resolver:
+    \[
+    5x \equiv 1 \pmod{12}.
+    \]
+
+    \vspace{0.2cm}
+    Interpretación: ``busco un $x$ para que $5x$ termine en la posición 1 del reloj 12.''
+
+    \vspace{0.25cm}
+    Probamos valores pequeños:
+    \[
+    \begin{array}{c|ccccc}
+    x & 1 & 2 & 3 & 4 & 5\\ \hline
+    5x & 5 & 10 & 15 & 20 & 25\\
+    5x \bmod 12 & 5 & 10 & 3 & 8 & 1
+    \end{array}
+    \]
+
+    \vspace{0.2cm}
+    \begin{exampleblock}{Conclusión}
+    $x=5$ funciona. En el reloj 12, multiplicar por 5 puede deshacerse multiplicando por 5 otra vez.
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Inverso en el reloj}
+    El ejemplo anterior introduce una idea clave:
+
+    \vspace{0.25cm}
+    \begin{block}{Definición}
+    Decimos que $a$ tiene inverso en el reloj $m$ si existe un número $a^{-1}$ tal que
+    \[
+    a\cdot a^{-1} \equiv 1 \pmod m.
+    \]
+    \end{block}
+
+    \vspace{0.25cm}
+    \textbf{Interpretación}
+    \begin{itemize}
+        \item Multiplicar por $a^{-1}$ es ``deshacer'' el efecto de multiplicar por $a$ dentro del reloj.
+        \item Si existe inverso, resolver $ax\equiv b$ es la versión de ``dividir por $a$'' dentro del reloj.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Por qué a veces no existe inverso}
+    Compare dos números en reloj 12.
+
+    \vspace{0.25cm}
+    \textbf{Caso 1: $a=5$}\\
+    Como vimos, $5\cdot 5 \equiv 1 \pmod{12}$, entonces 5 sí tiene inverso.
+
+    \vspace{0.35cm}
+    \textbf{Caso 2: $a=6$}\\
+    Revisemos los múltiplos:
+    \[
+    6\cdot 1=6,\quad 6\cdot 2=12\rightarrow 0,\quad
+    6\cdot 3=18\rightarrow 6,\quad 6\cdot 4=24\rightarrow 0.
+    \]
+    Solo aparecen posiciones 0 y 6. Nunca aparece 1.
+
+    \vspace{0.3cm}
+    \begin{alertblock}{Conclusión}
+    Si nunca puedes llegar a 1, no hay inverso. En ese reloj, ``dividir por 6'' no existe.
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Regla con máximo común divisor}
+    La regla que sí deben aprender es simple y poderosa.
+
+    \vspace{0.35cm}
+    \begin{block}{Criterio de inverso}
+    $a$ tiene inverso en el reloj $m$ si y solo si
+    \[
+    \gcd(a,m)=1.
+    \]
+    \end{block}
+
+    \vspace{0.25cm}
+    \textbf{Cómo se usa}
+    \begin{itemize}
+        \item Si $\gcd(a,m)\neq 1$, multiplicar por $a$ colapsa posiciones y se pierde información.
+        \item Si $\gcd(a,m)=1$, multiplicar por $a$ reordena posiciones sin colapsarlas, y existe el inverso.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Cuándo existe solución para $ax\equiv b$}
+    Definimos $d=\gcd(a,m)$.
+
+    \vspace{0.35cm}
+    \begin{block}{Criterio de existencia}
+    La ecuación $ax \equiv b \pmod m$ tiene solución si y solo si $d$ divide a $b$.
+    \end{block}
+
+    \vspace{0.25cm}
+    \textbf{Lectura en español}
+    \begin{itemize}
+        \item Si $a$ y $m$ comparten un factor $d$, entonces $ax$ solo puede caer en ciertas posiciones.
+        \item Solo se puede llegar a $b$ si $b$ es compatible con ese mismo factor.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo clave en reloj 12}
+    Resolvamos dos ecuaciones para ver el contraste.
+
+    \vspace{0.3cm}
+    \textbf{Caso A}
+    \[
+    6x \equiv 3 \pmod{12}.
+    \]
+    Aquí $\gcd(6,12)=6$, y 6 no divide a 3. No hay solución.
+
+    \vspace{0.35cm}
+    \textbf{Caso B}
+    \[
+    6x \equiv 6 \pmod{12}.
+    \]
+    Aquí 6 sí divide a 6. Hay soluciones.
+
+    \vspace{0.25cm}
+    Probando:
+    \[
+    x=1,3,5 \text{ funcionan, porque } (6x)\bmod 12 = 6.
+    \]
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECCIÓN 5: PUENTE A SIMULACIÓN Y LCG
+% -----------------------------------------------------------------------------
+\section{Puente a la simulación}
+
+\begin{frame}{De la aritmética de reloj al generador de uniformes}
+    En el algoritmo de simulación, el primer paso fue:
+    \[
+    \text{generar } U\in[0,1).
+    \]
+
+    \vspace{0.25cm}
+    \begin{block}{Lo que el computador genera primero}
+    Genera estados enteros
+    \[
+    Z_n\in\{0,1,\dots,m-1\}
+    \]
+    y luego normaliza:
+    \[
+    U_n=\frac{Z_n}{m}.
+    \]
+    \end{block}
+
+    \vspace{0.2cm}
+    \begin{alertblock}{Conexión con auditoría}
+    Si $Z_n$ cae en ciclos cortos o patrones, $U_n$ también.
+    Entonces premios y tiempos heredarán esos patrones.
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Generador congruencial lineal}
+    La idea es actualizar el estado con una regla de reloj.
+
+    \vspace{0.25cm}
+    \begin{block}{Regla general}
+    Elegimos parámetros $a,c,m$ y una semilla $Z_0$:
+    \[
+    Z_{n+1} = (aZ_n + c)\bmod m,
+    \qquad
+    U_{n+1}=\frac{Z_{n+1}}{m}.
+    \]
+    \end{block}
+
+    \vspace{0.2cm}
+    \textbf{Lectura operacional}
+    \begin{enumerate}
+        \item multiplica el estado actual $Z_n$ por $a$,
+        \item suma $c$,
+        \item quédate con el residuo al dividir por $m$,
+        \item divide por $m$ para obtener un número en $[0,1)$.
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{Ejemplo malo: ciclo corto y valores repetidos}
+    Usamos un reloj pequeño para poder auditar a mano:
+    \[
+    m=16,\quad a=5,\quad c=0,\quad Z_0=1.
+    \]
+
+    \vspace{0.15cm}
+    \[
+    \begin{array}{c|cccccccc}
+    n & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7\\ \hline
+    Z_n & 1 & 5 & 9 & 13 & 1 & 5 & 9 & 13\\
+    U_n=\tfrac{Z_n}{16} & 0.0625 & 0.3125 & 0.5625 & 0.8125 & 0.0625 & 0.3125 & 0.5625 & 0.8125
+    \end{array}
+    \]
+
+    \vspace{0.25cm}
+    \begin{alertblock}{Qué pasa}
+    El periodo es 4: la secuencia entra en un ciclo muy corto y repite los mismos cuatro valores.
+    En un casino, esto puede volver predecibles premios y tiempos.
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Ejemplo bueno: periodo completo en un reloj pequeño}
+    Ahora usamos parámetros que sí generan un recorrido largo:
+    \[
+    m=16,\quad a=5,\quad c=1,\quad Z_0=1.
+    \]
+
+    \vspace{0.15cm}
+    \[
+    \begin{array}{c|cccccccc}
+    n & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7\\ \hline
+    Z_n & 1 & 6 & 15 & 12 & 13 & 2 & 11 & 8\\
+    U_n=\tfrac{Z_n}{16} & 0.0625 & 0.3750 & 0.9375 & 0.7500 & 0.8125 & 0.1250 & 0.6875 & 0.5000
+    \end{array}
+    \]
+
+    \vspace{0.15cm}
+    \[
+    \begin{array}{c|cccccccc}
+    n & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15\\ \hline
+    Z_n & 9 & 14 & 7 & 4 & 5 & 10 & 3 & 0\\
+    U_n=\tfrac{Z_n}{16} & 0.5625 & 0.8750 & 0.4375 & 0.2500 & 0.3125 & 0.6250 & 0.1875 & 0.0000
+    \end{array}
+    \]
+
+    \vspace{0.2cm}
+    \begin{exampleblock}{Lectura}
+    En el paso siguiente vuelve a $Z_{16}=1$, así que el periodo es 16 (máximo para este reloj).
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Condiciones para periodo completo}
+    Para que el periodo sea máximo, existen condiciones clásicas.
+
+    \vspace{0.25cm}
+    \begin{block}{Teorema de Hull--Dobell}
+    El periodo es $m$ si y solo si:
+    \begin{enumerate}
+        \item $\gcd(c,m)=1$,
+        \item $a-1$ es divisible por todos los factores primos de $m$,
+        \item si $4$ divide a $m$, entonces $4$ divide a $a-1$.
+    \end{enumerate}
+    \end{block}
+
+    \vspace{0.2cm}
+    \begin{exampleblock}{Chequeo rápido del ejemplo bueno}
+        Para $m=16$, $a=5$, $c=1$:
+        \[
+        \gcd(1,16)=1,\quad a-1=4\text{ es divisible por }2,\quad 16\text{ es múltiplo de }4\text{ y }4\mid (a-1).
+        \]
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{De $U$ a la simulación del casino}
+    Ahora conectamos explícitamente con el algoritmo general.
+
+    \vspace{0.25cm}
+    \begin{block}{Paso 1: generar $U$}
+    El generador produce $U_1,U_2,\dots$ en $[0,1)$.
+    \end{block}
+
+    \vspace{0.25cm}
+    \begin{block}{Paso 2: transformar $U$ en variables del modelo}
+    A partir de $U$ generamos:
+    \begin{itemize}
+        \item \textbf{premios discretos} por comparación con probabilidades acumuladas,
+        \item \textbf{tiempos entre eventos} con transformada inversa,
+        \item \textbf{eventos raros} con umbrales (por ejemplo $U>0.995$).
+    \end{itemize}
+    \end{block}
+
+    \vspace{0.2cm}
+    \textbf{Mensaje}\\
+    Si el generador produce $U$ con patrones, esos patrones se heredan en premios y tiempos.
+\end{frame}
+
+\begin{frame}{Mini-auditoría: un premio discreto a partir de $U$}
+    Supongamos que el tragamonedas define un premio $X$ con:
+    \[
+    \mathbb{P}(X=0)=0.90,\quad
+    \mathbb{P}(X=10)=0.095,\quad
+    \mathbb{P}(X=100)=0.005.
+    \]
+
+    \vspace{0.2cm}
+    Acumuladas:
+    \[
+    F(0)=0.90,\quad F(10)=0.995,\quad F(100)=1.
+    \]
+
+    \vspace{0.25cm}
+    \begin{block}{Regla de generación}
+    \begin{itemize}
+        \item Si $U\le 0.90$, devuelve $X=0$.
+        \item Si $0.90<U\le 0.995$, devuelve $X=10$.
+        \item Si $U>0.995$, devuelve $X=100$.
+    \end{itemize}
+    \end{block}
+
+    \vspace{0.15cm}
+    \textbf{Lectura para auditoría}\\
+    Si el generador subrepresenta valores altos de $U$, el premio grande aparecerá menos de lo anunciado.
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECCIÓN 6: TRANSFORMADA INVERSA
+% -----------------------------------------------------------------------------
+\section{Transformada inversa}
+
+\begin{frame}{Del uniforme a las variables del modelo}
+    El generador entrega $U$ en $[0,1)$.
+    Pero el casino necesita variables con distribuciones específicas.
+
+    \vspace{0.25cm}
+    \begin{itemize}
+        \item tiempos entre eventos,
+        \item premios discretos,
+        \item montos con colas pesadas,
+        \item probabilidades de eventos raros.
+    \end{itemize}
+
+    \vspace{0.35cm}
+    \begin{block}{Objetivo}
+    Construir una regla que, a partir de $U$, genere una variable $X$ con la distribución deseada.
+    \end{block}
+\end{frame}
+
+\begin{frame}{La CDF como mapa de probabilidad acumulada}
+    La función de distribución acumulada es:
+    \[
+    F(x)=\mathbb{P}(X\le x).
+    \]
+
+    \vspace{0.25cm}
+    \textbf{Interpretación}
+    \begin{itemize}
+        \item $F(x)$ es la fracción de probabilidad que queda a la izquierda de $x$.
+        \item Si $U$ es una fracción entre 0 y 1, buscamos el punto $x$ donde se acumula esa fracción.
+    \end{itemize}
+
+    \vspace{0.2cm}
+    \begin{center}
+    \begin{tikzpicture}[scale=0.95]
+        \draw[-{Stealth[length=3mm]}] (0,0) -- (6.2,0) node[right] {$x$};
+        \draw[-{Stealth[length=3mm]}] (0,0) -- (0,3.2) node[above] {$F(x)$};
+        \draw[thick] (0,0) .. controls (2,0.2) and (3,2.2) .. (6,3);
+        \draw[dashed] (0,2.1) -- (3.7,2.1);
+        \draw[dashed] (3.7,0) -- (3.7,2.1);
+        \node at (0.55,2.25) {$U$};
+        \node at (4.2,-0.25) {$x$};
+    \end{tikzpicture}
+    \end{center}
+\end{frame}
+
+\begin{frame}{Regla de la transformada inversa}
+    Si $U\sim \text{Uniforme}(0,1)$ y queremos que $X$ tenga CDF $F$:
+
+    \vspace{0.35cm}
+    \begin{block}{Definición}
+    \[
+    X = F^{-1}(U),
+    \qquad
+    F^{-1}(u)=\inf\{x:\ F(x)\ge u\}.
+    \]
+    \end{block}
+
+    \vspace{0.25cm}
+    \textbf{Lectura en español}
+    \begin{itemize}
+        \item $U$ escoge un percentil.
+        \item $F^{-1}$ devuelve el valor de $x$ correspondiente a ese percentil.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Por qué funciona}
+    Queremos que la CDF de $X$ sea exactamente $F$.
+
+    \vspace{0.25cm}
+    Tomemos cualquier $x$:
+    \[
+    \mathbb{P}(X\le x)
+    =
+    \mathbb{P}(F^{-1}(U)\le x).
+    \]
+
+    \vspace{0.15cm}
+    Por la definición de inversa generalizada:
+    \[
+    F^{-1}(u)\le x \ \Longleftrightarrow\ u\le F(x).
+    \]
+
+    \vspace{0.15cm}
+    Entonces:
+    \[
+    \mathbb{P}(X\le x)=\mathbb{P}(U\le F(x))=F(x),
+    \]
+    porque $U$ es uniforme.
+\end{frame}
+
+\begin{frame}{Transformada inversa en el caso discreto}
+    Premios discretos: valores $\{x_1<x_2<\cdots<x_k\}$ con probabilidades $p_1,\dots,p_k$.
+
+    \vspace{0.25cm}
+    Definimos acumuladas:
+    \[
+    F(x_j)=\sum_{i=1}^j p_i.
+    \]
+
+    \vspace{0.25cm}
+    \begin{block}{Algoritmo}
+    Genera $U$ y toma el menor $j$ tal que $F(x_j)\ge U$.
+    Devuelve $X=x_j$.
+    \end{block}
+
+    \vspace{0.25cm}
+    \begin{exampleblock}{Ejemplo}
+    $x=\{0,10,100\}$ con $p=\{0.90,0.095,0.005\}$.
+    \begin{itemize}
+        \item Si $U\le 0.90$, devuelve 0.
+        \item Si $0.90<U\le 0.995$, devuelve 10.
+        \item Si $U>0.995$, devuelve 100.
+    \end{itemize}
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Ejemplo continuo: exponencial}
+    Para modelar tiempos entre eventos, una elección frecuente es la exponencial con tasa $\lambda$:
+    \[
+    F(x)=1-e^{-\lambda x},\qquad x\ge 0.
+    \]
+
+    \vspace{0.25cm}
+    Igualamos $U=F(x)$ y despejamos:
+    \[
+    U=1-e^{-\lambda x}
+    \Rightarrow
+    e^{-\lambda x}=1-U
+    \Rightarrow
+    x=-\frac{1}{\lambda}\ln(1-U).
+    \]
+
+    \vspace{0.25cm}
+    \begin{block}{Fórmula práctica}
+    \[
+    X=-\frac{1}{\lambda}\ln(U).
+    \]
+    \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+% SECCIÓN 7: CIERRE
+% -----------------------------------------------------------------------------
+\section{Cierre}
+
+\begin{frame}{El flujo completo del motor}
+    \begin{block}{Cadena de construcción}
+    \[
+    Z_{n+1}=(aZ_n+c)\bmod m
+    \ \Rightarrow\
+    U_n=\frac{Z_n}{m}
+    \ \Rightarrow\
+    X=F^{-1}(U_n).
+    \]
+    \end{block}
+
+    \vspace{0.25cm}
+    \textbf{Lectura para auditoría}
+    \begin{itemize}
+        \item La parte del reloj decide si $U$ es poco predecible y estadísticamente útil.
+        \item La transformada decide si el comportamiento del juego coincide con las probabilidades declaradas.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Ejercicios}
+    \begin{enumerate}
+        \item En reloj 10, liste los residuos de $4x$ para $x=0,1,\dots,9$. ¿Puede aparecer el residuo 1?
+        \item En reloj 12, encuentre un $x$ tal que $5x$ deje residuo 7.
+        \item En el ejemplo bueno con $m=16,a=5,c=1$, calcule $Z_1,\dots,Z_5$ y sus $U_n$.
+        \item Premios $\{0,10,100\}$ con probabilidades $\{0.90,0.095,0.005\}$.\\
+              Si $U=0.25$, ¿qué premio sale? Si $U=0.998$, ¿qué premio sale?
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{Referencias}
+    \small
+    \begin{itemize}
+        \item Banks, J., Carson, J. S., Nelson, B. L., \& Nicol, D. M. \textit{Discrete-Event System Simulation}.
+        \item Law, A. M. \textit{Simulation Modeling and Analysis}.
+    \end{itemize}
+\end{frame}
+
+\end{document}

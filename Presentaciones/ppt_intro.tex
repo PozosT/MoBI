@@ -1,0 +1,1207 @@
+\documentclass[aspectratio=169, 9 pt]{beamer}
+
+%================================================
+% PAQUETES
+%================================================
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{listings}
+
+
+
+\usepackage{hyperref} % Beamer suele cargarlo, pero es seguro dejarlo
+\usepackage{qrcode}   % Para poner el QR del video
+
+
+%================================================
+% TEMA Y ESTILO (sobrio y consistente)
+%================================================
+\usetheme{CambridgeUS}
+\usecolortheme{beaver}
+\setbeamertemplate{navigation symbols}{}
+
+\definecolor{darkred}{RGB}{139,0,0}
+\setbeamercolor{structure}{fg=darkred}
+\setbeamercolor{item projected}{bg=darkred, fg=white}
+\setbeamercolor{block title}{bg=darkred, fg=white}
+\setbeamercolor{block body}{bg=black!2, fg=black}
+\setbeamercolor{alerted text}{fg=darkred}
+
+%================================================
+% LISTINGS (Python)
+%================================================
+\definecolor{codegreen}{rgb}{0,0.5,0}
+\definecolor{codegray}{rgb}{0.45,0.45,0.45}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.94}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{Magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=6pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+%================================================
+% METADATOS
+%================================================
+\title[]{Pensamiento Sistémico e Introducción a la Simulación}
+\author{Alejandra Tabares Pozos}
+\institute[Uniandes]{Universidad de los Andes \\ Departamento de Ingeniería Industrial}
+\date{\today}
+
+\begin{document}
+
+%================================================
+% SLIDE 1: PORTADA
+%================================================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+%================================================
+% SLIDE 2: CONTEXTO
+%================================================
+\begin{frame}{Contexto del Curso}
+\begin{itemize}
+  \item \textbf{Curso:} Modelado Bajo Incertidumbre.
+  \item \textbf{Rol en Ingeniería Industrial:} puente entre probabilidad (formal) y decisiones en sistemas reales (logística, manufactura, finanzas, energía).
+  \item \textbf{Herramientas:}
+    \begin{itemize}
+      \item Teoría: variables aleatorias, procesos estocásticos, (nociones de) Markov.
+      \item Práctica: simulación computacional en Python.
+    \end{itemize}
+  \item \textbf{Filosofía:} usar la computación para \emph{operacionalizar} el pensamiento probabilístico (no para reemplazarlo).
+\end{itemize}
+\end{frame}
+
+%================================================
+% SLIDE 3: OBJETIVOS
+%================================================
+\begin{frame}{Objetivos de Aprendizaje (Semana 1)}
+Al finalizar la sesión, el estudiante podrá:
+\begin{enumerate}
+  \item Diferenciar formalmente entre sistemas determinísticos y estocásticos.
+  \item Definir simulación y justificar cuándo es apropiada (y cuándo no).
+  \item Identificar componentes del sistema: entidades, atributos, estado.
+  \item Estimar numéricamente una métrica bajo incertidumbre con Monte Carlo (incluyendo error estadístico).
+\end{enumerate}
+\end{frame}
+
+%================================================
+% SLIDE 4: DEFINICIÓN DE SISTEMA
+%================================================
+\begin{frame}{Definición de Sistema}
+\begin{block}{Definición (operativa)}
+Un \textbf{sistema} es un conjunto de objetos que interactúan bajo reglas, con el fin de cumplir un propósito.
+\end{block}
+
+\vspace{0.3cm}
+\textbf{Componentes clave:}
+\begin{itemize}
+  \item \textbf{Entidades:} objetos de interés (clientes, máquinas, vehículos, generadores).
+  \item \textbf{Atributos:} propiedades de entidades (prioridad, velocidad, capacidad, estado de carga).
+  \item \textbf{Actividades/eventos:} mecanismos de cambio (atender, fallar, producir, despachar).
+\end{itemize}
+\end{frame}
+
+%================================================
+% SLIDE 5: ESTADO
+%================================================
+\begin{frame}{El Estado del Sistema}
+El \textbf{estado} es el conjunto mínimo de variables que permite describir el sistema en tiempo $t$ respecto al objetivo del estudio.
+
+\vspace{0.3cm}
+Sea $S(t)$ el vector de estado:
+\[
+S(t) = (x_1(t), x_2(t), \dots, x_n(t)).
+\]
+
+\textbf{Ejemplo (inventario):}
+\[
+S(t) = (\text{inventario disponible},\ \text{órdenes en tránsito},\ \text{tiempo hasta próxima revisión}).
+\]
+\end{frame}
+
+
+\begin{frame}{Ejemplo de sistema 1: Microred con PV + batería + compra/venta a red}
+\textbf{Propósito del estudio:} operación horaria para minimizar costo y riesgo de déficit.
+
+\medskip
+\textbf{Entidades (objetos del sistema):}
+\begin{itemize}
+  \item \textbf{Activos físicos:} Generación FV (PV), batería (BESS), carga agregada, punto de acople a red.
+  \item \textbf{Agente de decisión:} EMS (controlador) que elige acciones $a_t$.
+\end{itemize}
+
+\textbf{Atributos (parámetros):}
+\begin{itemize}
+  \item PV: potencia nominal $\bar P^{\text{pv}}$, eficiencia/curva de disponibilidad.
+  \item BESS: capacidad $E_{\max}$, límites $\bar P^{\text{ch}},\bar P^{\text{dis}}$, eficiencias $\eta_{\text{ch}},\eta_{\text{dis}}$, SoC mínimo/máximo.
+  \item Red: precio $p_t$ (compra/venta), límite de intercambio $\bar P^{\text{grid}}$.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Ejemplo de sistema 1: Microred con PV + batería + compra/venta a red}
+
+\textbf{Estado (vector mínimo en $t$):}
+\[
+S_t=\big(\text{SoC}_t,\ \tilde G_t,\ \tilde L_t,\ p_t\big),
+\]
+donde $\tilde G_t$ (recurso solar) y $\tilde L_t$ (demanda) son entradas exógenas estocásticas (p.ej.\ Markov o AR).
+
+\textbf{Eventos/actualización (modelo dinámico en pasos $\Delta t$):}
+\[
+\text{SoC}_{t+1}=\text{SoC}_t+\eta_{\text{ch}}P^{\text{ch}}_t\Delta t-\frac{1}{\eta_{\text{dis}}}P^{\text{dis}}_t\Delta t.
+\]
+
+\textbf{Decisiones y métricas:}
+\[
+a_t=(P^{\text{ch}}_t,P^{\text{dis}}_t,P^{\text{grid}}_t),\qquad
+J=\mathbb E\Big[\sum_t p_t\,P^{\text{grid}}_t\Delta t+\lambda\,\text{ENS}_t\Big].
+\]
+\end{frame}
+
+\begin{frame}{Ejemplo de sistema 2: Centro de distribución (fulfillment) con picking y packing}
+\textbf{Propósito del estudio:} dimensionar recursos y política de asignación para reducir tiempo de ciclo y atrasos.
+
+\medskip
+\textbf{Entidades:}
+\begin{itemize}
+  \item \textbf{Órdenes} (jobs), \textbf{operarios} (pickers/packers), \textbf{estaciones} (picking/packing), \textbf{racks} y \textbf{transportador} (si aplica).
+\end{itemize}
+
+\textbf{Atributos:}
+\begin{itemize}
+  \item Orden $i$: tamaño $n_i$, prioridad $\pi_i$, fecha promesa $d_i$, zona(s) de picking.
+  \item Operario $k$: velocidad $v_k$, habilidad, ubicación $loc_k(t)$.
+  \item Estación $m$: capacidad (1 servidor), tasa de servicio dependiente del trabajo $T_m(\cdot)$.
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Ejemplo de sistema 2: Centro de distribución (fulfillment) con picking y packing}
+
+\textbf{Estado (DES: simulación de eventos discretos):}
+\[
+S(t)=\Big(Q^{\text{pick}}(t),\ Q^{\text{pack}}(t),\ \{loc_k(t)\}_k,\ \{b_m(t)\}_m\Big),
+\]
+donde $Q^{\text{pick}},Q^{\text{pack}}$ son colas y $b_m(t)\in\{0,1\}$ indica si la estación $m$ está ocupada.
+
+\textbf{Eventos (saltos en el estado):}
+\begin{itemize}
+  \item Llegada de orden, inicio/fin de picking, traslado entre zonas, inicio/fin de packing, despacho.
+\end{itemize}
+
+\textbf{Reglas de decisión (políticas):}
+\[
+a(t)=\text{asignación}( \text{orden}\rightarrow \text{operario/estación})\ \ \text{(p.ej.\ FIFO, prioridad, batching)}.
+\]
+
+\textbf{Métricas de desempeño:}
+\[
+\text{CycleTime}_i = C_i - A_i,\quad \text{Tardiness}_i=(C_i-d_i)_+,\quad
+\mathbb E[\text{WIP}(t)],\ \mathbb P(\text{atraso}>0).
+\]
+\end{frame}
+
+
+
+%================================================
+% SLIDE 6: DETERMINÍSTICO VS ESTOCÁSTICO
+%================================================
+\begin{frame}{Sistemas: Determinísticos vs.\ Estocásticos}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Determinístico}
+\begin{itemize}
+  \item Sin aleatoriedad (o aleatoriedad despreciada).
+  \item Misma entrada $\Rightarrow$ misma salida.
+  \item Modelo: $Y = f(x)$.
+  \item Útil si la variabilidad es irrelevante para la decisión.
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Estocástico}
+\begin{itemize}
+  \item Al menos una variable aleatoria relevante.
+  \item Salidas son variables aleatorias.
+  \item Modelo: $Y = f(x,\xi)$, con $\xi$ aleatoria.
+  \item Requiere inferencia estadística (promedios, intervalos, riesgo).
+\end{itemize}
+\end{columns}
+\end{frame}
+
+%================================================
+% SLIDE 7: FORMALISMO MÍNIMO (PROBABILIDAD)
+%================================================
+\begin{frame}{Formalismo mínimo: ¿qué significa “aleatorio”?}
+Trabajamos sobre un espacio de probabilidad $(\Omega,\mathcal F,\mathbb P)$.
+
+\begin{itemize}
+  \item Una \textbf{entrada aleatoria} es una función $\xi:\Omega\to\mathbb R^d$.
+  \item Un \textbf{resultado de interés} es $Y = g(x, \xi)$ (p.ej.\ costo, utilidad, tiempo).
+  \item En simulación, buscamos típicamente \textbf{esperanzas}:
+  \[
+  \mathbb E[Y] = \int_{\Omega} g(\xi(\omega))\, d\mathbb P(\omega).
+  \]
+\end{itemize}
+
+\begin{block}{Idea central}
+La simulación reemplaza integrales/esperanzas difíciles por promedios muestrales.
+\end{block}
+\end{frame}
+
+
+%================================================
+% SLIDE NUEVO A: EJEMPLO 1 (MUY BÁSICO) - MONEDA
+%================================================
+\begin{frame}{Ejemplo 1 (básico): lanzar una moneda}
+\textbf{Experimento aleatorio:} lanzar una moneda una vez.
+
+\medskip
+\textbf{Espacio de resultados:}
+\[
+\Omega=\{C,S\}\quad \text{(Cara, Sello)}.
+\]
+\textbf{Evento:} $\{C\}\in\mathcal F$ (``sale cara''). \qquad
+\textbf{Probabilidad:} $\mathbb P(C)=p,\ \mathbb P(S)=1-p$.
+
+\medskip
+\textbf{Entrada aleatoria (variable aleatoria):}
+\[
+\xi:\Omega\to\mathbb R,\qquad \xi(C)=1,\ \xi(S)=0.
+\]
+Interpretación: $\xi$ codifica el resultado del experimento en un número.
+
+\medskip
+\textbf{Resultado de interés:} $Y=g(\xi)$.
+Por ejemplo, ``ganancia'':
+\[
+g(x)=2x-1\quad \Rightarrow\quad
+Y=
+\begin{cases}
++1,& \text{si sale cara}\\
+-1,& \text{si sale sello}.
+\end{cases}
+\]
+
+\end{frame}
+\begin{frame}{Ejemplo 1 (básico): lanzar una moneda}
+
+\medskip
+\textbf{Esperanza (promedio teórico):}
+\[
+\mathbb E[Y]=\sum_{\omega\in\Omega} g(\xi(\omega))\,\mathbb P(\omega)
+=(+1)\,p+(-1)(1-p)=2p-1.
+\]
+
+\begin{block}{Pregunta}
+Si la expresión del valor esperado es muy díficil de cálcular que hacemos?.
+\end{block}
+\end{frame}
+
+%================================================
+% SLIDE NUEVO B: EJEMPLO 2 (BÁSICO) - DEMANDA Y COSTO
+%================================================
+\begin{frame}{Ejemplo 2:  demanda aleatoria y costo de inventario}
+\textbf{Situación:} mañana la demanda $D$ puede ser baja o alta.
+
+\medskip
+\textbf{Espacio de resultados:}
+\[
+\Omega=\{\text{baja},\ \text{alta}\}.
+\]
+\textbf{Probabilidades:} $\mathbb P(\text{alta})=0.3$, $\mathbb P(\text{baja})=0.7$.
+
+\medskip
+\textbf{Entrada aleatoria:}
+\[
+\xi:\Omega\to\mathbb R,\qquad \xi(\text{baja})=80,\ \xi(\text{alta})=120.
+\]
+Aquí $\xi$ es literalmente la demanda aleatoria $D$.
+
+\medskip
+\textbf{Decisión fija:} ordenar $Q=100$ unidades.
+
+\medskip
+\textbf{Resultado de interés (costo por faltantes):}
+\[
+Y=g(\xi)=c_s\,( \xi - Q )_+,
+\qquad (x)_+=\max\{x,0\},\qquad c_s=10.
+\]
+Interpretación: si la demanda supera $Q$, pagas $10$ por cada unidad que faltó; si no, el costo es 0.
+\end{frame}
+
+\begin{frame}{Ejemplo 2:  demanda aleatoria y costo de inventario}
+\textbf{Situación:} mañana la demanda $D$ puede ser baja o alta.
+
+\medskip
+\textbf{Esperanza (promedio teórico):}
+\[
+\mathbb E[Y]=\sum_{\omega\in\Omega} g(\xi(\omega))\,\mathbb P(\omega)
+=0\cdot 0.7 + \big(10(120-100)\big)\cdot 0.3 = 60.
+\]
+
+\begin{block}{Pregunta}
+De que otra manera abordariamos esta situación?.
+\end{block}
+\end{frame}
+
+
+
+%================================================
+% SLIDE 8: JENSEN Y “FALACIA DEL PROMEDIO” (corregida)
+%================================================
+\begin{frame}{¿Por qué fallan los modelos “promedio”? (Jensen)}
+\begin{alertblock}{Punto matemático}
+Para $X$ aleatoria y $f$ no lineal, en general:
+\[
+\mathbb E[f(X)] \neq f(\mathbb E[X]).
+\]
+\end{alertblock}
+
+\textbf{Jensen:}
+\begin{itemize}
+  \item Si $f$ es \textbf{convexa}: $\ \mathbb E[f(X)] \ge f(\mathbb E[X])$.
+    \newline
+    \emph{Lectura típica: costos/penalizaciones convexas} $\Rightarrow$ usar promedios \textbf{subestima} costo/riesgo.
+  \item Si $f$ es \textbf{cóncava}: $\ \mathbb E[f(X)] \le f(\mathbb E[X])$.
+    \newline
+    \emph{Lectura típica: utilidades con saturación/capacidad} $\Rightarrow$ usar promedios \textbf{sobreestima} ganancia.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ejemplo concreto de Jensen (convexa y cóncava, con números)}
+Sea $X$ una variable aleatoria con dos posibles valores:
+\[
+X=
+\begin{cases}
+0 & \text{con prob. } 0.5,\\
+2 & \text{con prob. } 0.5.
+\end{cases}
+\qquad \Rightarrow \qquad \mathbb E[X]=1.
+\]
+
+\begin{columns}
+\column{0.48\textwidth}
+\textbf{Caso 1: $f$ convexa (costo)}\\
+Tome $f(x)=x^2$.
+
+\[
+\mathbb E[f(X)]=\mathbb E[X^2]
+=0.5(0^2)+0.5(2^2)=2.
+\]
+\[
+f(\mathbb E[X])=(\mathbb E[X])^2=1^2=1.
+\]
+
+\begin{alertblock}{Conclusión}
+\[
+\mathbb E[X^2]=2 \;>\; 1=(\mathbb E[X])^2.
+\]
+\small
+Si el ``costo'' crece de forma convexa (p.ej.\ penalización por retraso), usar el promedio ($X=1$) \textbf{subestima} el costo real esperado.
+\end{alertblock}
+
+\column{0.48\textwidth}
+\textbf{Caso 2: $f$ cóncava (ganancia)}\\
+Tome $f(x)=\sqrt{x}$.
+
+\[
+\mathbb E[f(X)]=\mathbb E[\sqrt{X}]
+=0.5\sqrt{0}+0.5\sqrt{2}=0.707.
+\]
+\[
+f(\mathbb E[X])=\sqrt{\mathbb E[X]}=\sqrt{1}=1.
+\]
+
+\begin{alertblock}{Conclusión}
+\[
+\mathbb E[\sqrt{X}]=0.707 \;<\; 1=\sqrt{\mathbb E[X]}.
+\]
+\small
+Si la ``ganancia'' se satura (rendimientos decrecientes), usar el promedio \textbf{sobreestima} la ganancia esperada.
+\end{alertblock}
+\end{columns}
+
+\end{frame}
+
+
+
+%================================================
+% SLIDE 9: DEFINICIÓN DE SIMULACIÓN
+%================================================
+\begin{frame}{Definición de Simulación}
+\begin{quote}
+\small
+``La simulación es la imitación de la operación de un proceso o sistema del mundo real a lo largo del tiempo.'' --- Banks et al.
+\end{quote}
+
+\vspace{0.3cm}
+Implica:
+\begin{itemize}
+  \item generar una \textbf{historia artificial} del sistema (trayectorias, escenarios);
+  \item observar esa historia para estimar métricas (promedios, cuantiles, probabilidades);
+  \item entender que el resultado es \textbf{numérico} y \textbf{estadístico} (con error).
+\end{itemize}
+\end{frame}
+
+
+
+% --- Diapositiva con link + QR (lo más robusto en PDF) ---
+\begin{frame}{Video de apoyo}
+\centering
+\Large\textbf{Video (YouTube): Simulación y aleatoriedad}
+
+\vspace{0.5cm}
+\href{https://www.youtube.com/watch?v=FCoLgj2ioJY}{\beamergotobutton{Abrir el video en YouTube}}
+
+\vspace{0.8cm}
+\qrcode[height=3.2cm]{https://www.youtube.com/watch?v=FCoLgj2ioJY}
+
+\vspace{0.4cm}
+\footnotesize\texttt{https://www.youtube.com/watch?v=FCoLgj2ioJY}
+\end{frame}
+
+%================================================
+% SLIDE 10: CUÁNDO SÍ
+%================================================
+\begin{frame}{Cuándo es apropiada la simulación}
+\begin{enumerate}
+  \item El sistema es complejo (interacciones, restricciones, no linealidad).
+  \item Hay incertidumbre relevante (variabilidad afecta la decisión).
+  \item No hay solución analítica simple o ésta es frágil a supuestos.
+  \item Se desea experimentar con diseños/políticas sin costo real.
+  \item Se requiere estimar riesgo: $\mathbb P(Y>\tau)$, $\mathrm{VaR}$, cuantiles, colas.
+\end{enumerate}
+\end{frame}
+
+%================================================
+% SLIDE 11: CUÁNDO NO
+%================================================
+\begin{frame}{Cuándo NO es apropiada la simulación}
+\begin{enumerate}
+  \item El problema se resuelve con sentido común (o regla simple robusta).
+  \item Hay solución analítica directa y suficiente (p.ej.\ EOQ simple bajo supuestos fuertes).
+  \item Experimentar en el sistema real es más fácil/barato y seguro.
+  \item No hay datos mínimos ni forma razonable de elicitar supuestos.
+  \item El sistema no está bien definido: objetivos ambiguos, fronteras y métricas no claras.
+\end{enumerate}
+\end{frame}
+
+%================================================
+% SLIDE 12-13: EJEMPLO ALTERNATIVO (mejor que colas)
+%================================================
+\begin{frame}{Ejemplo mental: capacidad vs.\ variabilidad}
+\textbf{Problema:} planear capacidad $C$ para cubrir demanda aleatoria $D$ (energía, inventario, producción).
+
+\begin{itemize}
+  \item Enfoque ``promedio'': fijar $C=\mathbb E[D]$ y concluir ``faltantes esperados = 0''.
+  \item Realidad: el faltante es
+  \[
+    L(D) = (D-C)_+ = \max\{D-C,0\},
+  \]
+  que es una función \textbf{convexa} de $D$.
+\end{itemize}
+
+\begin{block}{Conclusión inmediata}
+Aunque $C=\mathbb E[D]$, se tiene $\mathbb E[(D-C)_+] > 0$ si $\mathrm{Var}(D)>0$.
+\end{block}
+\end{frame}
+
+\begin{frame}{Cálculo explícito (Normal): faltante esperado positivo}
+Suponga $D\sim \mathcal N(\mu,\sigma^2)$ y planee $C=\mu$.
+
+\[
+\mathbb E[(D-\mu)_+] = \sigma\,\varphi(0) = \frac{\sigma}{\sqrt{2\pi}},
+\]
+donde $\varphi$ es la pdf Normal estándar.
+
+\medskip
+Ejemplo numérico: $\mu=100$, $\sigma=30$:
+\[
+\mathbb E[(D-100)_+] \approx \frac{30}{\sqrt{2\pi}} \approx 11.97.
+\]
+
+\textbf{Lectura:} ``en promedio'' faltan \(\approx 12\) unidades por periodo, aun cuando la capacidad iguala la media.  
+Esto es \textbf{variabilidad pura} + \textbf{convexidad} (Jensen).
+\end{frame}
+
+%================================================
+% SLIDE 14-15: PROS/CONS
+%================================================
+\begin{frame}{Ventajas de la simulación}
+\begin{itemize}
+  \item \textbf{Control del tiempo:} compresión/expansión temporal.
+  \item \textbf{Control experimental:} comparar políticas con mismas realizaciones aleatorias (CRN).
+  \item \textbf{Seguridad:} experimentar sin intervenir el sistema real.
+  \item \textbf{Riqueza de métricas:} no solo medias, también cuantiles, colas y probabilidades.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Desventajas de la simulación}
+\begin{itemize}
+  \item Requiere habilidad en modelado, probabilidad y programación.
+  \item Resultados son \textbf{estimaciones} (con error); interpretar requiere estadística.
+  \item Construir un modelo \textbf{válido} toma tiempo (y datos).
+  \item Riesgo de \emph{``Garbage In, Garbage Out''}: supuestos malos producen conclusiones falsas.
+\end{itemize}
+\end{frame}
+
+
+
+
+%================================================
+% SLIDE 16: TIPOS 
+%================================================
+
+%================================================
+% 3 DIAPOSITIVAS: UNIVERSO DE LA SIMULACIÓN + DÓNDE ENTRA MONTE CARLO
+%================================================
+
+\begin{frame}{El universo de la simulación: ¿qué significa “tipo” de simulación?}
+Un \textbf{tipo de simulación} nace de \textbf{cómo representamos la evolución del sistema}.
+
+\vspace{0.3cm}
+\begin{block}{Decisión 1: ¿hay evolución temporal?}
+\begin{itemize}
+  \item \textbf{Simulación estática (sin tiempo):} el sistema se estudia en un “instante/escenario”.
+  \item \textbf{Simulación dinámica (con tiempo):} existe un estado $S(t)$ que cambia.
+\end{itemize}
+\end{block}
+
+\begin{block}{Decisión 2 (si es dinámica): ¿cómo cambia el estado?}
+\begin{itemize}
+  \item \textbf{Eventos discretos (DES):} $S(t)$ cambia solo cuando ocurre un evento (saltos).
+  \item \textbf{Por pasos de tiempo:} $S_{t+1}=F(S_t,\ldots)$ en periodos ($t=0,1,2,\dots$).
+  \item \textbf{Continuo:} $S(t)$ cambia continuamente (ecuaciones diferenciales).
+  \item \textbf{Basada en agentes / híbrida:} reglas locales (agentes) y/o mezcla de mecanismos.
+\end{itemize}
+\end{block}
+
+\begin{alertblock}{Idea clave}
+DES/continuo/pasos/agentes describen \textbf{la mecánica del modelo} (cómo evoluciona el sistema).
+\end{alertblock}
+\end{frame}
+
+
+\begin{frame}{¿De dónde salen los tipos? (se crean al definir estado + tiempo)}
+Para construir un simulador siempre se hacen estas elecciones:
+
+\vspace{0.2cm}
+\begin{enumerate}
+  \item \textbf{Definir el estado} (variables mínimas para describir el sistema):
+  \[
+  S(t)=(x_1(t),\dots,x_n(t)).
+  \]
+  \item \textbf{Definir la regla de evolución (el “reloj” del modelo):}
+  \begin{itemize}
+    \item \textbf{DES:} el tiempo avanza al \emph{siguiente evento} (llegada, fin de servicio, falla).
+    \item \textbf{Pasos:} el tiempo avanza en incrementos fijos $\Delta t$ (hora a hora, día a día).
+    \item \textbf{Continuo:} el tiempo es continuo y $S(t)$ sigue una dinámica (ODE/SDE).
+  \end{itemize}
+  \item \textbf{Definir qué es aleatorio} (entradas inciertas):
+  \[
+  \xi \ \text{(demanda, tiempos, fallas, clima, comportamiento)}.
+  \]
+  \item \textbf{Definir qué se mide} (salida de interés):
+  \[
+  Y = g(\text{modelo},\xi)\quad \text{(costo, tiempo, utilidad, riesgo)}.
+  \]
+\end{enumerate}
+
+\begin{block}{Lectura}
+El \textbf{tipo} queda determinado por (estado + forma de avanzar el tiempo).  
+La \textbf{incertidumbre} se incorpora en $\xi$.
+\end{block}
+\end{frame}
+
+
+\begin{frame}{¿Dónde entra Monte Carlo ?}
+Una vez definido el modelo (estático o dinámico), suele interesarnos una métrica \textbf{promedio o de riesgo}.
+
+\vspace{0.2cm}
+\begin{block}{Preguntas típicas}
+\[
+\mathbb E[Y]\quad (\text{costo/tiempo/utilidad promedio}),\qquad
+\mathbb P(Y>\tau)\quad (\text{riesgo}),\qquad
+q_\alpha(Y)\quad (\text{percentiles}).
+\]
+\end{block}
+
+\begin{alertblock}{Monte Carlo}
+\textbf{Monte Carlo} es el procedimiento de:
+\begin{itemize}
+  \item generar muchas realizaciones de la incertidumbre ($\xi^{(1)},\dots,\xi^{(N)}$),
+  \item obtener la salida en cada una ($Y^{(i)}$),
+  \item y promediar/contar para estimar lo que queremos.
+\end{itemize}
+\[
+\mathbb E[Y] \approx \frac{1}{N}\sum_{i=1}^N Y^{(i)}.
+\]
+\end{alertblock}
+\end{frame}
+
+
+\begin{frame}{¿Que veremos en el curso respecto a la simulación?}
+\begin{block}{Lo que haremos en el curso}
+\begin{itemize}
+  \item \textbf{Simulación Monte Carlo} (escenarios/réplicas para estimar promedios y riesgo).
+  \item \textbf{Simulación de eventos discretos (DES)} (modelos dinámicos cuyo estado cambia en eventos).
+\end{itemize}
+\end{block}
+\end{frame}
+
+
+
+
+%================================================
+% SLIDE 17-22: NEWSVENDOR (corregido y reforzado)
+%================================================
+\begin{frame}{Caso de estudio: Newsvendor (vendedor de periódicos)}
+\textbf{Decisión:} escoger cantidad $Q$ de producto perecedero para vender mañana.
+
+\begin{itemize}
+  \item Costo por unidad: $c=20$.
+  \item Precio: $p=50$.
+  \item Salvamento: $s=0$.
+\end{itemize}
+
+\textbf{Demanda:} $D$ aleatoria. Suponga:
+\[
+D \sim \mathcal N(\mu=100,\sigma=30).
+\]
+
+\medskip
+\textbf{Utilidad:}
+\[
+\Pi(D,Q) = p\min(D,Q) + s(Q-\min(D,Q)) - cQ
+= (p-s)\min(D,Q) + (s-c)Q.
+\]
+\end{frame}
+
+\begin{frame}{Enfoque ingenuo: fijar demanda a la media}
+\textbf{Heurística ``promedio'':} asumir $D=\mu$ y pedir $Q=\mu=100$.
+
+\[
+\Pi(\mu,\mu) = (p-c)\mu = (50-20)\cdot 100 = 3000.
+\]
+
+\begin{alertblock}{Problema}
+Ese número no es $\mathbb E[\Pi(D,Q)]$. Es la utilidad de un mundo sin incertidumbre (o con información perfecta).
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Por qué la esperanza baja: concavidad en la demanda}
+Para $Q$ fijo, $\Pi(D,Q)$ como función de $D$ es:
+\[
+\Pi(D,Q)=p\min(D,Q)-cQ,
+\]
+una función \textbf{cóncava} en $D$ (pendiente $p$ hasta $Q$ y luego pendiente $0$).
+
+\begin{block}{Jensen aplicado}
+Como $\Pi(\cdot,Q)$ es cóncava:
+\[
+\mathbb E[\Pi(D,Q)] \le \Pi(\mathbb E[D],Q).
+\]
+\end{block}
+
+\textbf{Lectura:} el ``promedio'' tiende a \textbf{sobreestimar} ganancias cuando hay saturación/capacidad.
+\end{frame}
+
+\begin{frame}{Solución analítica (óptimo estocástico)}
+En newsvendor clásico:
+\[
+F(Q^\star) = \frac{p-c}{p-s}
+= \frac{50-20}{50-0}=0.6.
+\]
+
+Si $D\sim \mathcal N(\mu,\sigma^2)$,
+\[
+Q^\star = \mu + \sigma z_{0.6},
+\quad z_{0.6}\approx 0.2533
+\Rightarrow
+Q^\star \approx 100 + 30(0.2533) \approx 107.6.
+\]
+
+\textbf{Interpretación:} se ordena por encima de la media porque el costo de escasez (margen perdido) supera el costo de exceso.
+\end{frame}
+
+\begin{frame}{Cálculo analítico rápido: $\mathbb E[\min(D,Q)]$ (Normal)}
+Sea $D\sim \mathcal N(\mu,\sigma^2)$ y defina $z=\frac{Q-\mu}{\sigma}$.
+Entonces:
+\[
+\mathbb E[\min(D,Q)]
+= \mu \Phi(z) - \sigma \varphi(z) + Q\bigl(1-\Phi(z)\bigr),
+\]
+donde $\Phi$ y $\varphi$ son la cdf/pdf de la Normal estándar.
+
+\medskip
+Con $\mu=100$, $\sigma=30$, $Q=100$ ($z=0$):
+\[
+\mathbb E[\min(D,100)]
+=100 - 30\varphi(0)
+\approx 100 - 30(0.3989)\approx 88.03.
+\]
+
+Por tanto:
+\[
+\mathbb E[\Pi(D,100)] = p\,\mathbb E[\min(D,100)] - c\cdot 100
+\approx 50(88.03) - 2000 \approx 2401.6.
+\]
+\end{frame}
+
+\begin{frame}{Métricas estándar: EEV, RP, VSS, EVPI}
+Definiciones (clásicas en programación estocástica):
+
+\begin{itemize}
+  \item \textbf{EEV:} evaluar la solución del ``valor esperado'' (aquí $Q=\mu=100$):
+  \[
+  \text{EEV}=\mathbb E[\Pi(D,100)]\approx 2401.6.
+  \]
+  \item \textbf{RP:} valor óptimo estocástico (aquí $Q^\star\approx107.6$):
+  \[
+  \text{RP}=\mathbb E[\Pi(D,Q^\star)]\approx 2420.5.
+  \]
+  \item \textbf{VSS:} valor de resolver el problema estocástico:
+  \[
+  \text{VSS}=\text{RP}-\text{EEV}\approx 18.9.
+  \]
+  \item \textbf{EVPI:} valor de información perfecta:
+  \[
+  \text{EVPI}=\mathbb E\big[\max_Q \Pi(D,Q)\big]-\text{RP}.
+  \]
+  Con información perfecta y $s=0$, $\max_Q \Pi(D,Q)=(p-c)D$, así
+  $\mathbb E[(p-c)D]=3000$ y $\text{EVPI}\approx 3000-2420.5\approx 579.5$.
+\end{itemize}
+\end{frame}
+
+%================================================
+% SLIDE 23: DIAGRAMA MC
+%================================================
+\begin{frame}{Diagrama de flujo (Monte Carlo)}
+Para $i=1,\dots,N$:
+\begin{enumerate}
+  \item Generar $d_i \sim \mathcal N(100,30)$ (o variante factible no-negativa).
+  \item Calcular ventas $v_i=\min(d_i,Q)$.
+  \item Calcular utilidad $\pi_i = p v_i - cQ$.
+\end{enumerate}
+
+Estimador:
+\[
+\widehat{\mathbb E[\Pi]}=\bar \pi_N=\frac{1}{N}\sum_{i=1}^N \pi_i.
+\]
+
+\begin{block}{Error estadístico (CLT)}
+\[
+\bar \pi_N \pm z_{0.975}\frac{s_\pi}{\sqrt{N}}
+\]
+da un intervalo de confianza aproximado al 95\%.
+\end{block}
+\end{frame}
+
+%================================================
+% SLIDE 24-25:
+%================================================
+\begin{frame}[fragile]{Implementación en Python: simulación + chequeo analítico}
+\begin{lstlisting}[language=Python]
+import numpy as np
+from math import erf, sqrt, pi, exp
+
+# Parametros del problema
+mu, sigma = 100.0, 30.0
+p, c = 50.0, 20.0
+Q = 100.0
+N = 10000
+
+# Normal estandar: pdf y cdf (sin SciPy, autocontenido)
+def phi(z):
+    return exp(-0.5*z*z) / sqrt(2*pi)
+
+def Phi(z):
+    return 0.5*(1.0 + erf(z/sqrt(2.0)))
+
+# ---- Calculo analitico rapido: E[min(D,Q)] ----
+z = (Q - mu)/sigma
+E_sales = mu*Phi(z) - sigma*phi(z) + Q*(1.0 - Phi(z))
+E_profit = p*E_sales - c*Q
+
+print("E[ventas] analitico:", E_sales)
+print("E[utilidad] analitico:", E_profit)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Implementación en Python: simulación + chequeo analítico}
+\begin{lstlisting}[language=Python]
+
+# ---- Monte Carlo ----
+np.random.seed(42)
+D = np.random.normal(mu, sigma, N)
+
+# Si se requiere factibilidad no-negativa:
+# (El recorte afecta poco porque P(D<0) es muy pequena con mu=100,sigma=30)
+D = np.clip(D, 0.0, None)
+
+sales = np.minimum(D, Q)
+profit = p*sales - c*Q
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Implementación en Python: estimación + intervalo de confianza}
+\begin{lstlisting}[language=Python]
+# Estimacion Monte Carlo
+profit_mean = profit.mean()
+profit_std  = profit.std(ddof=1)
+
+# IC 95% por CLT: mean +/- 1.96 * s/sqrt(N)
+half_width = 1.96 * profit_std / np.sqrt(N)
+
+prob_loss = np.mean(profit < 0.0)
+
+print(f"MC mean: {profit_mean:.2f}  (IC95% +/- {half_width:.2f})")
+print(f"Prob(perder dinero): {prob_loss:.4f}")
+
+# Comparacion con "mundo sin incertidumbre" (D=mu, Q=mu)
+profit_no_uncertainty = (p - c) * mu
+print(f"Utilidad sin incertidumbre (benchmark): {profit_no_uncertainty:.2f}")
+print(f"Gap vs MC mean: {profit_no_uncertainty - profit_mean:.2f}")
+\end{lstlisting}
+\end{frame}
+
+%================================================
+% SLIDE 26: RESULTADOS (corregidos)
+%================================================
+\begin{frame}{Resultados}
+Con los parámetros $\mu=100,\sigma=30,Q=100,p=50,c=20$:
+
+\begin{itemize}
+  \item \textbf{Benchmark sin incertidumbre:} $\Pi(\mu,\mu)=(p-c)\mu=3000$.
+  \item \textbf{Esperanza analítica:} $\mathbb E[\Pi(D,100)]\approx 2401.6$.
+  \item \textbf{Monte Carlo típico (semilla 42, $N=10^4$):}
+  \[
+  \widehat{\mathbb E[\Pi]}\approx 2399.0
+  \quad \text{con IC95\% } \pm 17.2.
+  \]
+  \item \textbf{Pérdida:} $\mathbb P(\Pi<0)=\mathbb P(D<40)\approx \Phi(-2)\approx 0.0228$ (coincide con MC $\approx 0.023$).
+\end{itemize}
+
+\begin{alertblock}{Mensaje}
+El promedio ``optimista'' (3000) ignora saturación y riesgo a la baja; la ganancia esperada real cae cerca de \(\sim 2400\) (brecha $\sim 600$, \(\sim 20\%\)).
+\end{alertblock}
+\end{frame}
+
+%================================================
+% SLIDE 27: VISUALIZACIÓN (igual, pero texto ajustado)
+%================================================
+\begin{frame}[fragile]{Visualización de la distribución de utilidades}
+\begin{lstlisting}[language=Python]
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10,6))
+plt.hist(profit, bins=40, alpha=0.8, edgecolor='black')
+plt.axvline(profit_mean, linestyle='dashed', linewidth=2,
+            label=f'Media MC: {profit_mean:.0f}')
+plt.axvline(E_profit, linestyle='dashed', linewidth=2,
+            label=f'Media analitica: {E_profit:.0f}')
+plt.axvline((p-c)*mu, linestyle='dashed', linewidth=2,
+            label='Benchmark sin incertidumbre: 3000')
+plt.title('Distribucion de utilidades (Q=100)')
+plt.xlabel('Utilidad')
+plt.ylabel('Frecuencia')
+plt.legend()
+plt.show()
+\end{lstlisting}
+\end{frame}
+
+%================================================
+% SLIDE 28: INTERPRETACIÓN
+%================================================
+\begin{frame}{Interpretación (qué mirar en el histograma)}
+\begin{itemize}
+  \item \textbf{Truncamiento a la derecha:} para $D>Q$ las ventas se saturan en $Q$ y la utilidad se ``aplana''.
+  \item \textbf{Cola izquierda:} eventos de demanda baja generan utilidades mucho menores; esa asimetría reduce la media.
+  \item \textbf{Error Monte Carlo:} el ancho del IC decrece como $O(1/\sqrt{N})$; pedir más precisión requiere muchas más corridas.
+\end{itemize}
+
+\textbf{Preguntas guía:}
+\begin{itemize}
+  \item ¿Qué pasa con la media si $\sigma$ sube a 50?
+  \item ¿Cómo cambia $Q^\star$ cuando cambia $(p-c)$ o $(c-s)$?
+\end{itemize}
+\end{frame}
+
+%================================================
+% SLIDE 29-31: EJERCICIOS
+%================================================
+%================================================
+% EJERCICIOS ESCALADOS (reemplaza tus slides 26-28)
+%================================================
+
+\begin{frame}{Ejercicio: ¿Dónde está la incertidumbre? (identificar variables aleatorias)}
+En cada situación, responda \textbf{tres cosas}:
+\[
+\text{(i) ¿Qué es aleatorio?}\quad
+\text{(ii) ¿Qué se observa?}\quad
+\text{(iii) ¿Qué métrica importa?}
+\]
+
+\vspace{0.2cm}
+\begin{enumerate}
+  \item \textbf{Cafetería:} llegan estudiantes y hay 1 caja. A veces se forma fila.
+  \item \textbf{Inventario:} una tienda decide $Q$ unidades para mañana; no sabe cuántas venderá.
+  \item \textbf{Transporte:} un mensajero tarda distinto según tráfico.
+\end{enumerate}
+
+\end{frame}
+
+
+
+
+\begin{frame}{Ejercicio: Modelar la incertidumbre (Casos A--D)}
+\small
+\begin{columns}[T]
+\column{0.45\textwidth}
+
+\begin{block}{Caso A}
+En una ventanilla, atender a un cliente siempre requiere completar \textbf{tres pasos consecutivos} (verificar datos, registrar, confirmar pago).  
+Cada paso toma tiempo positivo y el tiempo total observado suele concentrarse alrededor de un valor típico, con variabilidad moderada.
+\end{block}
+
+\begin{block}{Caso B}
+En un punto de información, los visitantes llegan sin coordinación.  
+A veces llegan varios casi seguidos; otras veces hay pausas. El tiempo entre llegadas es siempre positivo y no se observa un “máximo” claro.
+\end{block}
+
+\column{0.45\textwidth}
+
+\begin{block}{Caso C}
+Durante cada hora, un call center registra un \textbf{número de llamadas entrantes}.  
+Se trata de un conteo (0,1,2,...) y el equipo quiere modelar cuántas llamadas llegan por hora para dimensionar turnos.
+\end{block}
+
+\begin{block}{Caso D}
+Una empacadora llena bolsas con una máquina calibrada a 500 g.  
+El peso final varía ligeramente por vibraciones y tolerancias: algunas bolsas quedan por encima y otras por debajo; la mayoría queda cerca del objetivo y los extremos son poco frecuentes.
+\end{block}
+
+\end{columns}
+\end{frame}
+
+
+\begin{frame}{Ejercicio: Modelar la incertidumbre (Casos E--H)}
+\small
+\begin{columns}[T]
+\column{0.45\textwidth}
+
+\begin{block}{Caso E}
+El tiempo de reparación de un equipo suele ser corto cuando el diagnóstico es directo,  
+pero ocasionalmente se alarga mucho por espera de repuesto, recalibración o retrabajo.  
+La variable es positiva y se observan pocos valores muy grandes.
+\end{block}
+
+\begin{block}{Caso F}
+Se estudia la vida útil de un componente que se degrada con el uso.  
+Al inicio casi no falla, pero a medida que envejece la probabilidad de falla aumenta.  
+Se registra el tiempo hasta falla (positivo) para planear mantenimiento.
+\end{block}
+
+\column{0.45\textwidth}
+
+\begin{block}{Caso G}
+Un bus interno recorre siempre la misma ruta dentro del campus.  
+Por restricciones de distancia, velocidad y semáforos, el tiempo de viaje está siempre entre 12 y 18 minutos, y no hay evidencia clara de que algún valor dentro del rango sea “especialmente más probable”.
+\end{block}
+
+\begin{block}{Caso H}
+Para una actividad de proyecto (instalar un módulo), un experto da tres estimaciones:  
+\textbf{optimista} (si todo sale perfecto), \textbf{más probable} (lo usual) y \textbf{pesimista} (si aparece un problema común).  
+Se quiere modelar la duración con esa información.
+\end{block}
+
+\end{columns}
+\end{frame}
+
+
+
+\begin{frame}{Ejercicio: distinguir \textit{variables} vs \textit{parámetros} (y qué es aleatorio)}
+\textbf{Objetivo:} en cada situación, clasifique cada símbolo en una de estas categorías:
+\[
+\textbf{(V)}\ \text{variable de decisión/estado} \qquad
+\textbf{(PA)}\ \text{parámetro aleatorio (variable aleatoria)} \qquad
+\textbf{(PD)}\ \text{parámetro determinístico (constante)}
+\]
+
+\begin{block}{Situación 1: Inventario (un solo día)}
+Una tienda decide $Q$ unidades para mañana. La demanda del día es $D$.  
+Precio $p=50$, costo $c=20$, salvamento $s=0$.  
+Utilidad: $\Pi(D,Q)=p\min(D,Q)+s(Q-\min(D,Q)) - cQ$.
+
+\textbf{Clasifique:} $Q,\ D,\ p,\ c,\ s,\ \Pi(D,Q)$.
+\end{block}
+
+
+\begin{block}{Situación 2: Caja de supermercado (servicio)}
+Llegan clientes. El tiempo entre llegadas es $A$ (min) y el tiempo de servicio es $S$ (min).  
+El sistema tiene una sola caja.
+
+\textbf{Clasifique:} $A,\ S,\ \lambda,\ \mu,\ \rho,\ N(t)$, donde:
+\begin{itemize}
+  \item $\lambda$ = tasa promedio de llegadas (clientes/min),
+  \item $\mu$ = tasa promedio de servicio (clientes/min),
+  \item $\rho=\lambda/\mu$ = utilización,
+  \item $N(t)$ = número de clientes en el sistema en el tiempo $t$.
+\end{itemize}
+\end{block}
+
+\end{frame}
+
+
+%================================================
+% SLIDE 33: REFERENCIAS
+%================================================
+\begin{frame}{Referencias bibliográficas}
+\begin{itemize}
+  \item Banks, J., Carson, J. S., Nelson, B. L., \& Nicol, D. M. (2010). \textit{Discrete-Event System Simulation}. Prentice Hall.
+  \item Law, A. M. (2015). \textit{Simulation Modeling and Analysis}. McGraw-Hill.
+  \item Kulkarni, V. G. (2011). \textit{Introduction to Modeling and Analysis of Stochastic Systems}. Springer.
+  \item Ross, S. M. (2013). \textit{Simulation}. Academic Press. (Monte Carlo, CLT, intervalos)
+\end{itemize}
+\end{frame}
+
+\end{document}
+
+
+\begin{frame}{Ejercicio 2: Modelar la incertidumbre (sin “adivinar” distribuciones)}
+Para cada caso elija una forma simple de modelar la incertidumbre y \textbf{justifique con 2 razones}.
+
+\vspace{0.2cm}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Caso A: tiempo de servicio en caja} (minutos)\\
+Opciones:
+\begin{itemize}
+  \item \textbf{Exponencial} (si “no hay memoria”, alta variabilidad).
+  \item \textbf{Gamma/Erlang} (si son varias etapas).
+  \item \textbf{Lognormal} (si es positivo y muy asimétrico).
+  \item \textbf{Empírico} (si hay datos: muestrear de la lista).
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Caso B: demanda diaria} (unidades)\\
+Opciones:
+\begin{itemize}
+  \item \textbf{Normal truncada} (si es alrededor de una media, pero no negativa).
+  \item \textbf{Poisson} (si son conteos de “eventos”).
+  \item \textbf{Empírico / bootstrap} (si hay histórico).
+\end{itemize}
+\end{columns}
+
+\vspace{0.2cm}
+\begin{alertblock}{Regla de oro}
+Antes de elegir distribución, revise: \textbf{soporte} (¿puede ser negativo?), \textbf{simetría}, \textbf{colas}, y si el fenómeno es \textbf{discreto} o \textbf{contínuo}.
+\end{alertblock}
+\end{frame}
+
+
+
+\begin{frame}[fragile]{Ejercicio 3: Primer Monte Carlo en Python (llenar huecos)}
+Objetivo: estimar $\mathbb E[\text{costo}]$ cuando la demanda es incierta.
+
+\vspace{0.2cm}
+\textbf{Modelo:} Usted ordena $Q=100$. Si la demanda $D$ supera $Q$, paga un costo de faltante $c_s=10$ por unidad faltante:
+\[
+Y = c_s (D-Q)_+.
+\]
+
+\begin{lstlisting}[language=Python]
+import numpy as np
+
+np.random.seed(0)
+N  = 5000
+Q  = 100
+cs = 10
+
+# (1) Genere demanda D (escoja UNA opcion):
+# Opcion 1: dos escenarios (baja/alta)
+# D = np.random.choice([80, 120], size=N, p=[0.7, 0.3])
+
+# Opcion 2: normal truncada
+mu, sigma = 100, 30
+D = np.random.normal(mu, sigma, N)
+D = np.clip(D, 0, None)  # demanda no negativa
+
+# (2) Calcule costo por escenario:
+Y = cs * np.maximum(D - Q, 0)
+
+# (3) Estime el costo esperado:
+print("E[costo] aprox =", Y.mean())
+\end{lstlisting}
+
+\begin{block}{Preguntas}
+(i) ¿Qué cambia si $N$ pasa de 5{,}000 a 50{,}000? \quad
+(ii) ¿Qué cambia si sube $\sigma$?
+\end{block}
+\end{frame}
+
+
+\begin{frame}{Ejercicio 4: Idea de DES sin pseudocódigo (simulación manual por eventos)}
+\textbf{Sistema:} una caja, una fila. Llegan clientes y la caja atiende uno a la vez.
+
+\vspace{0.2cm}
+\begin{block}{Estado mínimo}
+\[
+S(t)=\big(\text{\# en fila},\ \text{caja libre/ocupada},\ \text{tiempo de fin de servicio (si está ocupada)}\big).
+\]
+\end{block}
+
+\textbf{Eventos posibles:}
+\begin{itemize}
+  \item \textbf{Llegada:} llega un cliente.
+  \item \textbf{Fin de servicio:} termina el cliente actual.
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Actividad (en grupos):} complete a mano los \textbf{primeros 6 eventos} en una tabla.
+\begin{center}
+\small
+\begin{tabular}{@{}cccccc@{}}
+\toprule
+Evento \# & Tiempo & Tipo & \# en fila & Caja (L/O) & Próx.\ fin servicio \\
+\midrule
+1 & 0.0 & Llegada &  &  &  \\
+2 & 1.2 & Llegada &  &  &  \\
+3 & 2.0 & Fin serv. &  &  &  \\
+4 & 2.4 & Llegada &  &  &  \\
+5 & 3.1 & Llegada &  &  &  \\
+6 & 3.7 & Fin serv. &  &  &  \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{alertblock}{Regla (sin código)}
+En \textbf{llegada}: si la caja está libre $\Rightarrow$ inicia servicio; si no $\Rightarrow$ aumenta fila.\\
+En \textbf{fin de servicio}: si hay fila $\Rightarrow$ pasa el siguiente; si no $\Rightarrow$ la caja queda libre.
+\end{alertblock}
+\end{frame}

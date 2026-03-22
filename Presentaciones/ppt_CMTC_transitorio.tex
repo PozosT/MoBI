@@ -1,0 +1,665 @@
+% ============================================================================
+%  AN\'ALISIS TRANSITORIO Y ESTADO ESTABLE DE CTMC
+%  Cadenas de Markov de Tiempo Continuo
+%  Versi\'on extendida: Teor\'ia profunda + Ejemplos narrativos
+% ============================================================================
+\documentclass[aspectratio=1610, 9pt]{beamer}
+
+% --- Idioma y codificaci\'on ---
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-noshorthands]{babel}
+
+% --- Matem\'aticas ---
+\usepackage{amsmath,amssymb,mathtools,bm}
+
+% --- Gr\'aficos y diagramas ---
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, automata, calc, decorations.pathreplacing, 
+                matrix, chains, backgrounds, fit, shapes.geometric}
+
+
+
+% --- Cajas ---
+\usepackage[most]{tcolorbox}
+
+% --- Tablas ---
+\usepackage{booktabs,array,multirow}
+
+
+\usepackage{enumitem}
+\setlist[itemize]{label=\textcolor{accentblue}{$\blacktriangleright$}, leftmargin=1.2em, itemsep=3pt}
+
+
+
+
+% ── Paquetes ────────────────────────────────────────────────
+
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{tcolorbox}
+\usepackage{pifont}
+\tcbuselibrary{skins, breakable}
+\usepackage{multicol}
+
+
+% --- Colores institucionales ---
+\definecolor{uniblue}{RGB}{0,71,133}
+\definecolor{unigold}{RGB}{200,160,40}
+\definecolor{darkblue}{RGB}{0,40,85}
+\definecolor{lightblue}{RGB}{220,235,250}
+\definecolor{lightgold}{RGB}{255,245,200}
+\definecolor{softgreen}{RGB}{220,245,220}
+\definecolor{softred}{RGB}{255,225,225}
+\definecolor{princetonorange}{RGB}{232,119,34}
+\definecolor{deepgreen}{RGB}{0,110,60}
+
+% ── Colores ─────────────────────────────────────────────────
+\definecolor{accentblue}{HTML}{1A5276}
+\definecolor{softblue}{HTML}{2980B9}
+\definecolor{lightbg}{HTML}{EBF5FB}
+\definecolor{warmgold}{HTML}{D4AC0D}
+\definecolor{successgreen}{HTML}{1E8449}
+\definecolor{alertred}{HTML}{C0392B}
+\definecolor{softgray}{HTML}{F2F3F4}
+\definecolor{darktext}{HTML}{2C3E50}
+\definecolor{purplehl}{HTML}{7D3C98}
+
+% --- Tema Beamer personalizado ---
+\usetheme{default}
+\usecolortheme{default}
+\setbeamercolor{structure}{fg=uniblue}
+\setbeamercolor{frametitle}{fg=white,bg=uniblue}
+\setbeamercolor{title}{fg=white,bg=darkblue}
+\setbeamercolor{subtitle}{fg=unigold}
+\setbeamercolor{block title}{fg=white,bg=uniblue}
+\setbeamercolor{block body}{bg=lightblue}
+\setbeamercolor{block title alerted}{fg=white,bg=princetonorange}
+\setbeamercolor{block body alerted}{bg=lightgold}
+\setbeamercolor{block title example}{fg=white,bg=uniblue!60!black}
+\setbeamercolor{block body example}{bg=softgreen}
+\setbeamercolor{itemize item}{fg=uniblue}
+\setbeamercolor{itemize subitem}{fg=unigold}
+\setbeamercolor{enumerate item}{fg=uniblue}
+\setbeamercolor{footline}{fg=uniblue!70, bg=uniblue!5}
+
+\setbeamerfont{frametitle}{series=\bfseries, size=\large}
+\setbeamerfont{title}{series=\bfseries, size=\Large}
+\setbeamerfont{subtitle}{series=\mdseries, size=\normalsize}
+\setbeamerfont{footline}{size=\tiny}
+
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{enumerate items}[default]
+\setbeamertemplate{navigation symbols}{}
+
+% --- Pie de p\'agina ---
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.4\paperwidth,ht=2.5ex,dp=1ex,left]{footline}%
+      \hspace*{2ex}\textit{CTMC: An\'alisis Transitorio}
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.3\paperwidth,ht=2.5ex,dp=1ex,center]{footline}%
+       Universidad de los Andes
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.3\paperwidth,ht=2.5ex,dp=1ex,right]{footline}%
+      \insertframenumber{}/\inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}%
+  }%
+}
+
+% --- Cajas tcolorbox personalizadas ---
+\newtcolorbox{definicionbox}[1][]{
+  colback=lightblue, colframe=white, 
+  fonttitle=\bfseries, title={#1},
+  boxrule=1pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+\newtcolorbox{ejemplobox}[1][]{
+  colback=softgreen!50!white, colframe=deepgreen!80!black, 
+  fonttitle=\bfseries, title={#1},
+  boxrule=1pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+\newtcolorbox{resultadobox}[1][]{
+  colback=lightgold, colframe=princetonorange, 
+  fonttitle=\bfseries, title={#1},
+  boxrule=1.2pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+\newtcolorbox{alertabox}[1][]{
+  colback=softred, colframe=red!70!black,
+  fonttitle=\bfseries, title={#1},
+  boxrule=1pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+\newtcolorbox{preguntabox}[1][]{
+  colback=white, colframe=unigold, 
+  fonttitle=\bfseries\color{white}, title={#1},
+  boxrule=1.5pt, arc=4pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+\newtcolorbox{situacionbox}[1][]{
+  colback=softgreen!30!white, colframe=deepgreen!70!black,
+  fonttitle=\bfseries\color{white}, title={#1},
+  boxrule=1.5pt, arc=5pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+  shadow={1mm}{-1mm}{0mm}{black!20}
+}
+
+\newtcolorbox{modelobox}[1][]{
+  colback=lightblue!50!white, colframe=uniblue!80!black,
+  fonttitle=\bfseries\color{white}, title={#1},
+  boxrule=1.5pt, arc=5pt, left=8pt, right=8pt, top=6pt, bottom=6pt
+}
+
+\newtcolorbox{teoremabox}[1][]{
+  colback=lightgold!40!white, colframe=princetonorange!90!black,
+  fonttitle=\bfseries, title={#1},
+  boxrule=1.5pt, arc=4pt, left=8pt, right=8pt, top=6pt, bottom=6pt
+}
+
+\newtcolorbox{formulabox}[1][]{%
+  colback=softblue!8, colframe=softblue,
+  fonttitle=\bfseries, title={#1},
+  boxrule=0.8pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+\newtcolorbox{derivbox}[1][]{
+  colback=lightyellow,colframe=unigold!60!black,
+  fonttitle=\bfseries,title=#1,
+  boxrule=0.6pt,arc=3pt,
+  left=4pt,right=4pt,top=2pt,bottom=2pt
+}
+% --- Comandos auxiliares ---
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\text{Var}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\vpi}{\bm{\pi}}
+\newcommand{\vp}{\mathbf{p}}
+\newcommand{\mQ}{\mathbf{Q}}
+\newcommand{\mP}{\mathbf{P}}
+\newcommand{\mI}{\mathbf{I}}
+
+% --- Macros ---
+
+\newcommand{\bQ}{\bm{Q}}
+\newcommand{\bP}{\bm{P}}
+\newcommand{\bR}{\bm{R}}
+\newcommand{\bV}{\bm{V}}
+\newcommand{\bI}{\bm{I}}
+\newcommand{\bpi}{\bm{\pi}}
+\newcommand{\bp}{\bm{p}}
+\newcommand{\bone}{\bm{1}}
+\newcommand{\bzero}{\bm{0}}
+\newcommand{\bLambda}{\bm{\Lambda}}
+% ============================================================================
+% PDF metadata will be set automatically by beamer
+\title{An\'alisis Transitorio}
+\subtitle{Cadenas de Markov de Tiempo Continuo (CTMC)\\[4pt]}
+\author{Modelado de Sistemas bajo Incertidumbre}
+\institute{AIA Lab \,$\cdot$\, Departamento de Ingenier\'ia Industrial\\Universidad de los Andes}
+\date{2026-I}
+
+\begin{document}
+
+% ============================================================
+% SLIDE 1: Título
+% ============================================================
+\begin{frame}
+\titlepage
+\end{frame}
+
+
+% ======================================================================
+\section{Recordatorio: la CTMC y su matriz generadora}
+% ======================================================================
+
+\begin{frame}[fragile]{El modelo: CTMC y la matriz generadora Q}
+  \begin{definicionbox}[Recordatorio]
+    Una CTMC $\{X(t): t \geq 0\}$ con espacio de estados finito $\mathcal{S} = \{0,1,\ldots,n-1\}$ queda completamente especificada por:
+    \begin{enumerate}
+      \item La \textbf{matriz generadora} $\bQ$ (entradas $q_{ij} \geq 0$ para $i \neq j$; filas suman 0).
+      \item La \textbf{distribución inicial} $\bp(0) = (p_0(0), p_1(0), \ldots, p_{n-1}(0))$.
+    \end{enumerate}
+  \end{definicionbox}
+
+  \textbf{La pregunta central del análisis transitorio}:
+
+  \begin{preguntabox}[Pregunta]
+    Dado que el sistema empieza con distribución $\bp(0)$, \textbf{?`cuál es la distribución $\bp(t)$ en un instante futuro $t > 0$?}
+  \end{preguntabox}
+
+  \medskip
+  Respuesta: $\bp(t) = \bp(0)\,e^{\bQ t}$, donde $e^{\bQ t}$ es la \textbf{exponencial matricial}.
+
+  \medskip
+  {\small\color{darkblue} Esta presentación desarrolla todos los métodos para calcular $e^{\bQ t}$ con detalle algebraico completo.}
+\end{frame}
+
+%======================================================================
+\section{Las ecuaciones de Kolmogorov}
+% ======================================================================
+
+\begin{frame}[fragile]{La ecuación forward de Kolmogorov --- Derivación completa}
+  \begin{derivbox}[Derivación paso a paso]
+    \textbf{Paso 1.} Chapman--Kolmogorov con incremento $h$:
+    \[
+      \bP(t+h) = \bP(t)\,\bP(h).
+    \]
+    \textbf{Paso 2.} Restamos $\bP(t)$:
+    \[
+      \bP(t+h) - \bP(t) = \bP(t)\bigl[\bP(h) - \bI\bigr].
+    \]
+    \textbf{Paso 3.} Dividimos por $h > 0$:
+    \[
+      \frac{\bP(t+h) - \bP(t)}{h} = \bP(t)\cdot\frac{\bP(h) - \bI}{h}.
+    \]
+    \textbf{Paso 4.} Límite $h \to 0^+$:
+    \[
+      \bP'(t) = \bP(t) \cdot \underbrace{\lim_{h \to 0^+}\frac{\bP(h)-\bI}{h}}_{=\;\bQ} = \bP(t)\,\bQ.
+    \]
+  \end{derivbox}
+
+  \vspace{1mm}
+  \begin{teoremabox}[Ecuación forward de Kolmogorov]
+    $\bP'(t) = \bP(t)\,\bQ$, \quad con $\bP(0)=\bI$.
+  \end{teoremabox}
+\end{frame}
+
+% -------------------------------------------------------------------
+\begin{frame}[fragile]{Ecuación forward: forma componente a componente}
+  Expandiendo $\bP'(t) = \bP(t)\bQ$ para la entrada $(i,j)$:
+  \[
+    P_{ij}'(t) = \sum_{k} P_{ik}(t)\,Q_{kj} = \sum_{k \neq j} P_{ik}(t)\,q_{kj} + P_{ij}(t)\,Q_{jj}.
+  \]
+  Como $Q_{jj} = -q_j$:
+
+  \begin{thmbox}[Forward componente a componente]
+    \vspace{-3mm}
+    \begin{equation*}
+      \boxed{P_{ij}'(t) = \sum_{k \neq j} P_{ik}(t)\,q_{kj} \;-\; P_{ij}(t)\,q_j}
+    \end{equation*}
+  \end{thmbox}
+
+  \begin{situacionbox}[Interpretación intuitiva]
+    El cambio en la probabilidad $P_{ij}(t)$ tiene dos componentes:
+    \begin{itemize}
+      \item {\color{softgreen}\textbf{+}} Flujo de probabilidad que \textbf{llega} a $j$ desde otros estados $k$: $\sum_{k \neq j} P_{ik}(t)\cdot q_{kj}$. Es decir: estoy en $k$ (con prob.\ $P_{ik}(t)$) y salto a $j$ (con tasa $q_{kj}$).
+      \item {\color{softred}\textbf{--}} Flujo de probabilidad que \textbf{sale} de $j$: $P_{ij}(t)\cdot q_j$. Es decir: estoy en $j$ y me voy (con tasa total $q_j$).
+    \end{itemize}
+    Es un \textbf{balance de flujos instantáneo} (análogo a conservación de masa).
+  \end{situacionbox}
+\end{frame}
+
+
+
+
+% ── Ecuaciones de Kolmogorov ───────────────────────────────
+\begin{frame}[shrink=3]{La distribución transitoria --- Ecuaciones de Kolmogorov}
+\begin{formulabox}[Ecuaciones diferenciales de Kolmogorov (forward)]
+Sea $\boldsymbol{\pi}(t) = (\pi_0(t), \pi_1(t), \ldots)$ el vector de probabilidades en el instante $t$.
+\[
+\frac{d\boldsymbol{\pi}(t)}{dt} = \boldsymbol{\pi}(t)\,\mathbf{Q}
+\]
+con condición inicial $\boldsymbol{\pi}(0)$ conocida.
+
+La solución es:
+\[
+\boxed{\boldsymbol{\pi}(t) = \boldsymbol{\pi}(0)\,e^{\mathbf{Q}t}}
+\]
+donde $e^{\mathbf{Q}t} = \mathbf{I} + \mathbf{Q}t + \frac{(\mathbf{Q}t)^2}{2!} + \frac{(\mathbf{Q}t)^3}{3!} + \cdots$
+\end{formulabox}
+
+\vskip 0.3em
+\textbf{¿Qué significa $\pi_j(t)$?}
+
+Es la probabilidad de que el sistema esté en el estado $j$ en el instante $t$, dado que arrancó en la distribución $\boldsymbol{\pi}(0)$.
+
+\vskip 0.3em
+\begin{tipbox}[Para sistemas pequeños (2--3 estados)]
+Se puede resolver el sistema de EDOs directamente sin necesidad de la exponencial matricial. Veremos cómo en los ejemplos.
+\end{tipbox}
+\end{frame}
+
+
+% ============================================================
+% SLIDE 5: Ejemplo
+% ============================================================
+\begin{frame}{Ejemplo}
+\begin{columns}
+\begin{column}{0.35\textwidth}
+Supongamos esta CMTC, vamos a encontrar $P(t)$
+
+\begin{center}
+\begin{tikzpicture}[->, >=Stealth, auto, semithick, node distance=2cm]
+    \node[state] (1) {$1$};
+    \node[state] (2) [above right of=1] {$2$};
+    \node[state] (3) [below right of=1] {$3$};
+    \path (1) edge[bend left] node {$\alpha$} (2)
+          (1) edge[bend right] node[below] {$\beta$} (3);
+\end{tikzpicture}
+\end{center}
+\end{column}
+\begin{column}{0.65\textwidth}
+\[
+Q = \begin{pmatrix} -\alpha-\beta & \alpha & \beta \\ 0 & 0 & 0 \\ 0 & 0 & 0 \end{pmatrix}
+\]
+
+\[
+e^{Qt} = \begin{pmatrix}
+e^{-(\alpha+\beta)t} & \dfrac{\alpha}{\alpha+\beta}\bigl(1-e^{-(\alpha+\beta)t}\bigr) & \dfrac{\beta}{\alpha+\beta}\bigl(1-e^{-(\alpha+\beta)t}\bigr) \\[8pt]
+0 & 1 & 0 \\[4pt]
+0 & 0 & 1
+\end{pmatrix}
+\]
+
+\medskip
+\small
+\[
+\pi(t) = \left(\, e^{-(\alpha+\beta)t},\;\; \frac{\alpha}{\alpha+\beta}\bigl(1-e^{-(\alpha+\beta)t}\bigr),\;\; \frac{\beta}{\alpha+\beta}\bigl(1-e^{-(\alpha+\beta)t}\bigr) \,\right)
+\]
+\end{column}
+\end{columns}
+\end{frame}
+
+
+% ── Derivación para 2 estados ─────────────────────────────
+\begin{frame}[shrink=5]{Derivación del transitorio --- Caso 2 estados}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+Para estados $\{0, 1\}$ con $\mathbf{Q} = \begin{psmallmatrix} -\lambda & \lambda \\ \mu & -\mu \end{psmallmatrix}$.
+
+\vskip 0.3em
+Kolmogorov nos da el sistema de EDOs:
+\begin{align*}
+\pi_0'(t) &= -\lambda\,\pi_0(t) + \mu\,\pi_1(t) \\
+\pi_1'(t) &= \lambda\,\pi_0(t) - \mu\,\pi_1(t)
+\end{align*}
+
+Usando $\pi_1(t) = 1 - \pi_0(t)$, sustituimos en la primera:
+\[
+\pi_0'(t) = -\lambda\,\pi_0(t) + \mu\,(1-\pi_0(t))
+\]
+\[
+\pi_0'(t) = \mu - (\lambda+\mu)\,\pi_0(t)
+\]
+
+Es una EDO lineal de primer orden. Su solución:
+\end{column}
+\begin{column}{0.50\textwidth}
+\begin{formulabox}[Solución explícita 2 estados]
+Si empieza en estado 0, es decir $\pi_0(0) = 1$:
+\[
+\boxed{\pi_0(t) = \frac{\mu}{\lambda+\mu} + \frac{\lambda}{\lambda+\mu}\,e^{-(\lambda+\mu)t}}
+\]
+\[
+\boxed{\pi_1(t) = \frac{\lambda}{\lambda+\mu} - \frac{\lambda}{\lambda+\mu}\,e^{-(\lambda+\mu)t}}
+\]
+\end{formulabox}
+
+\vskip 0.3em
+\textbf{Observaciones clave:}
+\begin{itemize}[itemsep=4pt]
+  \item Cuando $t \to \infty$: la exponencial $\to 0$, y queda solo la \textcolor{accentblue}{parte estacionaria}.
+  \item La velocidad de convergencia depende de $\lambda + \mu$.
+  \item Si $\lambda + \mu$ es grande $\to$ converge rápido.
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ── Gráfica transitoria ───────────────────────────────────
+\begin{frame}{Visualización: convergencia transitoria $\to$ estado estable}
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo $t$},
+    ylabel={Probabilidad $\pi_j(t)$},
+    xmin=0, xmax=6, ymin=0, ymax=1.05,
+    axis lines=left,
+    legend pos=north east,
+    legend style={font=\small, draw=none, fill=softgray, fill opacity=0.8},
+    grid=major, grid style={gray!15},
+    every axis label/.style={font=\small},
+    tick label style={font=\scriptsize},
+  ]
+  % pi_0(t) starting from state 0: lambda=0.5, mu=2
+  \addplot[accentblue, ultra thick, domain=0:6, samples=120]
+    {2/2.5 + 0.5/2.5*exp(-2.5*x)};
+  \addlegendentry{$\pi_0(t)$ (empieza en 0)}
+  
+  % pi_1(t) starting from state 0
+  \addplot[alertred, ultra thick, domain=0:6, samples=120]
+    {0.5/2.5 - 0.5/2.5*exp(-2.5*x)};
+  \addlegendentry{$\pi_1(t)$ (empieza en 0)}
+
+  % Líneas estacionarias
+  \draw[accentblue, dashed, thick] (axis cs:0, 0.8) -- (axis cs:6, 0.8)
+    node[pos=0.85, above, font=\scriptsize]{$\pi_0 = \mu/(\lambda+\mu) = 0.8$};
+  \draw[alertred, dashed, thick] (axis cs:0, 0.2) -- (axis cs:6, 0.2)
+    node[pos=0.85, below, font=\scriptsize]{$\pi_1 = \lambda/(\lambda+\mu) = 0.2$};
+
+  % Annotations
+  \draw[decorate, decoration={brace, amplitude=6pt, mirror}, thick, warmgold]
+    (axis cs:0,-0.08) -- (axis cs:2.5,-0.08)
+    node[midway, below=8pt, font=\small, text=warmgold]{\textbf{Régimen transitorio}};
+  \draw[decorate, decoration={brace, amplitude=6pt, mirror}, thick, successgreen!80!black]
+    (axis cs:2.8,-0.08) -- (axis cs:6,-0.08)
+    node[midway, below=8pt, font=\small, text=successgreen!80!black]{\textbf{Estado estable}};
+  \end{axis}
+\end{tikzpicture}
+
+\vskip 0.2em
+{\small Con $\lambda = 0.5$/h, $\mu = 2$/h. La parte $e^{-(\lambda+\mu)t}$ se extingue y las probabilidades convergen a sus valores estacionarios.}
+\end{frame}
+
+
+% ============================================================================
+% EJEMPLO TRANSITORIO NARRATIVO
+% ============================================================================
+\begin{frame}{Ejemplo 1 --- La Situaci\'on}
+\begin{situacionbox}[\textbf{Situaci\'on:} El sem\'aforo inteligente de la Carrera S\'eptima]
+La Secretar\'ia de Movilidad de Bogot\'a est\'a evaluando un sem\'aforo inteligente en la Carrera S\'eptima con Calle 72. El sem\'aforo opera en dos modos: \textbf{flujo libre} (verde prolongado para la S\'eptima) y \textbf{flujo restringido} (verde para la Calle 72). 
+
+Debido a sensores de tr\'afico, el sem\'aforo cambia de flujo libre a restringido cuando detecta congesti\'on en la 72; esto ocurre en promedio cada 3 minutos. Cuando est\'a en modo restringido, vuelve a flujo libre en promedio despu\'es de 1 minuto (la Calle 72 se descongestion\'o).
+
+El sistema acaba de ser instalado y arranca en modo flujo libre. La Secretar\'ia necesita saber: \\[3pt]
+(a) Despu\'es de 2 minutos, ?`cu\'al es la probabilidad de que est\'e en modo restringido?\\
+(b) A largo plazo, ?`qu\'e fracci\'on del tiempo est\'a en cada modo?
+\end{situacionbox}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Ejemplo 1 --- Modelado como CTMC}
+\begin{modelobox}[\textbf{Paso 1:} Identificar estados y tasas]
+\textbf{Estados:} $\mathcal{S} = \{0, 1\}$ donde $0 =$ flujo libre, $1 =$ flujo restringido.
+
+\textbf{Tasas de transici\'on:}
+\begin{itemize}
+\item ``Cambia cada 3 min en promedio'' $\Rightarrow$ tiempo en estado 0 es $\text{Exp}(\lambda)$ con $\E[T_0] = 3$ min, as\'i que $\lambda = 1/3$ min$^{-1}$.
+\item ``Vuelve despu\'es de 1 min en promedio'' $\Rightarrow$ $\E[T_1] = 1$ min, as\'i que $\mu = 1$ min$^{-1}$.
+\end{itemize}
+\end{modelobox}
+
+\begin{columns}[c]
+\begin{column}{0.42\textwidth}
+\textbf{Paso 2:} Construir la matriz $\mQ$:
+\[
+\mQ = \begin{pmatrix} -1/3 & 1/3 \\ 1 & -1 \end{pmatrix}
+\]
+Verificaci\'on: filas suman 0. \checkmark
+
+\vspace{6pt}
+\textbf{Condici\'on inicial:}
+\[
+\vp(0) = (1,\; 0) \quad \text{(arranca en flujo libre)}
+\]
+\end{column}
+\begin{column}{0.52\textwidth}
+\centering
+\begin{tikzpicture}[->, >=Stealth, node distance=5cm, thick,
+    state/.style={circle, draw=uniblue, fill=lightblue, minimum size=1.8cm, 
+                  font=\small\bfseries, line width=1.5pt}]
+  \node[state, fill=softgreen!60] (0) {\begin{tabular}{c}$0$\\[-1pt]{\tiny Flujo}\\[-3pt]{\tiny libre}\end{tabular}};
+  \node[state, fill=softred!60, right of=0] (1) {\begin{tabular}{c}$1$\\[-1pt]{\tiny Flujo}\\[-3pt]{\tiny restringido}\end{tabular}};
+  \path (0) edge[bend left=25, color=red!70!black, line width=2pt] 
+            node[above, font=\small] {$\lambda = 1/3$} (1)
+        (1) edge[bend left=25, color=deepgreen!80, line width=2pt] 
+            node[below, font=\small] {$\mu = 1$} (0);
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Ejemplo 1 --- Resoluci\'on del Transitorio (Paso a Paso)}
+
+\textbf{Paso 3:} Escribir las ecuaciones de Kolmogorov Forward:
+\[
+\frac{dp_0}{dt} = -\tfrac{1}{3}\,p_0(t) + 1 \cdot p_1(t), \qquad 
+\frac{dp_1}{dt} = \tfrac{1}{3}\,p_0(t) - 1 \cdot p_1(t)
+\]
+
+\textbf{Paso 4:} Sustituir $p_1(t) = 1 - p_0(t)$ en la primera ecuaci\'on:
+\[
+\frac{dp_0}{dt} = -\tfrac{1}{3}\,p_0 + 1 - p_0 = 1 - \tfrac{4}{3}\,p_0
+\]
+
+Esta es una EDO lineal de primer orden. La resolvemos:
+
+\textbf{Paso 5:} Factor integrante o soluci\'on directa. La soluci\'on general de $\dot{y} = a - by$ es $y(t) = a/b + Ce^{-bt}$:
+\[
+p_0(t) = \frac{1}{4/3} + C\,e^{-(4/3)t} = \frac{3}{4} + C\,e^{-4t/3}
+\]
+
+\textbf{Paso 6:} Aplicar condici\'on inicial $p_0(0) = 1$: \quad $1 = 3/4 + C \;\Rightarrow\; C = 1/4$.
+
+\begin{resultadobox}[Soluci\'on transitoria completa]
+\[
+p_0(t) = \frac{3}{4} + \frac{1}{4}\,e^{-4t/3}, \qquad p_1(t) = \frac{1}{4} - \frac{1}{4}\,e^{-4t/3}
+\]
+\end{resultadobox}
+\end{frame}
+
+% ----------------------------------------------------------------------------
+\begin{frame}{Ejemplo 1 --- Respondiendo las Preguntas}
+
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+
+\begin{preguntabox}[\textbf{(a)} Prob.\ restringido a $t = 2$ min]
+\[
+p_1(2) = \frac{1}{4} - \frac{1}{4}e^{-8/3} = \frac{1}{4} - \frac{1}{4}(0.0695)
+\]
+\[
+= 0.25 - 0.0174 = \mathbf{0.2326}
+\]
+Despu\'es de solo 2 minutos, ya hay un 23.3\% de chance de estar en modo restringido.
+\end{preguntabox}
+
+\vspace{4pt}
+\begin{preguntabox}[\textbf{(b)} Fracci\'on a largo plazo]
+\[
+\lim_{t \to \infty} p_0(t) = \frac{3}{4} = 75\% \;\text{ (flujo libre)}
+\]
+\[
+\lim_{t \to \infty} p_1(t) = \frac{1}{4} = 25\% \;\text{ (restringido)}
+\]
+Observe: $\pi_0 = \mu/(\lambda+\mu)$, $\pi_1 = \lambda/(\lambda+\mu)$.
+\end{preguntabox}
+
+\end{column}
+\begin{column}{0.48\textwidth}
+
+\begin{alertabox}[Observaci\'on fundamental]
+La velocidad de convergencia la determina el \textbf{segundo valor propio} de $\mQ$:
+\[
+\lambda_2 = -(\lambda + \mu) = -4/3
+\]
+A mayor $|\lambda_2|$, m\'as r\'apido converge. Esto ocurre cuando las tasas son altas (transiciones frecuentes).
+\end{alertabox}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+
+
+% ============================================================
+% SLIDE 7: Ejercicio #7
+% ============================================================
+\begin{frame}{Ejercicio 1 -- Reparación}
+\small
+Una instalación tiene cuatro máquinas, con dos trabajadores de reparación para mantenerlas. Las máquinas individuales fallan en media cada 10 horas. Un operario tarda una media de 4 horas en reparar una máquina. Los tiempos de reparación y de fallo son independientes y están distribuidos exponencialmente. Encuentre la matriz generadora.
+
+\medskip
+Cuál es la probabilidad de que en un mes la mitad de las máquinas esté dañada.
+
+Cuál es el valor esperado del número de máquinas funcionando en tres meses.
+
+\[
+Q = \begin{pmatrix}
+ -1/2 & 1/2 & 0 & 0 & 0 \\
+ 1/10 & -3/5 & 1/2 & 0 & 0 \\
+ 0 & 1/5 & -7/10 & 1/2 & 0 \\
+ 0 & 0 & 3/10 & -11/20 & 1/4 \\
+ 0 & 0 & 0 & 2/5 & -2/5
+\end{pmatrix}
+\]
+\end{frame}
+
+% ============================================================
+% SLIDE 8: Ejemplo Rappi
+% ============================================================
+\begin{frame}{Ejercicio 2 -- Rappi}
+\footnotesize
+Ante el incremento en la demanda y como respuesta a la crisis social, Rappi, multinacional colombiana que actúa como plataforma de intermediación entre distintos tipos de usuarios, empezó sus pruebas piloto con robots repartidores dentro de los centros comerciales con el fin de garantizar las entregas y evitar el contacto persona-persona. En este momento, el Parque Arauco, empresa que desarrolla y administra activos inmobiliarios multiformato, principalmente de uso comercial, firmó una alianza con Rappi para suplir la demanda de domicilios dentro de sus centros comerciales.
+
+\medskip
+Los encargados de la operación han estimado que el número de pedidos recibidos sigue un proceso de Poisson con tasa $\lambda$ pedidos por minuto. Por esta razón, Rappi desea analizar la situación actual en la que tiene $N$ robots disponibles para realizar domicilios. La multinacional sabe que el tiempo que tarda cada uno de los robots desde que inicia su labor hasta que completa el pedido y vuelve a quedar disponible sigue una distribución exponencial con tasa $\gamma$ entregas por hora. Adicionalmente, debido a los costos de energía que implica el tránsito de los robots, se sabe que por cada minuto que hay un robot desplazándose por el centro comercial se incurre en un costo de \$C. Cuando todos los robots se encuentran ocupados, la empresa complementa su labor con los rappitenderos los cuales cobran una cantidad de \$P por minuto. Rappi, cuenta con 100 rappitenderos y se sabe que el tiempo que tarda un rappitendero desde que inicia su labor hasta que completa el pedido y vuelve a quedar disponible sigue una distribución exponencial con media $\mu$ minutos. Si algún robot se encuentra disponible, éste siempre realizará el domicilio. Los clientes que no puedan realizar un pedido dejarán que pase un tiempo y volverán a intentarlo hasta que reciban como respuesta la confirmación de su orden.
+
+\medskip
+\begin{itemize}
+    \item Plantee un modelo que le permita a Rappi analizar la operación en el Parque Arauco.
+    \item Cada día Rappi empieza su operación en el Parque Arauco a las 11:00 am. Dé una expresión para el valor esperado y la varianza del número de robots y de rappitenderos realizando domicilios a las 16:00.
+\end{itemize}
+\end{frame}
+
+
+
+
+
+\begin{frame}{Ejercicio 3 -- Metro de Bogotá}
+\footnotesize
+La Primera Línea del Metro de Bogotá contará con 16 estaciones, 10 de ellas integradas con el actual sistema de Transmilenio. Después de análisis rigurosos, se proyectó que las 3 estaciones con mayor afluencia del metro serán: Av.\ Primero de Mayo entre Av.\ Boyacá y carrera 72C, Av.\ NQS entre diagonal 16 sur y calle 17A Bis sur y Av.\ Caracas entre calles 24A y 26. De esta manera, para la alcaldía es de interés conocer la ocupación que tendrán cada una de estas estaciones y los costos proyectados de operación de cada una de ellas. Para ello, la entidad ha proporcionado la siguiente información relevante para cada una de las estaciones:
+
+\medskip
+\begin{center}
+\scriptsize
+\begin{tabular}{lccc}
+\toprule
+\textbf{Estación} & \textbf{Capacidad} & \textbf{Tiempo trenes (min)} & \textbf{Distribución llegada usuarios} \\
+\midrule
+Av.\ Primero de Mayo entre Av.\ Boyacá y carrera 72C & 57 & 4 & Exponencial $\lambda = 11.94\;\text{min}^{-1}$ \\
+Av.\ NQS entre diagonal 16 sur y calle 17A Bis sur & 256 & 7 & Exponencial $\lambda = 8.96\;\text{min}^{-1}$ \\
+Av.\ Caracas entre calles 24A y 26 & 213 & 25 & Exponencial $\lambda = 15.55\;\text{min}^{-1}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+Adicionalmente, la alcaldía de Bogotá ha concesionado trenes con una capacidad máxima de 180 pasajeros, es decir, si hay más de 180 pasajeros en la estación el tren solo podrá llevarse 180 de ellos y el resto seguirán esperando al próximo tren en la plataforma. Tenga en cuenta que una vez la estación llegue a su capacidad máxima no podrá recibir más usuarios y estos deberán tomar otro medio de transporte y que el comportamiento de cada estación es independiente de las demás.
+
+\medskip
+Con base en la información anterior, la alcaldía de Bogotá desea un modelo para analizar el comportamiento de cada una de las estaciones. Para esto, la entidad está interesada en estimar y visualizar gráficamente el valor esperado y la varianza del número de usuarios que habrá en cada una de las estaciones por minuto, durante la primera hora de operación. Suponga que actualmente todas las estaciones se encuentran totalmente vacías. Adicionalmente, es de interés conocer la probabilidad de que cada una de las estaciones se encuentre completamente ocupada en el largo plazo.
+\end{frame}
+
+
+
+
+
+\end{document}

@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# LaTeX auxiliares
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.nav
+*.snm
+*.vrb
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+__pycache__/
+
+# Python
+*.pyc
+*.pyo
+*.egg-info/

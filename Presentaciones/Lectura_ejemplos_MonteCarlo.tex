@@ -1,0 +1,207 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+\geometry{margin=1in}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstset{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    numbers=left,
+    showstringspaces=false,
+}
+
+\title{Simulación de Confiabilidad: Selección de un Intervalo Preventivo en Mantenimiento Industrial}
+\author{Cátedra de Gestión de Activos - MIT}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+%=========================================================
+\section{Contexto: el dilema del gestor de mantenimiento}
+%=========================================================
+Una línea de ensamblaje automatizada depende de un motor crítico. Cuando el motor falla de manera inesperada
+(\textit{mantenimiento correctivo}), la línea se detiene y la empresa incurre en costos de parada y de reemplazo.
+Alternativamente, el motor puede reemplazarse de forma programada (\textit{mantenimiento preventivo}), evitando fallas pero
+asumiendo un costo fijo y realizando el cambio antes de agotar totalmente la vida útil del equipo.
+
+En este ejercicio nos enfocaremos en una política sencilla y muy usada en confiabilidad:
+\[
+\textbf{Reemplazo por edad:}\quad \text{reemplazar preventivamente al cumplir } T_p \text{ horas si no ha fallado antes.}
+\]
+La pregunta es: \textbf{¿qué valor de $T_p$ minimiza el costo esperado por hora de operación?}
+
+\subsection*{Costos y tiempos (datos del problema)}
+\begin{itemize}
+    \item \textbf{Preventivo:} costo fijo $C_p = \$1{,}200$ y se realiza en una hora planificada (sin costo de parada).
+    \item \textbf{Correctivo:} si ocurre una falla, el reemplazo cuesta $C_r = \$1{,}200$ \emph{y} hay un costo de parada de
+    \$5{,}000 por hora durante el tiempo de reparación. Denotemos por $D_c$ el \textbf{tiempo de reparación} (en horas) bajo correctivo.
+\end{itemize}
+
+\noindent\textit{Nota:} en tu versión original aparecía ``\$5,000 por hora'' pero luego usabas $C_c=\$5,000$ como si fuese un costo fijo.
+Para que el modelo sea consistente, aquí separamos:
+\[
+\text{costo correctivo} = C_r + (\text{costo por hora de paro})\times D_c.
+\]
+Si no quieres modelar $D_c$, puedes fijarlo como constante (p.ej.\ $D_c=1$ hora) y ya.
+
+%=========================================================
+\section{Modelo aleatorio: tiempo a la falla}
+%=========================================================
+Sea $TTF$ el \textbf{tiempo a la falla} (\textit{time to failure}). Supondremos:
+\[
+TTF \sim \text{Weibull}(k,\lambda), \qquad k=2.5,\;\lambda=1200\;\text{horas}.
+\]
+El parámetro $k>1$ captura un \emph{riesgo creciente} (desgaste). La función de confiabilidad es:
+\[
+R(t)=\mathbb{P}(TTF>t)=\exp\!\left(-\left(\frac{t}{\lambda}\right)^k\right).
+\]
+
+%=========================================================
+\section{Política de decisión: reemplazo por edad}
+%=========================================================
+Dado un intervalo preventivo $T_p$:
+\begin{itemize}
+    \item Si $TTF<T_p$, ocurre falla antes del preventivo $\Rightarrow$ correctivo.
+    \item Si $TTF\ge T_p$, llega vivo al preventivo $\Rightarrow$ preventivo.
+\end{itemize}
+
+Cada ciclo de operación termina cuando el motor falla o cuando se hace el preventivo. Por tanto, el \textbf{tiempo de operación del ciclo} es:
+\[
+\tau(T_p) = \min\{TTF,\,T_p\}.
+\]
+
+%=========================================================
+\section{¿Cuál es la métrica correcta? Costo promedio por unidad de tiempo}
+%=========================================================
+El objetivo natural (y estándar) en reemplazo por edad es minimizar el \textbf{costo de largo plazo por hora}, que se estima como:
+\[
+\widehat{g}(T_p) \approx \frac{\sum_{k=1}^{N} C^{(k)}(T_p)}{\sum_{k=1}^{N} \tau^{(k)}(T_p)}.
+\]
+Aquí $C^{(k)}(T_p)$ es el costo del ciclo $k$ y $\tau^{(k)}(T_p)$ su duración.
+Esta razón es el estimador Monte Carlo del costo promedio por unidad de tiempo (razón de promedios).
+
+\noindent\textit{Nota:} en tu texto original se definía $CPH=\text{Costo}/\text{Tiempo}$ por ciclo y luego se promediaba.
+Eso produce $\mathbb{E}[C/\tau]$, que en general \emph{no} es igual a $\mathbb{E}[C]/\mathbb{E}[\tau]$.
+Para costo promedio de largo plazo (tipo \textit{renewal-reward}), la razón de sumas es el objeto correcto.
+
+%=========================================================
+\section{Algoritmo de simulación (paso a paso)}
+%=========================================================
+Para un valor fijo de $T_p$:
+\begin{enumerate}
+    \item Simular un $TTF$ de la Weibull$(k,\lambda)$.
+    \item Determinar el evento:
+    \begin{itemize}
+        \item Si $TTF<T_p$: el ciclo termina por falla (correctivo).
+        \item Si $TTF\ge T_p$: el ciclo termina por reemplazo preventivo.
+    \end{itemize}
+    \item Calcular:
+    \[
+    \tau = \min\{TTF,T_p\},
+    \]
+    y el costo del ciclo:
+    \[
+    C =
+    \begin{cases}
+      C_p, & \text{si } TTF\ge T_p,\\[4pt]
+      C_r + 5000\cdot D_c, & \text{si } TTF<T_p.
+    \end{cases}
+    \]
+    \item Repetir $N$ ciclos y estimar $g(T_p)=\dfrac{\sum C}{\sum \tau}$.
+\end{enumerate}
+
+%=========================================================
+\section{Métricas adicionales (opcional, para discusión)}
+%=========================================================
+Además del costo promedio por hora, dos métricas útiles son:
+\begin{itemize}
+    \item \textbf{Confiabilidad al preventivo:} $R(T_p)=\mathbb{P}(TTF\ge T_p)$.
+    \item \textbf{Frecuencia de correctivos:} proporción de ciclos con $TTF<T_p$ (aprox. $\widehat{\mathbb{P}}(TTF<T_p)$).
+\end{itemize}
+Si se modela $D_c$ como tiempo de reparación (y también un tiempo preventivo $D_p$), entonces se puede estimar disponibilidad.
+Si el preventivo es ``en hora planificada'' y no descuenta disponibilidad operativa, basta con fijar $D_p=0$ en ese cálculo.
+
+%=========================================================
+\section{Implementación en Python (nivel principiante)}
+%=========================================================
+\begin{lstlisting}[language=Python, caption=Simulacion de reemplazo por edad y costo promedio por hora]
+import numpy as np
+
+# -----------------------
+# 1) Parametros del modelo
+# -----------------------
+k_weibull = 2.5
+lambda_weibull = 1200.0  # horas
+
+C_p = 1200.0            # costo preventivo
+C_r = 1200.0            # costo de reemplazo (tambien en correctivo)
+costo_parada_hora = 5000.0
+
+D_c = 1.0               # horas de reparacion en correctivo (simplificacion)
+N = 10000               # numero de ciclos simulados
+
+np.random.seed(2026)
+
+# -----------------------
+# 2) Funcion para simular un TTF Weibull(k, lambda)
+#    Nota: numpy.random.weibull(k) devuelve una Weibull(k) con escala 1
+#    Para escala lambda: TTF = lambda * W
+# -----------------------
+def simular_ttf():
+    w = np.random.weibull(k_weibull)
+    return lambda_weibull * w
+
+# -----------------------
+# 3) Evaluar una politica T_p
+#    Estimador correcto: (sum costos) / (sum tiempos)
+# -----------------------
+def evaluar_politica(T_p):
+    suma_costos = 0.0
+    suma_tiempos = 0.0
+    n_correctivos = 0
+
+    for i in range(N):
+        ttf = simular_ttf()
+
+        # Duracion del ciclo
+        tau = min(ttf, T_p)
+        suma_tiempos += tau
+
+        # Costo del ciclo
+        if ttf < T_p:
+            # Correctivo
+            n_correctivos += 1
+            costo = C_r + costo_parada_hora * D_c
+        else:
+            # Preventivo
+            costo = C_p
+
+        suma_costos += costo
+
+    costo_promedio_por_hora = suma_costos / suma_tiempos
+    fraccion_correctivos = n_correctivos / N
+    return costo_promedio_por_hora, fraccion_correctivos
+
+# -----------------------
+# 4) Probar varios intervalos
+# -----------------------
+for T_p in [600, 800, 1000, 1200, 1400]:
+    cph, frac_c = evaluar_politica(T_p)
+    print(f"T_p = {T_p:4d} h | costo/hora = ${cph:6.2f} | frac. correctivos = {frac_c:5.2%}")
+\end{lstlisting}
+
+\end{document}

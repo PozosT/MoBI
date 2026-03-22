@@ -1,0 +1,145 @@
+% !TEX program = pdflatex
+\documentclass[11pt,a4paper]{article}
+
+%========================
+% PAQUETES
+%========================
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath, amssymb, bm}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\geometry{margin=1in}
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}
+
+%========================
+% LISTINGS (PYTHON)
+%========================
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codeframe}{RGB}{220,220,220}
+\definecolor{codekw}{RGB}{0,0,150}
+\definecolor{codecm}{RGB}{0,120,0}
+\definecolor{codestr}{RGB}{150,0,0}
+
+\lstdefinestyle{python}{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm},
+  stringstyle=\color{codestr},
+  showstringspaces=false,
+  breaklines=true,
+  numbers=left,
+  numberstyle=\tiny,
+  xleftmargin=2.2em,
+  framexleftmargin=1.8em
+}
+
+%========================
+% MACROS
+%========================
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathcal{N}}
+
+%========================
+% DOCUMENTO
+%========================
+\title{\textbf{Aplicación del Teorema del Límite Central (TLC)}\\
+Promedio de costos de importación a través de múltiples envíos}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Contexto para la Lectura}
+Para ilustrar el Teorema del Límite Central (TLC), debemos cambiar la perspectiva:
+ya no nos interesa solo el costo de un envío (cuya distribución es asimétrica y compleja),
+sino el comportamiento del promedio de costos a lo largo de múltiples envíos.
+
+En la sección anterior, vimos que la distribución de costos de un solo envío tenía una cola larga (asimetría positiva).
+Sin embargo, la gerencia financiera no evalúa el desempeño basándose en un solo envío, sino en el presupuesto anual o trimestral.
+El Teorema del Límite Central nos asegura que, aunque el costo individual no sea Normal, el promedio de costos de $n$ envíos
+sí se comportará como una distribución Normal (para $n$ suficientemente grande, usualmente $>30$).
+
+\section{Fundamento Teórico breve: por qué el TLC aplica aquí}
+Modelemos el costo de un envío como una variable aleatoria $X$ (no necesariamente Normal), con media y varianza finitas:
+\[
+\E[X]=\mu,\qquad \Var(X)=\sigma^2<\infty.
+\]
+Consideremos $X_1,\dots,X_n$ i.i.d.\ como costos de $n$ envíos, y su promedio:
+\[
+\bar X_n=\frac{1}{n}\sum_{i=1}^n X_i.
+\]
+El Teorema del Límite Central establece que, al estandarizar el promedio,
+\[
+\frac{\sqrt{n}\,(\bar X_n-\mu)}{\sigma}\;\xrightarrow{d}\;\N(0,1),
+\qquad \text{cuando } n\to\infty.
+\]
+En términos prácticos, para $n$ moderadamente grande, esto se usa como aproximación:
+\[
+\bar X_n \approx \N\!\left(\mu,\frac{\sigma^2}{n}\right).
+\]
+\paragraph{Cuando $\sigma$ es desconocida.}
+En aplicaciones reales se reemplaza $\sigma$ por la desviación estándar muestral $s$; para $n$ grande, la aproximación Normal sigue siendo útil,
+y de manera clásica se usa la corrección con distribución $t$ de Student:
+\[
+T=\frac{\bar X_n-\mu}{s/\sqrt{n}} \approx t_{n-1}.
+\]
+Esto habilita intervalos de confianza y pruebas de hipótesis sobre $\mu$ incluso cuando la distribución de $X$ es sesgada, siempre que $n$ sea suficientemente grande
+y no haya varianza infinita.
+
+\section{Preguntas para Aplicación del TLC}
+
+\subsection*{Pregunta 1: Estimación por Intervalo (Auditoría)}
+Un auditor interno selecciona una muestra aleatoria de 40 envíos históricos y encuentra un costo promedio muestral ($\bar{x}$) y una desviación estándar muestral ($s$).
+
+\textbf{Requerimiento:} Construya un intervalo de confianza del 95\% para el verdadero costo promedio de importación.
+¿Está el presupuesto de $29$ millones dentro de este intervalo?
+
+\paragraph{Nota técnica (fórmula):}
+Un IC del 95\% para $\mu$ (usando $t$) es:
+\[
+\bar x \pm t_{0.975,\;39}\,\frac{s}{\sqrt{40}}.
+\]
+El presupuesto $29{,}000{,}000$ (COP) está ``dentro'' si cae entre los límites inferior y superior del intervalo.
+
+\subsection*{Pregunta 2: Prueba de Hipótesis (Evaluación de Desempeño)}
+El nuevo Director de Logística afirma que sus optimizaciones han logrado reducir el costo promedio real a menos de $29{,}000{,}000$.
+
+\textbf{Requerimiento:} Utilizando la misma muestra de 40 envíos, realice una prueba de hipótesis con un nivel de significancia $\alpha = 0.05$.
+($H_0: \mu \ge 29M$ vs $H_1: \mu < 29M$).
+
+\paragraph{Nota técnica (estadístico y regla):}
+\[
+T=\frac{\bar x-\mu_0}{s/\sqrt{40}},\qquad \mu_0=29{,}000{,}000.
+\]
+Rechazar $H_0$ a nivel $\alpha$ si $T < t_{\alpha,\;39}$ (cola izquierda), o equivalentemente si el $p$-valor es $<\alpha$.
+
+\subsection*{Pregunta 3: Diseño de Experimentos (Tamaño de Muestra)}
+Para el próximo año fiscal, la gerencia desea estimar el costo promedio con un error máximo de $\pm \$500{,}000$ COP y una confianza del 95\%.
+
+\textbf{Requerimiento:} ¿Cuántos envíos mínimos ($n$) deben monitorearse para garantizar esta precisión?
+
+\paragraph{Nota técnica (diseño):}
+Si se requiere un margen de error $E$ para un IC del 95\% y se aproxima con Normal,
+\[
+E \approx z_{0.975}\,\frac{\sigma}{\sqrt{n}}
+\quad\Rightarrow\quad
+n \approx \left(\frac{z_{0.975}\,\sigma}{E}\right)^2,
+\]
+con $z_{0.975}\approx 1.96$. En la práctica se usa una estimación piloto de $\sigma$ (por ejemplo $s$ histórico) y se redondea hacia arriba.
+
+
+\end{document}

@@ -1,0 +1,1634 @@
+% =============================================================================
+% PRESENTACIÓN: EL PROCESO DE POISSON
+% Distribuciones Clave, Propiedades y Ejemplos Ilustrativos
+% =============================================================================
+\documentclass[aspectratio=169, 9pt]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, calc, decorations.pathreplacing, shapes.geometric, patterns}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{multirow}
+\usepackage{colortbl}
+\usepackage{xcolor}
+
+% --- Tema ---
+\usetheme{Madrid}
+\usecolortheme{whale}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{
+  \leavevmode\hbox{%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,center]{author in head/foot}
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.34\paperwidth,ht=2.5ex,dp=1ex,center]{title in head/foot}
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,right]{date in head/foot}
+      \usebeamerfont{date in head/foot}\insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}%
+}
+
+\definecolor{azuloscuro}{RGB}{0,51,102}
+\definecolor{rojoclaro}{RGB}{204,51,51}
+\definecolor{verdeoscuro}{RGB}{0,102,51}
+\definecolor{naranja}{RGB}{230,126,34}
+\definecolor{grisclaro}{RGB}{236,240,241}
+\definecolor{morado}{RGB}{120,40,140}
+
+\title[Proceso de Poisson]{El Proceso de Poisson}
+\subtitle{Fundamentos, Distribuciones Clave y Propiedades}
+\author[Ingenier\'{i}a Industrial]{Departamento de Ingenier\'{i}a Industrial}
+\institute[Universidad]{Curso de Simulaci\'{o}n de Eventos Discretos}
+\date{Semestre 2026-I}
+
+\begin{document}
+
+% ============================== SLIDE 1 ==============================
+\begin{frame}
+\titlepage
+\end{frame}
+
+% ============================== SLIDE 2 ==============================
+\begin{frame}{Contenido}
+\tableofcontents
+\end{frame}
+
+% ======================================================================
+\section{Introducci\'{o}n y Motivaci\'{o}n}
+% ======================================================================
+
+% ============================== SLIDE 3 ==============================
+\begin{frame}{?`Por qu\'{e} estudiar el proceso de Poisson?}
+
+El proceso de Poisson es el modelo fundamental para eventos que ocurren \textbf{aleatoriamente en el tiempo}.
+
+\vspace{0.4cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Ejemplos cotidianos:}
+\begin{itemize}
+    \item Llamadas a un call center
+    \item Llegadas de clientes a un banco
+    \item Accidentes en una autopista
+    \item Correos electr\'{o}nicos recibidos
+    \item Fallas en un servidor
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{?`Qu\'{e} tienen en com\'{u}n?}
+\begin{itemize}
+    \item Ocurren uno a la vez
+    \item Son ``impredecibles'' individualmente
+    \item Tienen una tasa promedio estable
+    \item Lo que pas\'{o} antes no afecta lo que viene
+\end{itemize}
+\end{columns}
+
+\vspace{0.4cm}
+\begin{block}{Objetivo}
+Formalizar estas ideas intuitivas en un modelo matem\'{a}tico riguroso con distribuciones bien definidas.
+\end{block}
+\end{frame}
+
+% ============================== SLIDE 4 ==============================
+\begin{frame}{Ejemplo motivador: llamadas al 123}
+
+\textbf{Situaci\'{o}n:} La l\'{i}nea de emergencias 123 recibe en promedio $\lambda = 4$ llamadas por minuto.
+
+\vspace{0.3cm}
+\begin{center}
+\begin{tikzpicture}[scale=0.95]
+    % Línea de tiempo
+    \draw[->, thick] (0,0) -- (13,0) node[right] {$t$ (min)};
+    \foreach \x in {0,1,...,12} {
+        \draw (\x,0.1) -- (\x,-0.1) node[below] {\tiny \x};
+    }
+    % Eventos (llamadas) - marcados con flechas
+    \foreach \x/\c in {0.3/1, 0.7/2, 1.1/3, 1.8/4, 2.1/5, 2.4/6, 2.9/7, 3.5/8,
+        4.0/9, 4.2/10, 4.9/11, 5.6/12, 5.8/13, 6.3/14, 6.5/15, 7.1/16,
+        7.8/17, 8.0/18, 8.3/19, 8.9/20, 9.2/21, 9.8/22, 10.1/23, 10.5/24,
+        10.9/25, 11.2/26, 11.6/27, 12.0/28} {
+        \draw[rojoclaro, thick] (\x,0) -- (\x,0.5);
+        \fill[rojoclaro] (\x,0.5) circle (1.5pt);
+    }
+    % Anotaciones
+    \draw[<->, thick, azuloscuro] (0,-0.6) -- (3,-0.6);
+    \node[below, azuloscuro] at (1.5,-0.6) {\small 7 llamadas en 3 min};
+    \draw[<->, thick, verdeoscuro] (5,-0.6) -- (8,-0.6);
+    \node[below, verdeoscuro] at (6.5,-0.6) {\small 5 llamadas en 3 min};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Preguntas naturales:}
+\begin{itemize}
+    \item ?`Cu\'{a}l es la probabilidad de recibir exactamente 10 llamadas en 2 minutos?
+    \item ?`Cu\'{a}nto tiempo pasar\'{a} hasta la pr\'{o}xima llamada?
+    \item ?`Cu\'{a}nto tiempo hasta la 5\textsuperscript{a} llamada?
+\end{itemize}
+
+El proceso de Poisson responde \textbf{todas} estas preguntas.
+\end{frame}
+
+% ======================================================================
+\section{Proceso de Conteo}
+% ======================================================================
+
+% ============================== SLIDE 5 ==============================
+\begin{frame}{Proceso de conteo: definici\'{o}n}
+
+\begin{block}{Definici\'{o}n: Proceso de conteo}
+Un \textbf{proceso de conteo} $\{N(t), \; t \geq 0\}$ es un proceso estoc\'{a}stico donde $N(t)$ representa el n\'{u}mero total de eventos ocurridos hasta el tiempo $t$.
+\end{block}
+
+\vspace{0.3cm}
+\textbf{Propiedades b\'{a}sicas:}
+\begin{enumerate}
+    \item $N(t) \geq 0$ para todo $t$
+    \item $N(t)$ toma valores enteros
+    \item Si $s < t$, entonces $N(s) \leq N(t)$
+    \item $N(t) - N(s)$ = n\'{u}mero de eventos en el intervalo $(s, t]$
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Ejemplo (123):} Si a las 10:00 van 15 llamadas y a las 10:03 van 27:
+\[
+N(3) - N(0) = 27 - 15 = 12 \text{ llamadas en esos 3 minutos}
+\]
+\end{frame}
+
+% ============================== SLIDE 6 ==============================
+\begin{frame}{Visualizaci\'{o}n: trayectoria de $N(t)$}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=6.5cm,
+    xlabel={Tiempo $t$ (minutos)},
+    ylabel={$N(t)$: n\'{u}mero acumulado de llamadas},
+    xmin=0, xmax=5,
+    ymin=0, ymax=22,
+    grid=both, grid style={gray!20},
+    axis lines=left,
+    const plot mark right,
+    thick,
+    ytick={0,2,...,22},
+]
+\addplot[azuloscuro, line width=1.5pt, const plot mark right] coordinates {
+    (0,0) (0.15,1) (0.4,2) (0.55,3) (0.9,4) (1.05,5) (1.2,6) (1.5,7) (1.75,8)
+    (2.0,9) (2.1,10) (2.45,11) (2.8,12) (2.9,13) (3.15,14) (3.25,15) (3.55,16)
+    (3.9,17) (4.0,18) (4.15,19) (4.45,20) (5.0,21)
+};
+
+% Incrementos
+\draw[<->, thick, rojoclaro] (axis cs:1,0.5) -- (axis cs:2,0.5);
+\node[below, rojoclaro, font=\small] at (axis cs:1.5,0.5) {$N(2)-N(1)=4$};
+
+\draw[<->, thick, verdeoscuro] (axis cs:3,0.5) -- (axis cs:4,0.5);
+\node[below, verdeoscuro, font=\small] at (axis cs:3.5,0.5) {$N(4)-N(3)=3$};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+Funci\'{o}n escalonada creciente: salta en +1 cada vez que llega una llamada.
+\end{frame}
+
+% ======================================================================
+\section{Definici\'{o}n del Proceso de Poisson}
+% ======================================================================
+
+% ============================== SLIDE 7 ==============================
+\begin{frame}{Axiomas del proceso de Poisson}
+
+\begin{block}{Definici\'{o}n: Proceso de Poisson con tasa $\lambda$}
+$\{N(t), t \geq 0\}$ es un proceso de Poisson con tasa $\lambda > 0$ si:
+\end{block}
+
+\vspace{0.2cm}
+\begin{enumerate}
+    \item \textbf{Inicio en cero:} $N(0) = 0$.
+
+    \vspace{0.2cm}
+    \item \textbf{Incrementos independientes:} El n\'{u}mero de eventos en intervalos disjuntos son variables aleatorias independientes.
+
+    \vspace{0.2cm}
+    \item \textbf{Incrementos estacionarios:} La distribuci\'{o}n de $N(t+s) - N(s)$ depende solo de la longitud $t$, no de la posici\'{o}n $s$.
+
+    \vspace{0.2cm}
+    \item \textbf{Sin eventos simult\'{a}neos:} Para $h$ peque\~{n}o:
+    \begin{align}
+        P(N(h) = 1) &= \lambda h + o(h) \\
+        P(N(h) \geq 2) &= o(h)
+    \end{align}
+    donde $o(h)/h \to 0$ cuando $h \to 0$.
+\end{enumerate}
+\end{frame}
+
+% ============================== SLIDE 8 ==============================
+\begin{frame}{Interpretaci\'{o}n intuitiva de los axiomas}
+
+\textbf{Ejemplo:} llamadas al 123 con $\lambda = 4$ llamadas/min.
+
+\vspace{0.3cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Incrementos independientes:}
+
+Las llamadas entre 10:00--10:05 no afectan las de 10:05--10:10.
+
+\vspace{0.2cm}
+Que hayan llegado muchas llamadas en los \'{u}ltimos 5 min \textbf{no cambia} la probabilidad de llamadas futuras.
+
+\vspace{0.3cm}
+\textbf{Incrementos estacionarios:}
+
+La probabilidad de recibir 3 llamadas en 1 minuto es la misma a las 10:00 que a las 15:00.
+
+\column{0.5\textwidth}
+\textbf{Sin eventos simult\'{a}neos:}
+
+En un instante infinitesimal $dt$:
+\begin{itemize}
+    \item Prob.\ de 1 llamada $\approx 4\,dt$
+    \item Prob.\ de 2+ llamadas $\approx 0$
+    \item Prob.\ de 0 llamadas $\approx 1 - 4\,dt$
+\end{itemize}
+
+\vspace{0.3cm}
+Si $dt = 0.001$ min (0.06 seg):
+\begin{itemize}
+    \item $P(\text{1 llamada}) \approx 0.004$
+    \item $P(\text{0 llamadas}) \approx 0.996$
+    \item $P(\text{2+ llamadas}) \approx 0$
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ============================== SLIDE 9 ==============================
+\begin{frame}{Definici\'{o}n alternativa (equivalente)}
+
+\begin{block}{Definici\'{o}n alternativa}
+$\{N(t), t \geq 0\}$ es un proceso de Poisson de tasa $\lambda$ si:
+\begin{enumerate}
+    \item $N(0) = 0$
+    \item Tiene incrementos independientes y estacionarios
+    \item $N(t) \sim \text{Poisson}(\lambda t)$ para todo $t > 0$
+\end{enumerate}
+\end{block}
+
+\vspace{0.3cm}
+Es decir:
+\[
+P(N(t) = k) = \frac{e^{-\lambda t}(\lambda t)^k}{k!}, \quad k = 0, 1, 2, \ldots
+\]
+
+\vspace{0.3cm}
+\textbf{Ejemplo (123):} ?`Probabilidad de exactamente 10 llamadas en 2 minutos?
+\[
+P(N(2) = 10) = \frac{e^{-8} \cdot 8^{10}}{10!} = \frac{e^{-8} \cdot 1073741824}{3628800} \approx 0.0993
+\]
+con $\lambda t = 4 \times 2 = 8$.
+\end{frame}
+
+% ======================================================================
+\section{Distribuci\'{o}n de Poisson}
+% ======================================================================
+
+% ============================== SLIDE 10 ==============================
+\begin{frame}{Distribuci\'{o}n de Poisson: resumen}
+
+\begin{block}{$X \sim \text{Poisson}(\mu)$}
+Modela el \textbf{n\'{u}mero de eventos} en un intervalo fijo.
+\[
+P(X = k) = \frac{e^{-\mu}\,\mu^k}{k!}, \quad k = 0, 1, 2, \ldots
+\]
+\end{block}
+
+\vspace{0.2cm}
+\textbf{Propiedades:}
+\begin{columns}
+\column{0.45\textwidth}
+\begin{itemize}
+    \item $E[X] = \mu$
+    \item $\text{Var}(X) = \mu$
+    \item $E[X] = \text{Var}(X)$ siempre
+    \item Soporte: $\{0, 1, 2, \ldots\}$
+\end{itemize}
+
+\column{0.55\textwidth}
+\textbf{Propiedad de suma:}
+
+Si $X_1 \sim \text{Poisson}(\mu_1)$ y $X_2 \sim \text{Poisson}(\mu_2)$ son independientes:
+\[
+X_1 + X_2 \sim \text{Poisson}(\mu_1 + \mu_2)
+\]
+\end{columns}
+
+\vspace{0.3cm}
+\textbf{Ejemplo (123):} En 5 minutos, el n\'{u}mero de llamadas $N(5) \sim \text{Poisson}(20)$.
+\[
+E[N(5)] = 20, \quad \text{Var}(N(5)) = 20, \quad \text{DE}(N(5)) = \sqrt{20} \approx 4.47
+\]
+\end{frame}
+
+% ============================== SLIDE 11 ==============================
+\begin{frame}{Forma de la distribuci\'{o}n de Poisson}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=6.5cm,
+    xlabel={$k$ (n\'{u}mero de eventos)},
+    ylabel={$P(X = k)$},
+    xmin=-0.5, xmax=20,
+    ymin=0, ymax=0.4,
+    grid=both, grid style={gray!15},
+    legend pos=north east,
+    ybar,
+    bar width=2pt,
+    xtick={0,2,...,20},
+]
+
+% mu=2
+\addplot[fill=azuloscuro, draw=azuloscuro, opacity=0.7] coordinates {
+(0,0.1353) (1,0.2707) (2,0.2707) (3,0.1804) (4,0.0902)
+(5,0.0361) (6,0.0120) (7,0.0034) (8,0.0009) (9,0.0002)
+};
+\addlegendentry{$\mu = 2$}
+
+% mu=5
+\addplot[fill=rojoclaro, draw=rojoclaro, opacity=0.7] coordinates {
+(0,0.0067) (1,0.0337) (2,0.0842) (3,0.1404) (4,0.1755)
+(5,0.1755) (6,0.1462) (7,0.1044) (8,0.0653) (9,0.0363)
+(10,0.0181) (11,0.0082) (12,0.0034) (13,0.0013) (14,0.0005)
+};
+\addlegendentry{$\mu = 5$}
+
+% mu=10
+\addplot[fill=verdeoscuro, draw=verdeoscuro, opacity=0.7] coordinates {
+(0,0.0000) (1,0.0005) (2,0.0023) (3,0.0076) (4,0.0189)
+(5,0.0378) (6,0.0631) (7,0.0901) (8,0.1126) (9,0.1251)
+(10,0.1251) (11,0.1137) (12,0.0948) (13,0.0729) (14,0.0521)
+(15,0.0347) (16,0.0217) (17,0.0128) (18,0.0071) (19,0.0037) (20,0.0019)
+};
+\addlegendentry{$\mu = 10$}
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+A mayor $\mu$, la distribuci\'{o}n se desplaza a la derecha y se vuelve m\'{a}s sim\'{e}trica (aproximaci\'{o}n normal).
+\end{frame}
+
+% ============================== SLIDE 12 ==============================
+\begin{frame}{Ejemplo completo: Poisson en acci\'{o}n}
+
+\textbf{Situaci\'{o}n:} Un sitio web recibe en promedio $\lambda = 3$ visitas por segundo.
+
+\vspace{0.3cm}
+\textbf{Pregunta 1:} ?`Probabilidad de 0 visitas en 1 segundo?
+\[
+P(N(1) = 0) = \frac{e^{-3}\cdot 3^0}{0!} = e^{-3} \approx 0.0498 \approx 5\%
+\]
+
+\textbf{Pregunta 2:} ?`Probabilidad de m\'{a}s de 5 visitas en 1 segundo?
+\[
+P(N(1) > 5) = 1 - \sum_{k=0}^{5} \frac{e^{-3}\cdot 3^k}{k!} = 1 - 0.9161 = 0.0839 \approx 8.4\%
+\]
+
+\textbf{Pregunta 3:} ?`Probabilidad de exactamente 20 visitas en 5 segundos?
+
+Con $\mu = \lambda t = 3\times 5 = 15$:
+\[
+P(N(5) = 20) = \frac{e^{-15}\cdot 15^{20}}{20!} \approx 0.0418 \approx 4.2\%
+\]
+\end{frame}
+
+% ======================================================================
+\section{Distribuci\'{o}n Exponencial}
+% ======================================================================
+
+% ============================== SLIDE 13 ==============================
+\begin{frame}{Del conteo al tiempo: distribuci\'{o}n exponencial}
+
+Si los eventos siguen un proceso de Poisson de tasa $\lambda$, ?`cu\'{a}nto tiempo transcurre \textbf{entre eventos consecutivos}?
+
+\vspace{0.3cm}
+Sea $T_1$ el tiempo hasta el primer evento. Entonces:
+\[
+P(T_1 > t) = P(N(t) = 0) = e^{-\lambda t}
+\]
+
+Por lo tanto:
+\[
+F_{T_1}(t) = P(T_1 \leq t) = 1 - e^{-\lambda t}, \quad t \geq 0
+\]
+
+\begin{block}{Resultado fundamental}
+Los \textbf{tiempos entre llegadas} de un proceso de Poisson($\lambda$) son variables aleatorias \textbf{exponenciales} con par\'{a}metro $\lambda$:
+\[
+T_i \overset{\text{iid}}{\sim} \text{Exp}(\lambda)
+\]
+independientes e id\'{e}nticamente distribuidas.
+\end{block}
+
+\textbf{Ejemplo (123):} El tiempo entre llamadas es Exp(4), con media $1/4 = 0.25$ minutos = 15 segundos.
+\end{frame}
+
+% ============================== SLIDE 14 ==============================
+\begin{frame}{Distribuci\'{o}n exponencial: resumen}
+
+\begin{block}{$T \sim \text{Exp}(\lambda)$}
+Modela el \textbf{tiempo entre eventos} consecutivos.
+\[
+f(t) = \lambda e^{-\lambda t}, \quad t \geq 0 \qquad\qquad F(t) = 1 - e^{-\lambda t}
+\]
+\end{block}
+
+\vspace{0.2cm}
+\textbf{Propiedades clave:}
+\renewcommand{\arraystretch}{1.4}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Propiedad} & \textbf{Valor} \\
+\midrule
+Media & $E[T] = 1/\lambda$ \\
+Varianza & $\text{Var}(T) = 1/\lambda^2$ \\
+Coeficiente de variaci\'{o}n & $CV = 1$ (siempre) \\
+Mediana & $\ln(2)/\lambda \approx 0.693/\lambda$ \\
+Moda & $0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Ejemplo (123):} $T \sim \text{Exp}(4)$ $\Rightarrow$ $E[T] = 0.25$ min, $\text{Var}(T) = 0.0625$ min$^2$, mediana $= 0.173$ min $\approx 10.4$ seg.
+\end{frame}
+
+% ============================== SLIDE 15 ==============================
+\begin{frame}{Densidad y CDF de la exponencial}
+
+\begin{columns}
+\column{0.5\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=7cm, height=5.5cm,
+    xlabel={$t$},
+    ylabel={$f(t) = \lambda e^{-\lambda t}$},
+    title={\textbf{Densidad (PDF)}},
+    xmin=0, xmax=3,
+    ymin=0, ymax=4.5,
+    grid=both, grid style={gray!15},
+    legend pos=north east,
+    legend style={font=\tiny},
+]
+\addplot[thick, azuloscuro, domain=0:3, samples=100] {1*exp(-1*x)};
+\addlegendentry{$\lambda=1$}
+\addplot[thick, rojoclaro, domain=0:3, samples=100] {2*exp(-2*x)};
+\addlegendentry{$\lambda=2$}
+\addplot[thick, verdeoscuro, domain=0:3, samples=100] {4*exp(-4*x)};
+\addlegendentry{$\lambda=4$}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\column{0.5\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=7cm, height=5.5cm,
+    xlabel={$t$},
+    ylabel={$F(t) = 1-e^{-\lambda t}$},
+    title={\textbf{Acumulada (CDF)}},
+    xmin=0, xmax=3,
+    ymin=0, ymax=1.1,
+    grid=both, grid style={gray!15},
+    legend pos=south east,
+    legend style={font=\tiny},
+]
+\addplot[thick, azuloscuro, domain=0:3, samples=100] {1-exp(-1*x)};
+\addlegendentry{$\lambda=1$}
+\addplot[thick, rojoclaro, domain=0:3, samples=100] {1-exp(-2*x)};
+\addlegendentry{$\lambda=2$}
+\addplot[thick, verdeoscuro, domain=0:3, samples=100] {1-exp(-4*x)};
+\addlegendentry{$\lambda=4$}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\end{columns}
+
+\vspace{0.3cm}
+A mayor $\lambda$, los tiempos entre eventos son m\'{a}s cortos (la densidad se concentra cerca de 0).
+\end{frame}
+
+% ============================== SLIDE 16 ==============================
+\begin{frame}{Propiedad de falta de memoria}
+
+\begin{block}{Teorema: Falta de memoria (memoryless)}
+Si $T \sim \text{Exp}(\lambda)$, entonces para todo $s, t > 0$:
+\[
+P(T > s + t \mid T > s) = P(T > t)
+\]
+La exponencial es la \textbf{\'{u}nica} distribuci\'{o}n continua con esta propiedad.
+\end{block}
+
+\vspace{0.2cm}
+\textbf{Demostraci\'{o}n:}
+\[
+P(T > s+t \mid T > s) = \frac{P(T > s+t)}{P(T > s)} = \frac{e^{-\lambda(s+t)}}{e^{-\lambda s}} = e^{-\lambda t} = P(T > t) \quad \square
+\]
+
+\vspace{0.2cm}
+\textbf{Ejemplo (123):} Si han pasado 20 segundos sin llamada, la probabilidad de esperar al menos 10 segundos m\'{a}s es \textbf{la misma} que si acabara de llegar una llamada:
+\[
+P(T > 30\text{s} \mid T > 20\text{s}) = P(T > 10\text{s}) = e^{-4/6} \approx 0.513
+\]
+El sistema ``no recuerda'' cu\'{a}nto lleva esperando.
+\end{frame}
+
+% ============================== SLIDE 17 ==============================
+\begin{frame}{Importancia de la falta de memoria en simulaci\'{o}n}
+
+?`Por qu\'{e} es tan importante esta propiedad?
+
+\vspace{0.3cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Simplifica el an\'{a}lisis:}
+\begin{itemize}
+    \item El estado futuro del sistema solo depende del estado \textbf{actual}, no de la historia
+    \item Esto hace que el sistema sea \textbf{Markoviano}
+    \item Permite soluciones anal\'{i}ticas cerradas ($M/M/c$, etc.)
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Pero es tambi\'{e}n una limitaci\'{o}n:}
+\begin{itemize}
+    \item En la realidad, muchos tiempos de servicio \textbf{no} son memoryless
+    \item Un m\'{e}dico que lleva 30 min con un paciente probablemente terminar\'{a} pronto
+    \item Esto motiva usar distribuciones m\'{a}s generales (Gamma, Weibull, etc.)
+\end{itemize}
+\end{columns}
+
+\vspace{0.4cm}
+\begin{alertblock}{Conexi\'{o}n fundamental}
+Proceso de Poisson $\Leftrightarrow$ Tiempos inter-evento exponenciales $\Leftrightarrow$ Propiedad de falta de memoria. Los tres son equivalentes.
+\end{alertblock}
+\end{frame}
+
+% ============================== SLIDE 18 ==============================
+\begin{frame}{Ejemplo: c\'{a}lculos con la exponencial}
+
+\textbf{Situaci\'{o}n:} Un cajero de banco atiende clientes con tiempo de servicio $S \sim \text{Exp}(\mu = 6)$ clientes/hora (media = 10 min).
+
+\vspace{0.3cm}
+\textbf{Pregunta 1:} ?`Probabilidad de que un servicio dure m\'{a}s de 15 minutos?
+\[
+P(S > 0.25\text{ h}) = e^{-6(0.25)} = e^{-1.5} \approx 0.2231 \approx 22.3\%
+\]
+
+\textbf{Pregunta 2:} ?`Probabilidad de terminar en menos de 5 minutos?
+\[
+P(S < 1/12\text{ h}) = 1 - e^{-6/12} = 1 - e^{-0.5} \approx 0.3935 \approx 39.4\%
+\]
+
+\textbf{Pregunta 3:} Si ya lleva 10 min, ?`prob.\ de durar al menos 5 min m\'{a}s?
+\[
+P(S > 15 \mid S > 10) = P(S > 5) = e^{-6(1/12)} = e^{-0.5} \approx 0.6065
+\]
+(falta de memoria: es como si empezara de nuevo).
+\end{frame}
+
+% ======================================================================
+\section{Distribuci\'{o}n Gamma (Erlang)}
+% ======================================================================
+
+% ============================== SLIDE 19 ==============================
+\begin{frame}{Del primer evento al $n$-\'{e}simo: distribuci\'{o}n Gamma}
+
+?`Cu\'{a}nto tiempo $S_n$ pasa hasta que ocurran los primeros $n$ eventos?
+
+\[
+S_n = T_1 + T_2 + \cdots + T_n, \quad T_i \overset{\text{iid}}{\sim} \text{Exp}(\lambda)
+\]
+
+\begin{block}{Resultado}
+$S_n$ sigue una distribuci\'{o}n \textbf{Gamma} (o Erlang si $n$ entero):
+\[
+S_n \sim \text{Gamma}(n, \lambda)
+\]
+con densidad:
+\[
+f_{S_n}(t) = \frac{\lambda^n\, t^{n-1}\, e^{-\lambda t}}{(n-1)!}, \quad t > 0
+\]
+\end{block}
+
+\vspace{0.2cm}
+\textbf{Propiedades:}
+\begin{itemize}
+    \item $E[S_n] = n/\lambda$
+    \item $\text{Var}(S_n) = n/\lambda^2$
+    \item $CV(S_n) = 1/\sqrt{n}$ (decrece con $n$)
+\end{itemize}
+\end{frame}
+
+
+\section{Distribución Gamma (Erlang)}
+% ======================================================================
+% ============================== SLIDE 19 ==============================
+\begin{frame}{Del primer evento al $n$-ésimo: distribución Gamma}
+¿Cuánto tiempo $S_n$ pasa hasta que ocurran los primeros $n$ eventos?
+\[
+S_n = T_1 + T_2 + \cdots + T_n, \quad T_i \overset{\text{iid}}{\sim} \text{Exp}(\lambda)
+\]
+\begin{block}{Resultado}
+$S_n \sim \text{Gamma}(n, \lambda)$ con densidad y \textbf{acumulada}:
+\[
+f_{S_n}(t) = \frac{\lambda^n\, t^{n-1}\, e^{-\lambda t}}{(n-1)!}, \quad t > 0
+\qquad\qquad
+F_{S_n}(t) = P(S_n \le t) = 1 - \sum_{k=0}^{n-1} \frac{e^{-\lambda t}(\lambda t)^k}{k!}
+\]
+\end{block}
+
+\begin{alertblock}{Dualidad Poisson--Gamma (¡clave!)}
+La acumulada de la Gamma \textbf{es} la cola de la Poisson:
+\[
+\underbrace{P(S_n \le t)}_{\substack{\text{el }n\text{-ésimo evento}\\\text{ocurre antes de }t}}
+\;=\;
+\underbrace{P\!\left(N(t) \ge n\right)}_{\substack{\text{al menos }n\text{ eventos}\\\text{ocurren en }[0,t]}}
+\;=\;
+1 - \sum_{k=0}^{n-1} \frac{e^{-\lambda t}(\lambda t)^k}{k!}
+\]
+\textbf{No se necesitan tablas de la Gamma}: basta sumar términos de Poisson.
+\end{alertblock}
+
+\vspace{0.15cm}
+\textbf{Propiedades:} \;
+$E[S_n] = n/\lambda$, \quad
+$\text{Var}(S_n) = n/\lambda^2$, \quad
+$CV(S_n) = 1/\sqrt{n}$ (decrece con $n$).
+\end{frame}
+
+% ============================== SLIDE 20 ==============================
+\begin{frame}{Ejemplo: tiempo hasta el $n$-\'{e}simo evento}
+
+\textbf{Situaci\'{o}n (123):} $\lambda = 4$ llamadas/min. ?`Cu\'{a}nto tiempo hasta la 5\textsuperscript{a} llamada?
+
+\vspace{0.2cm}
+$S_5 \sim \text{Gamma}(5, 4)$ con:
+\begin{itemize}
+    \item $E[S_5] = 5/4 = 1.25$ minutos
+    \item $\text{DE}(S_5) = \sqrt{5}/4 \approx 0.559$ minutos
+\end{itemize}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=11cm, height=5cm,
+    xlabel={$t$ (minutos)},
+    ylabel={$f_{S_n}(t)$},
+    xmin=0, xmax=5,
+    ymin=0, ymax=1.8,
+    grid=both, grid style={gray!15},
+    legend pos=north east,
+    legend style={font=\small},
+]
+% Gamma(1,4) = Exp(4)
+\addplot[thick, azuloscuro, domain=0.01:5, samples=150] {4*exp(-4*x)};
+\addlegendentry{$n=1$ (Exp)}
+
+% Gamma(3,4)
+\addplot[thick, rojoclaro, domain=0.01:5, samples=150] {(64*x^2*exp(-4*x))/2};
+\addlegendentry{$n=3$}
+
+% Gamma(5,4)
+\addplot[thick, verdeoscuro, domain=0.01:5, samples=150] {(1024*x^4*exp(-4*x))/24};
+\addlegendentry{$n=5$}
+
+% Gamma(10,4)
+\addplot[thick, morado, domain=0.01:5, samples=150] {(4^10*x^9*exp(-4*x))/362880};
+\addlegendentry{$n=10$}
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+A mayor $n$, la densidad se concentra m\'{a}s y parece una campana (TLC).
+\end{frame}
+
+% ============================== SLIDE 21 ==============================
+\begin{frame}{Distribuci\'{o}n Gamma general}
+
+\begin{block}{$X \sim \text{Gamma}(\alpha, \beta)$}
+\[
+f(x) = \frac{\beta^\alpha}{\Gamma(\alpha)}\, x^{\alpha-1}\, e^{-\beta x}, \quad x > 0
+\]
+donde $\alpha > 0$ (forma) y $\beta > 0$ (tasa). $\Gamma(\alpha) = \int_0^\infty t^{\alpha-1}e^{-t}\,dt$.
+\end{block}
+
+\vspace{0.2cm}
+\renewcommand{\arraystretch}{1.4}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Propiedad} & \textbf{Valor} \\
+\midrule
+Media & $E[X] = \alpha / \beta$ \\
+Varianza & $\text{Var}(X) = \alpha / \beta^2$ \\
+$CV$ & $1/\sqrt{\alpha}$ \\
+Moda & $(\alpha - 1)/\beta$ si $\alpha \geq 1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Casos especiales:}
+\begin{itemize}
+    \item $\text{Gamma}(1, \lambda) = \text{Exp}(\lambda)$
+    \item $\text{Gamma}(n, \lambda)$ con $n \in \mathbb{N}$ = \textbf{Erlang-$n$}
+    \item $\text{Gamma}(\nu/2, 1/2) = \chi^2(\nu)$ (Ji-cuadrado)
+\end{itemize}
+\end{frame}
+
+% ============================== SLIDE 22 ==============================
+\begin{frame}{Conexi\'{o}n Poisson -- Gamma: dualidad}
+
+\begin{block}{Teorema de dualidad}
+Sea $N(t) \sim \text{Poisson}(\lambda t)$ y $S_n \sim \text{Gamma}(n,\lambda)$. Entonces:
+\[
+P(N(t) \geq n) = P(S_n \leq t)
+\]
+\end{block}
+
+\textbf{Interpretaci\'{o}n:} ``Al menos $n$ eventos ocurren antes de $t$'' $\equiv$ ``El $n$-\'{e}simo evento ocurre antes de $t$''.
+
+\vspace{0.3cm}
+\textbf{Ejemplo (123):} ?`Prob.\ de al menos 5 llamadas en 2 min?
+
+\vspace{0.1cm}
+\textbf{V\'{i}a Poisson:} $P(N(2) \geq 5) = 1 - \sum_{k=0}^{4}\frac{e^{-8}\cdot 8^k}{k!} \approx 1 - 0.0996 = 0.9004$
+
+\vspace{0.1cm}
+\textbf{V\'{i}a Gamma:} $P(S_5 \leq 2) = \int_0^2 \frac{4^5 t^4 e^{-4t}}{4!}\,dt = 0.9004$ \quad $\checkmark$
+
+\vspace{0.3cm}
+Ambos caminos dan el mismo resultado. Elegimos el que sea m\'{a}s conveniente para el c\'{a}lculo.
+\end{frame}
+
+% ======================================================================
+\section{Propiedades del Proceso de Poisson}
+% ======================================================================
+
+% ============================== SLIDE 23 ==============================
+\begin{frame}{Propiedad 1: Superposici\'{o}n (Merging)}
+
+\begin{block}{Teorema de superposici\'{o}n}
+Si $N_1(t)$ y $N_2(t)$ son procesos de Poisson independientes con tasas $\lambda_1$ y $\lambda_2$, entonces su uni\'{o}n $N(t) = N_1(t) + N_2(t)$ es un proceso de Poisson con tasa $\lambda_1 + \lambda_2$.
+\end{block}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}[>=Stealth, thick]
+    % Proceso 1
+    \draw[->, azuloscuro] (0,1.5) -- (5,1.5);
+    \foreach \x in {0.5, 1.3, 2.8, 3.5, 4.3} {
+        \draw[azuloscuro, thick] (\x,1.5) -- (\x,2);
+        \fill[azuloscuro] (\x,2) circle (2pt);
+    }
+    \node[left, azuloscuro] at (0,1.75) {$N_1$: $\lambda_1 = 3$};
+
+    % Proceso 2
+    \draw[->, rojoclaro] (0,0) -- (5,0);
+    \foreach \x in {0.2, 0.9, 1.7, 2.3, 3.1, 4.0, 4.7} {
+        \draw[rojoclaro, thick] (\x,0) -- (\x,0.5);
+        \fill[rojoclaro] (\x,0.5) circle (2pt);
+    }
+    \node[left, rojoclaro] at (0,0.25) {$N_2$: $\lambda_2 = 5$};
+
+    % Flecha de merge
+    \draw[->, line width=2pt] (5.5,0.75) -- (6.5,0.75);
+
+    % Proceso combinado
+    \draw[->, verdeoscuro] (7,-0.3) -- (13.5,-0.3);
+    \foreach \x in {7.2, 7.5, 7.9, 8.3, 8.7, 9.1, 9.5, 9.8, 10.3, 10.8, 11.3, 11.7} {
+        \draw[verdeoscuro, thick] (\x,-0.3) -- (\x,0.2);
+        \fill[verdeoscuro] (\x,0.2) circle (2pt);
+    }
+    \node[left, verdeoscuro] at (7,-0.05) {$N$: $\lambda = 8$};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Ejemplo:} Una tienda recibe clientes por dos puertas: puerta A ($\lambda_1 = 3$/h) y puerta B ($\lambda_2 = 5$/h). El flujo total es Poisson con $\lambda = 8$/h.
+\end{frame}
+
+% ============================== SLIDE 24 ==============================
+\begin{frame}{Ejemplo de superposici\'{o}n: sistema de urgencias}
+
+\textbf{Situaci\'{o}n:} Un hospital recibe pacientes de tres fuentes independientes:
+\begin{itemize}
+    \item Ambulancias: $\lambda_1 = 2$ pacientes/hora
+    \item Caminando: $\lambda_2 = 8$ pacientes/hora
+    \item Remisiones: $\lambda_3 = 1.5$ pacientes/hora
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Flujo total:} $\lambda = 2 + 8 + 1.5 = 11.5$ pacientes/hora (Poisson).
+
+\vspace{0.3cm}
+\textbf{Pregunta:} ?`Probabilidad de m\'{a}s de 15 pacientes en 1 hora?
+\[
+P(N(1) > 15) = 1 - \sum_{k=0}^{15} \frac{e^{-11.5}\cdot 11.5^k}{k!} \approx 1 - 0.8914 = 0.1086
+\]
+
+\textbf{Pregunta:} ?`Tiempo promedio entre llegadas al sistema total?
+\[
+E[T] = \frac{1}{\lambda} = \frac{1}{11.5} \approx 5.22 \text{ minutos}
+\]
+\end{frame}
+
+% ============================== SLIDE 25 ==============================
+\begin{frame}{Propiedad 2: Descomposici\'{o}n (Thinning)}
+
+\begin{block}{Teorema de descomposici\'{o}n (Thinning)}
+Si $N(t)$ es Poisson($\lambda$) y cada evento se clasifica de forma independiente como tipo~A con prob.\ $p$ o tipo~B con prob.\ $1-p$, entonces:
+\begin{itemize}
+    \item $N_A(t) \sim \text{Poisson}(\lambda p)$
+    \item $N_B(t) \sim \text{Poisson}(\lambda(1-p))$
+    \item $N_A(t)$ y $N_B(t)$ son \textbf{independientes}
+\end{itemize}
+\end{block}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}[>=Stealth, thick]
+    % Proceso original
+    \draw[->] (0,0) -- (5,0);
+    \foreach \x/\c in {0.3/A, 0.8/B, 1.2/A, 1.9/B, 2.3/A, 2.7/B, 3.1/A, 3.6/B, 4.0/A, 4.5/B} {
+        \draw[black, thick] (\x,0) -- (\x,0.5);
+    }
+    \node[left] at (0,0.25) {$N$: $\lambda$};
+
+    \draw[->, line width=2pt] (5.5,0.5) -- (6.5,1.2);
+    \draw[->, line width=2pt] (5.5,-0.2) -- (6.5,-0.8);
+    \node at (6,1) {\small $p$};
+    \node at (6,-0.6) {\small $1-p$};
+
+    % Tipo A
+    \draw[->, azuloscuro] (7,1) -- (12,1);
+    \foreach \x in {7.3, 8.2, 9.3, 10.1, 11.0} {
+        \draw[azuloscuro, thick] (\x,1) -- (\x,1.5);
+        \fill[azuloscuro] (\x,1.5) circle (2pt);
+    }
+    \node[right, azuloscuro] at (12,1.25) {$N_A$: $\lambda p$};
+
+    % Tipo B
+    \draw[->, rojoclaro] (7,-1) -- (12,-1);
+    \foreach \x in {7.8, 8.9, 9.7, 10.6, 11.5} {
+        \draw[rojoclaro, thick] (\x,-1) -- (\x,-0.5);
+        \fill[rojoclaro] (\x,-0.5) circle (2pt);
+    }
+    \node[right, rojoclaro] at (12,-0.75) {$N_B$: $\lambda(1-p)$};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ============================== SLIDE 26 ==============================
+\begin{frame}{Ejemplo de descomposici\'{o}n: correo electr\'{o}nico}
+
+\textbf{Situaci\'{o}n:} Un servidor de correo recibe $\lambda = 20$ correos/minuto. Cada correo tiene probabilidad $p = 0.15$ de ser spam (independiente).
+
+\vspace{0.3cm}
+\textbf{Por descomposici\'{o}n:}
+\begin{itemize}
+    \item Spam: Poisson($20 \times 0.15 = 3$ correos/min)
+    \item Leg\'{i}timos: Poisson($20 \times 0.85 = 17$ correos/min)
+    \item Ambos flujos son \textbf{independientes} entre s\'{i}
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Pregunta:} ?`Prob.\ de 0 spam en 1 minuto?
+\[
+P(N_{\text{spam}}(1) = 0) = e^{-3} \approx 0.0498 \approx 5\%
+\]
+
+\textbf{Pregunta:} ?`Prob.\ de exactamente 2 spam \textbf{y} 15 leg\'{i}timos en 1 minuto?
+
+Por independencia:
+\[
+P(N_S=2) \times P(N_L=15) = \frac{e^{-3}\cdot 3^2}{2!} \times \frac{e^{-17}\cdot 17^{15}}{15!} \approx 0.2240 \times 0.0847 \approx 0.0190
+\]
+\end{frame}
+
+% ============================== SLIDE 27 ==============================
+\begin{frame}{Propiedad 3: Distribuci\'{o}n condicional de llegadas}
+
+\begin{block}{Teorema (Distribuci\'{o}n uniforme condicional)}
+Dado que ocurri\'{o} \textbf{exactamente 1 evento} en $(0,t]$, su instante de llegada $\tau$ se distribuye \textbf{uniformemente} en $(0,t]$:
+\[
+\tau \mid N(t)=1 \;\sim\; \text{Uniforme}(0,t)
+\]
+\end{block}
+
+\vspace{0.2cm}
+\textbf{Generalizaci\'{o}n:} Dado que $N(t)=n$, los $n$ instantes de llegada $\tau_1 < \tau_2 < \cdots < \tau_n$ se distribuyen como las \textbf{estad\'{i}sticas de orden} de $n$ v.a.\ Uniforme$(0,t)$ independientes.
+
+\vspace{0.3cm}
+\textbf{Ejemplo (123):} Si sabemos que hubo exactamente 3 llamadas entre 10:00 y 10:05, entonces sus instantes de llegada son como 3 puntos al azar en ese intervalo de 5 minutos, sin ninguna preferencia por ning\'{u}n subintervalo.
+
+\vspace{0.2cm}
+Esta propiedad es fundamental para la \textbf{simulaci\'{o}n}: generar $n$ uniformes y ordenarlas es equivalente a generar $n$ exponenciales acumuladas.
+\end{frame}
+
+% ============================== SLIDE 28 ==============================
+\begin{frame}{Propiedad 4: Competencia entre exponenciales}
+
+\begin{block}{Teorema (M\'{i}nimo de exponenciales)}
+Si $T_1 \sim \text{Exp}(\lambda_1)$ y $T_2 \sim \text{Exp}(\lambda_2)$ son independientes:
+\begin{enumerate}
+    \item $\min(T_1, T_2) \sim \text{Exp}(\lambda_1 + \lambda_2)$
+    \item $P(T_1 < T_2) = \dfrac{\lambda_1}{\lambda_1 + \lambda_2}$
+\end{enumerate}
+\end{block}
+
+\vspace{0.2cm}
+\textbf{Ejemplo: dos servidores.} Un servidor A tiene tiempo de servicio Exp(3) y un servidor B tiene Exp(5). Si ambos empiezan al mismo tiempo:
+
+\vspace{0.2cm}
+\begin{itemize}
+    \item El primero en terminar lo har\'{a} en tiempo $\sim$ Exp(8), con media $= 1/8 = 7.5$ min.
+    \item Probabilidad de que A termine primero: $3/(3+5) = 37.5\%$.
+    \item Probabilidad de que B termine primero: $5/(3+5) = 62.5\%$.
+\end{itemize}
+
+\vspace{0.2cm}
+Se generaliza a $n$ exponenciales: $\min(T_1, \ldots, T_n) \sim \text{Exp}(\sum \lambda_i)$.
+\end{frame}
+
+% ============================== SLIDE 29 ==============================
+\begin{frame}{Ejemplo: competencia en un sistema de colas}
+
+\textbf{Situaci\'{o}n:} Un sistema $M/M/2$ con $\lambda = 5$, $\mu_1 = 3$, $\mu_2 = 3$. Ambos servidores est\'{a}n ocupados. ?`Qu\'{e} pasa primero: llega un nuevo cliente o termina un servicio?
+
+\vspace{0.3cm}
+Tres ``relojes'' exponenciales compitiendo:
+\begin{itemize}
+    \item Pr\'{o}xima llegada: $T_A \sim \text{Exp}(5)$
+    \item Fin servicio 1: $T_{S1} \sim \text{Exp}(3)$
+    \item Fin servicio 2: $T_{S2} \sim \text{Exp}(3)$
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{El m\'{i}nimo:} $\min(T_A, T_{S1}, T_{S2}) \sim \text{Exp}(5+3+3) = \text{Exp}(11)$.
+
+\vspace{0.2cm}
+\textbf{Probabilidades:}
+\begin{align}
+P(\text{llega cliente primero}) &= \frac{5}{11} \approx 45.5\% \\
+P(\text{servidor 1 termina primero}) &= \frac{3}{11} \approx 27.3\% \\
+P(\text{servidor 2 termina primero}) &= \frac{3}{11} \approx 27.3\%
+\end{align}
+
+Esta es exactamente la l\'{o}gica que usa el simulador de eventos discretos para decidir cu\'{a}l evento ocurre primero.
+\end{frame}
+
+% ======================================================================
+\section{Distribuci\'{o}n Uniforme}
+% ======================================================================
+
+% ============================== SLIDE 30 ==============================
+\begin{frame}{Distribuci\'{o}n uniforme: complemento esencial}
+
+\begin{block}{$X \sim \text{Uniforme}(a, b)$}
+Todos los valores en $[a,b]$ son igualmente probables.
+\[
+f(x) = \frac{1}{b-a}, \quad a \leq x \leq b \qquad\qquad F(x) = \frac{x-a}{b-a}
+\]
+\end{block}
+
+\vspace{0.2cm}
+\renewcommand{\arraystretch}{1.4}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Propiedad} & \textbf{Valor} \\
+\midrule
+Media & $E[X] = (a+b)/2$ \\
+Varianza & $\text{Var}(X) = (b-a)^2/12$ \\
+Soporte & $[a, b]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{Rol en simulaci\'{o}n:}
+\begin{itemize}
+    \item $U \sim \text{Uniforme}(0,1)$ es la \textbf{base} de toda generaci\'{o}n de n\'{u}meros aleatorios
+    \item M\'{e}todo de la transformada inversa: $X = F^{-1}(U)$
+    \item Para la exponencial: $T = -\frac{1}{\lambda}\ln(U) \sim \text{Exp}(\lambda)$
+\end{itemize}
+\end{frame}
+
+% ============================== SLIDE 31 ==============================
+\begin{frame}{Ejemplo: generaci\'{o}n de tiempos exponenciales}
+
+\textbf{Transformada inversa para Exp($\lambda = 4$):}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=12cm, height=5.5cm,
+    xlabel={$U \sim \text{Uniforme}(0,1)$},
+    ylabel={$T = -\frac{1}{4}\ln(U)$},
+    xmin=0, xmax=1,
+    ymin=0, ymax=2,
+    grid=both, grid style={gray!15},
+    legend pos=north east,
+]
+\addplot[thick, azuloscuro, domain=0.001:0.999, samples=200] {-0.25*ln(x)};
+\addlegendentry{$F^{-1}(u) = -\frac{1}{\lambda}\ln(u)$}
+
+% Ejemplo
+\draw[dashed, rojoclaro, thick] (axis cs:0.3,0) -- (axis cs:0.3,0.301);
+\draw[dashed, rojoclaro, thick] (axis cs:0,0.301) -- (axis cs:0.3,0.301);
+\node[left, rojoclaro, font=\small] at (axis cs:0,0.301) {$0.301$};
+\node[below, rojoclaro, font=\small] at (axis cs:0.3,0) {$0.30$};
+
+\draw[dashed, verdeoscuro, thick] (axis cs:0.7,0) -- (axis cs:0.7,0.0892);
+\draw[dashed, verdeoscuro, thick] (axis cs:0,0.0892) -- (axis cs:0.7,0.0892);
+\node[left, verdeoscuro, font=\small] at (axis cs:0,0.0892) {$0.089$};
+\node[below, verdeoscuro, font=\small] at (axis cs:0.7,0) {$0.70$};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+Si $U = 0.30$: $T = -\frac{1}{4}\ln(0.30) = 0.301$ min. Si $U = 0.70$: $T = -\frac{1}{4}\ln(0.70) = 0.089$ min.
+
+As\'{i} se generan las llegadas en un simulador del proceso de Poisson.
+\end{frame}
+
+% ======================================================================
+\section{Proceso de Poisson No Homog\'{e}neo}
+% ======================================================================
+
+% ============================== SLIDE 32 ==============================
+\begin{frame}{?`Y si la tasa cambia con el tiempo?}
+
+En la realidad, las tasas de llegada rara vez son constantes:
+
+\begin{itemize}
+    \item Las llamadas al 123 aumentan en horas pico
+    \item M\'{a}s clientes llegan a un restaurante al mediod\'{i}a
+    \item M\'{a}s accidentes ocurren en hora de mayor tr\'{a}fico
+\end{itemize}
+
+\vspace{0.3cm}
+\begin{block}{Proceso de Poisson no homog\'{e}neo (NHPP)}
+Un proceso de conteo $\{N(t)\}$ donde la tasa var\'{i}a en el tiempo: $\lambda(t)$.
+\[
+P(N(t+h) - N(t) = 1) = \lambda(t)\,h + o(h)
+\]
+El n\'{u}mero de eventos en $(s,t]$ sigue:
+\[
+N(t) - N(s) \sim \text{Poisson}\!\left(\int_s^t \lambda(u)\,du\right)
+\]
+\end{block}
+
+Mantiene incrementos independientes pero \textbf{ya no} estacionarios.
+\end{frame}
+
+% ============================== SLIDE 33 ==============================
+\begin{frame}{Ejemplo: NHPP en un call center}
+
+\textbf{Situaci\'{o}n:} Tasa de llamadas al 123 a lo largo del d\'{i}a:
+\[
+\lambda(t) = 2 + 4\sin\!\left(\frac{\pi t}{12}\right), \quad 0 \leq t \leq 24 \text{ horas}
+\]
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=12cm, height=5cm,
+    xlabel={Hora del d\'{i}a},
+    ylabel={$\lambda(t)$ (llamadas/min)},
+    xmin=0, xmax=24,
+    ymin=0, ymax=7,
+    grid=both, grid style={gray!15},
+    xtick={0,3,...,24},
+    xticklabels={0:00,3:00,6:00,9:00,12:00,15:00,18:00,21:00,24:00},
+    xticklabel style={font=\tiny, rotate=30, anchor=east},
+]
+\addplot[thick, azuloscuro, domain=0:24, samples=200] {2 + 4*sin(deg(3.14159*x/12))};
+
+% Pico
+\draw[->, thick, rojoclaro] (axis cs:6,6.5) -- (axis cs:6,5.8);
+\node[above, rojoclaro, font=\small] at (axis cs:6,6.5) {Pico: 6 llam/min};
+
+% Valle
+\draw[->, thick, verdeoscuro] (axis cs:18,1) -- (axis cs:18,1.8);
+\node[below, verdeoscuro, font=\small] at (axis cs:18,1) {Valle};
+
+% Area sombreada 9am-12pm
+\addplot[fill=blue!15, draw=none, domain=9:15] {2 + 4*sin(deg(3.14159*x/12))} \closedcycle;
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+Llamadas esperadas entre 9:00 y 15:00: $\int_9^{15}\lambda(t)\,dt \approx 26.3$ llamadas por hora $\times$ duraci\'{o}n.
+\end{frame}
+
+% ============================== SLIDE 34 ==============================
+\begin{frame}{Simulaci\'{o}n del NHPP: m\'{e}todo de thinning}
+
+\textbf{Algoritmo de Lewis-Shedler (thinning):}
+
+\vspace{0.2cm}
+Sea $\lambda^* = \max_{t}\lambda(t)$ la tasa m\'{a}xima.
+
+\vspace{0.2cm}
+\begin{enumerate}
+    \item Generar candidato del Poisson homog\'{e}neo con tasa $\lambda^*$: $t_{\text{cand}} = t + \text{Exp}(\lambda^*)$
+    \item Generar $U \sim \text{Uniforme}(0,1)$
+    \item \textbf{Aceptar} el evento si $U \leq \lambda(t_{\text{cand}})/\lambda^*$; si no, \textbf{rechazar}
+    \item Repetir
+\end{enumerate}
+
+\vspace{0.3cm}
+\begin{center}
+\begin{tikzpicture}[>=Stealth]
+    \draw[->] (0,0) -- (10,0) node[right] {$t$};
+    \draw[->] (0,0) -- (0,2.5) node[above] {$\lambda$};
+
+    % lambda*
+    \draw[dashed, rojoclaro, thick] (0,2) -- (10,2) node[right] {$\lambda^*$};
+
+    % lambda(t)
+    \draw[thick, azuloscuro, domain=0:10, samples=100] plot (\x, {1 + sin(\x*60)*0.8});
+    \node[azuloscuro, right] at (10,1) {$\lambda(t)$};
+
+    % Candidatos
+    \foreach \x/\a in {1.2/1, 2.5/0, 3.8/1, 5.0/1, 6.1/0, 7.3/1, 8.5/1, 9.2/0} {
+        \ifnum\a=1
+            \fill[verdeoscuro] (\x,0) circle (3pt);
+            \node[below, verdeoscuro, font=\tiny] at (\x,-0.15) {\checkmark};
+        \else
+            \draw[rojoclaro, thick] (\x,-0.1) -- ++(0.15,0.2) -- ++(-0.3,0) -- cycle;
+            \node[below, rojoclaro, font=\tiny] at (\x,-0.15) {$\times$};
+        \fi
+    }
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ======================================================================
+\section{Otras Distribuciones Clave}
+% ======================================================================
+
+% ============================== SLIDE 35 ==============================
+\begin{frame}{Distribuci\'{o}n Normal (Gaussiana)}
+
+\begin{block}{$X \sim N(\mu, \sigma^2)$}
+\[
+f(x) = \frac{1}{\sigma\sqrt{2\pi}} \exp\!\left(-\frac{(x-\mu)^2}{2\sigma^2}\right), \quad -\infty < x < \infty
+\]
+\end{block}
+
+\vspace{0.1cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Propiedades:}
+\begin{itemize}
+    \item $E[X] = \mu$, $\text{Var}(X) = \sigma^2$
+    \item Sim\'{e}trica alrededor de $\mu$
+    \item Regla 68-95-99.7
+    \item Cerrada bajo combinaciones lineales
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Rol en simulaci\'{o}n:}
+\begin{itemize}
+    \item TLC: promedios de muchas v.a.\ son aprox.\ normales
+    \item Intervalos de confianza
+    \item Tiempos de proceso con poca variabilidad
+\end{itemize}
+
+\column{0.5\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=6.5cm, height=5cm,
+    xlabel={$x$},
+    ylabel={$f(x)$},
+    xmin=-4, xmax=8,
+    ymin=0, ymax=0.45,
+    grid=both, grid style={gray!15},
+    legend pos=north east,
+    legend style={font=\tiny},
+]
+\addplot[thick, azuloscuro, domain=-4:8, samples=100] {exp(-x^2/2)/sqrt(2*pi)};
+\addlegendentry{$N(0,1)$}
+\addplot[thick, rojoclaro, domain=-4:8, samples=100] {exp(-(x-2)^2/8)/sqrt(8*pi)};
+\addlegendentry{$N(2,4)$}
+\addplot[thick, verdeoscuro, domain=-4:8, samples=100] {exp(-(x-3)^2/2)/sqrt(2*pi)};
+\addlegendentry{$N(3,1)$}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ============================== SLIDE 36 ==============================
+\begin{frame}{Ejemplo: Normal y TLC en simulaci\'{o}n}
+
+\textbf{Situaci\'{o}n:} Estimamos $\bar{W}$ (tiempo promedio en sistema) con $n=100$ observaciones. Cada $W_i$ tiene media $\mu_W = 1.09$ min y DE $= 0.8$ min.
+
+\vspace{0.3cm}
+Por el \textbf{Teorema Central del L\'{i}mite}:
+\[
+\bar{W} \approx N\!\left(\mu_W,\; \frac{\sigma^2}{n}\right) = N\!\left(1.09,\; \frac{0.64}{100}\right)
+\]
+
+\vspace{0.2cm}
+\textbf{Intervalo de confianza al 95\%:}
+\[
+\bar{W} \pm z_{0.025}\cdot\frac{\sigma}{\sqrt{n}} = 1.09 \pm 1.96 \cdot \frac{0.8}{\sqrt{100}} = 1.09 \pm 0.157
+\]
+\[
+\text{IC: } [0.933, \; 1.247]
+\]
+
+\vspace{0.2cm}
+Con $n = 400$: IC $= 1.09 \pm 0.078 = [1.012, 1.168]$ (m\'{a}s estrecho).
+
+\vspace{0.2cm}
+La normal es esencial para cuantificar la \textbf{precisi\'{o}n} de nuestras estimaciones por simulaci\'{o}n.
+\end{frame}
+
+% ============================== SLIDE 37 ==============================
+\begin{frame}{Distribuci\'{o}n Weibull}
+
+\begin{block}{$X \sim \text{Weibull}(\alpha, \beta)$}
+\[
+f(x) = \frac{\alpha}{\beta}\left(\frac{x}{\beta}\right)^{\alpha-1}\exp\!\left(-\left(\frac{x}{\beta}\right)^{\alpha}\right), \quad x > 0
+\]
+$\alpha$ = forma, $\beta$ = escala.
+\end{block}
+
+\vspace{0.2cm}
+\textbf{Propiedades especiales:}
+\begin{itemize}
+    \item $\alpha = 1$: Weibull $= $ Exponencial (tasa constante de falla)
+    \item $\alpha < 1$: Tasa de falla \textbf{decreciente} (mortalidad infantil)
+    \item $\alpha > 1$: Tasa de falla \textbf{creciente} (desgaste, envejecimiento)
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Ejemplo:} Vida \'{u}til de un motor con $\alpha = 2.5$, $\beta = 5000$ horas.
+\begin{itemize}
+    \item $E[X] = 5000\,\Gamma(1 + 1/2.5) \approx 5000 \times 0.887 = 4435$ horas
+    \item La tasa de falla \textbf{aumenta} con el tiempo (desgaste), a diferencia de la exponencial
+\end{itemize}
+\end{frame}
+
+% ============================== SLIDE 38 ==============================
+\begin{frame}{Distribuci\'{o}n Lognormal}
+
+\begin{block}{$X \sim \text{Lognormal}(\mu, \sigma^2)$}
+Si $\ln(X) \sim N(\mu, \sigma^2)$, entonces $X$ es lognormal.
+\[
+f(x) = \frac{1}{x\sigma\sqrt{2\pi}}\exp\!\left(-\frac{(\ln x - \mu)^2}{2\sigma^2}\right), \quad x > 0
+\]
+\end{block}
+
+\vspace{0.2cm}
+\textbf{Propiedades:}
+\begin{itemize}
+    \item $E[X] = e^{\mu + \sigma^2/2}$
+    \item $\text{Var}(X) = e^{2\mu+\sigma^2}(e^{\sigma^2}-1)$
+    \item Asim\'{e}trica a la derecha (cola pesada)
+    \item Siempre positiva
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Ejemplo:} Tiempos de reparaci\'{o}n de m\'{a}quinas, con $\mu = 1.5$, $\sigma = 0.8$:
+\begin{itemize}
+    \item $E[X] = e^{1.5 + 0.32} = e^{1.82} \approx 6.17$ horas
+    \item La mayor\'{i}a de reparaciones son r\'{a}pidas, pero ocasionalmente hay reparaciones muy largas
+\end{itemize}
+\end{frame}
+
+% ======================================================================
+\section{Resumen de Distribuciones}
+% ======================================================================
+
+% ============================== SLIDE 39 ==============================
+\begin{frame}{Mapa de distribuciones en simulaci\'{o}n de colas}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, thick,
+    cbox/.style={draw, rounded corners, minimum width=2.5cm, minimum height=0.9cm, align=center, font=\small\bfseries},
+]
+    % Poisson
+    \node[cbox, fill=blue!20] (poi) at (0,3) {Poisson($\lambda t$)};
+    \node[below, font=\tiny, text width=3cm, align=center] at (0,2.4) {N\'{u}mero de eventos\\en intervalo fijo};
+
+    % Exponencial
+    \node[cbox, fill=red!20] (exp) at (-5,0) {Exponencial($\lambda$)};
+    \node[below, font=\tiny, text width=3cm, align=center] at (-5,-0.6) {Tiempo entre\\eventos consecutivos};
+
+    % Gamma
+    \node[cbox, fill=green!20] (gam) at (0,0) {Gamma($n, \lambda$)};
+    \node[below, font=\tiny, text width=3cm, align=center] at (0,-0.6) {Tiempo hasta el\\$n$-\'{e}simo evento};
+
+    % Uniforme
+    \node[cbox, fill=orange!20] (uni) at (5,0) {Uniforme$(0,t)$};
+    \node[below, font=\tiny, text width=3cm, align=center] at (5,-0.6) {Instantes de llegada\\condicionados};
+
+    % Normal
+    \node[cbox, fill=purple!20] (nor) at (-5,-3) {Normal($\mu,\sigma^2$)};
+    \node[below, font=\tiny, text width=3cm, align=center] at (-5,-3.6) {Promedios, IC\\(TLC)};
+
+    % Weibull
+    \node[cbox, fill=yellow!30] (wei) at (0,-3) {Weibull($\alpha,\beta$)};
+    \node[below, font=\tiny, text width=3cm, align=center] at (0,-3.6) {Tiempos de vida\\con desgaste};
+
+    % Lognormal
+    \node[cbox, fill=cyan!20] (logn) at (5,-3) {Lognormal($\mu,\sigma^2$)};
+    \node[below, font=\tiny, text width=3cm, align=center] at (5,-3.6) {Tiempos de servicio\\con cola pesada};
+
+    % Flechas
+    \draw[<->, thick] (poi) -- (exp) node[midway, above left, font=\tiny] {$T \sim$ Exp $\Leftrightarrow$ $N \sim$ Poi};
+    \draw[->, thick] (exp) -- (gam) node[midway, above, font=\tiny] {Suma de $n$};
+    \draw[->, thick] (poi) -- (uni) node[midway, above right, font=\tiny] {$N(t)=n$ dado};
+    \draw[->, thick] (poi) -- (gam) node[midway, right, font=\tiny] {Dualidad};
+    \draw[->, thick, dashed] (exp) -- (wei) node[midway, left, font=\tiny] {$\alpha=1$};
+    \draw[->, thick, dashed] (gam) -- (nor) node[midway, above, font=\tiny] {$n$ grande (TLC)};
+
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ============================== SLIDE 40 ==============================
+\begin{frame}{Tabla resumen de distribuciones}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Distribuci\'{o}n} & \textbf{Soporte} & $E[X]$ & $\text{Var}(X)$ & \textbf{Uso t\'{i}pico} \\
+\midrule
+Poisson($\mu$) & $\{0,1,2,\ldots\}$ & $\mu$ & $\mu$ & Conteo de eventos \\
+Exp($\lambda$) & $(0,\infty)$ & $1/\lambda$ & $1/\lambda^2$ & Tiempos entre llegadas \\
+Gamma($\alpha,\beta$) & $(0,\infty)$ & $\alpha/\beta$ & $\alpha/\beta^2$ & Suma de exponenciales \\
+Uniforme$(a,b)$ & $[a,b]$ & $\frac{a+b}{2}$ & $\frac{(b-a)^2}{12}$ & Generaci\'{o}n aleatoria \\
+Normal$(\mu,\sigma^2)$ & $\mathbb{R}$ & $\mu$ & $\sigma^2$ & Promedios (TLC) \\
+Weibull$(\alpha,\beta)$ & $(0,\infty)$ & $\beta\Gamma(1\!+\!1/\alpha)$ & --- & Confiabilidad \\
+Lognormal$(\mu,\sigma^2)$ & $(0,\infty)$ & $e^{\mu+\sigma^2/2}$ & --- & Tiempos de reparaci\'{o}n \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+\begin{alertblock}{Nota para la simulaci\'{o}n}
+La notaci\'{o}n de Kendall $A/B/c$ usa: $M$ = exponencial (Markoviano), $D$ = determin\'{i}stico, $G$ = general, $E_k$ = Erlang-$k$. El proceso de Poisson da la ``$M$'' en las llegadas y servicios.
+\end{alertblock}
+\end{frame}
+
+% ======================================================================
+\section{Simulaci\'{o}n del Proceso de Poisson}
+% ======================================================================
+
+% ============================== SLIDE 41 ==============================
+\begin{frame}{C\'{o}mo simular un proceso de Poisson homog\'{e}neo}
+
+\textbf{M\'{e}todo 1: V\'{i}a tiempos entre llegadas}
+
+\vspace{0.2cm}
+\begin{enumerate}
+    \item Inicializar: $t \leftarrow 0$, $n \leftarrow 0$
+    \item Generar $U \sim \text{Uniforme}(0,1)$
+    \item Calcular $T = -\frac{1}{\lambda}\ln(U)$
+    \item Actualizar: $t \leftarrow t + T$, $n \leftarrow n + 1$
+    \item Registrar evento en el tiempo $t$
+    \item Repetir desde paso 2 hasta alcanzar el horizonte deseado
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Ejemplo con $\lambda = 4$:}
+
+\renewcommand{\arraystretch}{1.2}
+\begin{center}
+\small
+\begin{tabular}{ccccc}
+\toprule
+$n$ & $U$ & $T = -\frac{1}{4}\ln(U)$ & Llegada $t$ & $N(t)$ \\
+\midrule
+1 & 0.372 & 0.247 & 0.247 & 1 \\
+2 & 0.891 & 0.029 & 0.276 & 2 \\
+3 & 0.156 & 0.464 & 0.740 & 3 \\
+4 & 0.625 & 0.118 & 0.858 & 4 \\
+5 & 0.044 & 0.781 & 1.639 & 5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+% ============================== SLIDE 42 ==============================
+\begin{frame}{M\'{e}todo 2: V\'{i}a conteo directo}
+
+\textbf{Para generar $N(t)$ directamente en un intervalo $[0, T]$:}
+
+\vspace{0.2cm}
+\begin{enumerate}
+    \item Generar $N \sim \text{Poisson}(\lambda T)$
+    \item Generar $N$ uniformes independientes $U_1, \ldots, U_N \sim \text{Uniforme}(0, T)$
+    \item Ordenar: $U_{(1)} < U_{(2)} < \cdots < U_{(N)}$
+    \item Los $U_{(i)}$ son los instantes de llegada
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Ejemplo con $\lambda = 4$, $T = 2$ min:}
+
+\vspace{0.2cm}
+Paso 1: $N \sim \text{Poisson}(8)$, sale $N = 7$
+
+Paso 2: Generamos 7 uniformes en $[0, 2]$:
+\[
+0.34, \; 1.72, \; 0.89, \; 0.12, \; 1.45, \; 0.56, \; 1.91
+\]
+
+Paso 3: Ordenamos:
+\[
+0.12, \; 0.34, \; 0.56, \; 0.89, \; 1.45, \; 1.72, \; 1.91
+\]
+
+Estos son los 7 instantes de llegada en $[0, 2]$.
+
+Este m\'{e}todo es \'{u}til cuando se necesita el n\'{u}mero total primero (e.g., para asignaci\'{o}n de recursos).
+\end{frame}
+
+% ======================================================================
+\section{Ejercicios y Aplicaciones}
+% ======================================================================
+
+% ============================== SLIDE 43 ==============================
+\begin{frame}{Ejercicio integrador 1: aeropuerto}
+
+\textbf{Problema:} Un aeropuerto peque\~{n}o tiene una sola pista. Los aviones llegan seg\'{u}n un proceso de Poisson con $\lambda = 8$ aviones/hora. Cada aterrizaje toma un tiempo Exp($\mu = 12$) por hora.
+
+\vspace{0.3cm}
+\textbf{Resuelva:}
+\begin{enumerate}
+    \item ?`Cu\'{a}l es la probabilidad de que lleguen m\'{a}s de 3 aviones en 15 minutos?
+
+    \textit{Sol:} $N(0.25) \sim \text{Poisson}(2)$. $P(N>3) = 1 - \sum_{k=0}^{3} \frac{e^{-2}\cdot 2^k}{k!} = 1 - 0.8571 = 0.143$.
+
+    \vspace{0.15cm}
+    \item ?`Tiempo medio entre llegadas?
+
+    \textit{Sol:} $E[T] = 1/8 = 0.125$ h $= 7.5$ minutos.
+
+    \vspace{0.15cm}
+    \item ?`Prob.\ de que un aterrizaje dure m\'{a}s de 10 min?
+
+    \textit{Sol:} $P(S > 1/6) = e^{-12/6} = e^{-2} \approx 0.135$.
+
+    \vspace{0.15cm}
+    \item ?`Intensidad de tr\'{a}fico?
+
+    \textit{Sol:} $\rho = \lambda/\mu = 8/12 = 2/3 \approx 0.667$. Sistema estable.
+\end{enumerate}
+\end{frame}
+
+% ============================== SLIDE 44 ==============================
+\begin{frame}{Ejercicio integrador 2: supermercado}
+
+\textbf{Problema:} Un supermercado tiene dos cajas. Los clientes llegan Poisson($\lambda = 10$/h). El 40\% va a la caja r\'{a}pida y el 60\% a la regular.
+
+\vspace{0.3cm}
+\textbf{Resuelva usando descomposici\'{o}n:}
+\begin{enumerate}
+    \item Llegadas a la caja r\'{a}pida: Poisson($10 \times 0.4 = 4$/h)
+    \item Llegadas a la caja regular: Poisson($10 \times 0.6 = 6$/h)
+    \item Son procesos \textbf{independientes}
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Preguntas:}
+\begin{itemize}
+    \item ?`Prob.\ de 0 clientes en caja r\'{a}pida en 30 min? $P(N_R(0.5)=0) = e^{-2} \approx 0.135$
+
+    \item ?`Tiempo medio entre clientes en caja regular? $1/6$ h $= 10$ min
+
+    \item ?`Prob.\ de que lleguen exactamente 5 clientes en total a ambas cajas en 30 min?
+
+    $N(0.5) \sim \text{Poisson}(5)$. $P(N=5) = \frac{e^{-5}\cdot 5^5}{5!} = \frac{e^{-5}\cdot 3125}{120} \approx 0.1755$
+\end{itemize}
+\end{frame}
+
+% ============================== SLIDE 45 ==============================
+\begin{frame}{Ejercicio integrador 3: competencia de exponenciales}
+
+\textbf{Problema:} Tres m\'{a}quinas funcionan en paralelo. Sus tiempos de vida son exponenciales independientes con tasas $\lambda_1 = 0.01$, $\lambda_2 = 0.02$, $\lambda_3 = 0.015$ fallas/hora.
+
+\vspace{0.3cm}
+\textbf{a) ?`Cu\'{a}nto tiempo hasta la primera falla?}
+\[
+\min(T_1,T_2,T_3) \sim \text{Exp}(0.01+0.02+0.015) = \text{Exp}(0.045)
+\]
+\[
+E[\text{primera falla}] = 1/0.045 = 22.2 \text{ horas}
+\]
+
+\textbf{b) ?`Qu\'{e} m\'{a}quina tiene mayor probabilidad de fallar primero?}
+\[
+P(T_2 = \min) = \frac{0.02}{0.045} = 44.4\% \quad \text{(la m\'{a}quina 2, la menos confiable)}
+\]
+
+\textbf{c) ?`Prob.\ de que la m\'{a}quina 1 dure m\'{a}s de 50 horas?}
+\[
+P(T_1 > 50) = e^{-0.01 \times 50} = e^{-0.5} \approx 0.607
+\]
+\end{frame}
+
+% ======================================================================
+\section{Conclusiones}
+% ======================================================================
+
+% ============================== SLIDE 46 ==============================
+\begin{frame}{Conclusiones principales}
+
+\begin{enumerate}
+    \item El \textbf{proceso de Poisson} modela eventos aleatorios con tasa constante $\lambda$, caracterizado por incrementos independientes y estacionarios.
+
+    \vspace{0.15cm}
+    \item La \textbf{distribuci\'{o}n de Poisson} cuenta eventos en intervalos fijos; la \textbf{exponencial} mide tiempos entre eventos; la \textbf{Gamma} mide el tiempo hasta el $n$-\'{e}simo evento.
+
+    \vspace{0.15cm}
+    \item La \textbf{falta de memoria} de la exponencial es lo que hace ``Markovianos'' a los modelos $M/M/c$.
+
+    \vspace{0.15cm}
+    \item Las propiedades de \textbf{superposici\'{o}n} y \textbf{descomposici\'{o}n} permiten analizar sistemas complejos con m\'{u}ltiples fuentes.
+
+    \vspace{0.15cm}
+    \item La \textbf{competencia de exponenciales} es el mecanismo central del simulador de eventos discretos.
+
+    \vspace{0.15cm}
+    \item Distribuciones como \textbf{Weibull}, \textbf{Lognormal} y \textbf{Normal} complementan el toolkit para modelar fen\'{o}menos m\'{a}s realistas.
+\end{enumerate}
+\end{frame}
+
+% ============================== SLIDE 47 ==============================
+\begin{frame}{Referencias}
+
+\begin{thebibliography}{9}
+\small
+
+\bibitem{ross} Ross, S.M. (2014). \textit{Introduction to Probability Models}, 11th ed. Academic Press. Cap.~5: El proceso de Poisson.
+
+\bibitem{law} Law, A.M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~8: Generaci\'{o}n de variables aleatorias.
+
+\bibitem{banks} Banks, J. et al. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~5--6.
+
+\bibitem{gross} Gross, D. et al. (2008). \textit{Fundamentals of Queueing Theory}, 4th ed. Wiley.
+
+\bibitem{cinlar} \c{C}inlar, E. (2013). \textit{Introduction to Stochastic Processes}. Dover. Cap.~4: Procesos de Poisson.
+
+\bibitem{kingman} Kingman, J.F.C. (1993). \textit{Poisson Processes}. Oxford University Press.
+
+\end{thebibliography}
+\end{frame}
+
+% ============================== SLIDE 48 ==============================
+\begin{frame}{}
+
+\begin{center}
+\vspace{1cm}
+{\Huge\textbf{?`Preguntas?}}
+
+
+\vspace{0.5cm}
+{\large\textit{``The Poisson process is the most important stochastic process\\in applied probability.''} --- Sheldon M. Ross}
+
+
+\end{center}
+\end{frame}
+
+\end{document}

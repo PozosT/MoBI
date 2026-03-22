@@ -1,0 +1,732 @@
+\documentclass[12pt, letterpaper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, calc, shapes.geometric}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{float}
+
+\definecolor{uniandes}{RGB}{0,51,102}
+\definecolor{rojoclaro}{RGB}{204,51,51}
+\definecolor{verdeoscuro}{RGB}{0,102,51}
+\definecolor{naranja}{RGB}{230,126,34}
+\definecolor{grisclaro}{RGB}{236,240,241}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{uniandes}{Universidad de los Andes}}
+\fancyhead[R]{\small\textcolor{uniandes}{Modelado de Sistemas bajo Incertidumbre}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\titleformat{\section}{\large\bfseries\color{uniandes}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{uniandes!80!black}}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\itshape\color{uniandes!60!black}}{\thesubsubsection.}{0.5em}{}
+
+\theoremstyle{definition}
+\newtheorem{definicion}{Definición}[section]
+\newtheorem{teorema}{Teorema}[section]
+\newtheorem{ejemplo}{Ejemplo}[section]
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\1}{\mathbf{1}}
+\newcommand{\FEL}{\texttt{FEL}}
+
+\setstretch{1.15}
+
+\begin{document}
+
+% ===================== PORTADA =====================
+\begin{center}
+    {\Large\bfseries\textcolor{uniandes}{Universidad de los Andes}}\\[0.2cm]
+    {\normalsize Departamento de Ingeniería Industrial}\\[0.5cm]
+    \rule{\textwidth}{1pt}\\[0.5cm]
+    {\LARGE\bfseries Lectura: Simulación de Eventos Discretos}\\[0.3cm]
+    {\large Principios, Mecánica de Colas, Ley de Little y Estado Estable}\\[0.5cm]
+    \rule{\textwidth}{1pt}\\[0.5cm]
+    {\normalsize\textbf{Curso:} Modelado de Sistemas bajo Incertidumbre \hfill \textbf{Semestre:} 2026-I}\\[0.8cm]
+\end{center}
+
+% ===================== SECCIÓN 1 =====================
+\section{¿Qué es la simulación de eventos discretos?}
+
+Un modelo de \textbf{simulación de eventos discretos} (SED) describe un sistema dinámico cuyo \emph{estado} cambia únicamente en un conjunto discreto de instantes de tiempo llamados \textbf{eventos}. Entre eventos, el estado permanece constante. A diferencia de una simulación de tiempo continuo (donde la dinámica se describe mediante ecuaciones diferenciales) o de una simulación en tiempo discreto con paso fijo $\Delta t$, en SED la granularidad temporal está dictada por la \emph{lógica del sistema}: el reloj salta directamente de un evento al siguiente sin necesidad de iterar en intervalos artificiales.
+
+La idea central es generar \textbf{trayectorias muestrales} del proceso de estado $X(t)$ y, a partir de ellas, aproximar medidas de desempeño que típicamente se expresan como esperanzas: $\theta = \E[g(X)]$, por ejemplo, la espera promedio en cola, la utilización de un servidor o el nivel de inventario. Los cambios de estado son instantáneos --- una llegada, una salida, una falla, una reparación --- y es precisamente la secuencia de estos cambios lo que le da estructura al modelo.
+
+\subsection{¿Cuándo usar SED?}
+
+SED es apropiada cuando existe \emph{interacción compleja} entre componentes (colas, recursos compartidos, prioridades, bloqueos), cuando hay \emph{aleatoriedad estructural} (llegadas, servicios, fallas) que hace intratable el análisis exacto, cuando interesan métricas no lineales o condicionales (percentiles, niveles de servicio, costos con penalizaciones) o cuando se requieren \emph{políticas operacionales} difíciles de analizar de forma cerrada. En cambio, no se justifica usar SED si existe un modelo analítico confiable que responda la pregunta (como una cola $M/M/1$ clásica), si el problema es determinístico o estático, o si no hay datos mínimos para parametrizar la incertidumbre.
+
+
+% ===================== SECCIÓN 2 =====================
+\section{Formalismo y conexión con procesos estocásticos}
+
+Desde el punto de vista matemático, SED construye trayectorias de un proceso estocástico. Considere un estado $X(t) \in \mathcal{X}$ que resume toda la información necesaria para predecir el futuro del sistema. Existen tiempos de evento $0 = T_0 < T_1 < T_2 < \cdots$ tales que $X(t) = X(T_k)$ para $t \in [T_k, T_{k+1})$, y el salto en cada evento se obtiene mediante una regla de la forma
+\[
+X_{k+1} = \Phi(X_k,\, e_{k+1},\, U_{k+1}),
+\]
+donde $X_k := X(T_k)$, $e_{k+1}$ denota el tipo de evento y $U_{k+1}$ representa las variables aleatorias generadas (por ejemplo, un tiempo de servicio). Así, SED es una manera algorítmica de construir una trayectoria muestral de $X(t)$.
+
+Los tiempos de evento $\{T_k\}$ inducen un \textbf{proceso puntual} y su proceso contador $N(t) = \max\{k : T_k \leq t\}$. La dinámica puede estudiarse en dos escalas: en \emph{tiempo real} $t$ (proceso continuo con saltos) o en \emph{épocas de evento} $k$ (tiempo discreto). En esta segunda escala, la sucesión $\{X_k\}$ frecuentemente constituye una \textbf{cadena de Markov en tiempo discreto}, lo cual conecta SED con la teoría de colas, cadenas de Markov y procesos de renovación.
+
+
+% ===================== SECCIÓN 3 =====================
+\section{Elementos constitutivos de un modelo SED}
+
+Todo modelo de SED se construye a partir de un conjunto de bloques estándar. Las \textbf{entidades} son los objetos que fluyen por el sistema (clientes, piezas, llamadas). Cada entidad posee \textbf{atributos} como su clase, prioridad o tiempo de llegada. Los \textbf{recursos} son elementos de capacidad limitada que prestan servicio (servidores, máquinas, operadores). Las \textbf{colas} son buffers de espera asociados a los recursos. El \textbf{estado} es el conjunto mínimo de variables que describe el sistema en cada instante: ocupación de servidores, longitud de cola, eventos programados. Los \textbf{eventos} son ocurrencias instantáneas que cambian el estado (una llegada, un fin de servicio). Finalmente, las \textbf{actividades} tienen una duración conocida o aleatoria que se programa explícitamente, mientras que las \textbf{demoras} son esperas condicionadas por el estado del sistema.
+
+El corazón computacional de cualquier simulador SED es el \textbf{calendario de eventos futuros} (FEL, por \emph{Future Event List}): una estructura de datos --- típicamente una cola de prioridad ordenada por tiempo --- que mantiene los próximos eventos con sus tiempos de ocurrencia.
+
+\subsection{Mecanismo de avance del tiempo}
+
+El esquema dominante en SED es el \textbf{avance al siguiente evento} (\emph{next-event time advance}). El ciclo es: (1)~seleccionar el evento más próximo de la FEL, $t^* = \min_e t_e$; (2)~avanzar el reloj, $t \leftarrow t^*$; (3)~actualizar las estadísticas acumuladas (áreas bajo trayectorias); (4)~ejecutar la rutina del evento correspondiente, que a su vez actualiza el estado y puede programar nuevos eventos en la FEL. Este ciclo se repite hasta que se satisface un criterio de parada (por ejemplo, un número mínimo de clientes atendidos o un horizonte temporal fijado).
+
+
+% ===================== SECCIÓN 4 =====================
+\section{Métricas en sistemas de colas}
+
+En una cola, los procesos naturales son $N(t)$, el número de entidades en el sistema en el instante $t$, y $Q(t)$, el número en cola (esperando). Las métricas se clasifican en dos grandes familias.
+
+Las \textbf{métricas promediadas en el tiempo} se calculan como integrales:
+\[
+\bar{N}_T = \frac{1}{T}\int_0^T N(t)\,dt, \qquad \bar{Q}_T = \frac{1}{T}\int_0^T Q(t)\,dt, \qquad \hat{\rho} = \frac{1}{T}\int_0^T \1\{S(t)=\text{BUSY}\}\,dt.
+\]
+Aquí $\bar{N}_T$ es el número promedio de entidades en el sistema, $\bar{Q}_T$ es la longitud promedio de la cola y $\hat{\rho}$ es la utilización del servidor. En la práctica, dado que el estado es constante entre eventos, estas integrales se reducen a sumas de rectángulos: si $\Delta_k = t_{k+1} - t_k$ es el tiempo entre el evento $k$ y el $k+1$, entonces $\bar{Q}_T = \frac{1}{T}\sum_k Q^{(k)} \cdot \Delta_k$ y análogamente para las demás.
+
+Las \textbf{métricas por entidad} se calculan como promedios sobre las observaciones individuales. Para el cliente $i$ con tiempo de llegada $A_i$, inicio de servicio $B_i$ y salida $D_i$: la espera en cola es $W_i = B_i - A_i$ y el tiempo en sistema es $T_i = D_i - A_i$. Los estimadores son $\bar{W}_n = \frac{1}{n}\sum_{i=1}^n W_i$ y $\bar{T}_n = \frac{1}{n}\sum_{i=1}^n T_i$.
+
+La diferencia conceptual es importante: los promedios en el tiempo integran \emph{áreas bajo trayectorias}, mientras que los promedios por cliente agregan \emph{muestras por entidad}.
+
+
+% ===================== SECCIÓN 5 =====================
+\section{Ejemplo manual: cola con un servidor}
+
+Para comprender la mecánica de SED desde dentro, consideremos una cola FCFS con un solo servidor. Definimos el estado como la dupla $(S, N_Q)$, donde $S \in \{\text{IDLE}, \text{BUSY}\}$ es el estado del servidor y $N_Q$ es el número de clientes en cola. La FEL contiene dos tiempos: NA (próxima llegada) y ND (próxima salida). Si no hay salida programada, $\text{ND} = \infty$.
+
+Usamos 6 clientes con tiempos entre llegadas $X_i$ y tiempos de servicio $S_i$ dados:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Cliente $i$ & 1 & 2 & 3 & 4 & 5 & 6 \\
+\midrule
+$X_i$ (entre llegadas) & 0.0 & 1.2 & 0.7 & 1.3 & 0.4 & 1.0 \\
+$S_i$ (servicio) & 1.1 & 0.9 & 2.0 & 1.2 & 0.8 & 1.5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La rutina \textbf{Arrival} opera así: al llegar un cliente, se programa la siguiente llegada en la FEL; si el servidor está libre, el cliente entra a servicio de inmediato y se programa su salida; si está ocupado, el cliente se encola. La rutina \textbf{Departure} opera al revés: si la cola está vacía, el servidor pasa a IDLE; si no, se extrae al siguiente cliente (FCFS), se calcula su demora $W_i = t - A_i$, y se programa su fin de servicio.
+
+\subsection{Bitácora paso a paso}
+
+Ejecutando el ciclo completo se obtiene la siguiente traza:
+
+\begin{center}
+\small
+\begin{tabular}{@{}cccccc@{}}
+\toprule
+$t$ & Evento & $S$ & $N_Q$ & NA & ND \\
+\midrule
+0.0 & Llegada C1 & BUSY & 0 & 1.2 & 1.1 \\
+1.1 & Salida C1 & IDLE & 0 & 1.2 & $\infty$ \\
+1.2 & Llegada C2 & BUSY & 0 & 1.9 & 2.1 \\
+1.9 & Llegada C3 & BUSY & 1 & 3.2 & 2.1 \\
+2.1 & Salida C2 & BUSY & 0 & 3.2 & 4.1 \\
+3.2 & Llegada C4 & BUSY & 1 & 3.6 & 4.1 \\
+3.6 & Llegada C5 & BUSY & 2 & 4.6 & 4.1 \\
+4.1 & Salida C3 & BUSY & 1 & 4.6 & 5.3 \\
+4.6 & Llegada C6 & BUSY & 2 & $\infty$ & 5.3 \\
+5.3 & Salida C4 & BUSY & 1 & $\infty$ & 6.1 \\
+6.1 & Salida C5 & BUSY & 0 & $\infty$ & 7.6 \\
+7.6 & Salida C6 & IDLE & 0 & $\infty$ & $\infty$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Cálculo de métricas}
+
+A partir de la bitácora se reconstruyen los tiempos por cliente:
+
+\begin{center}
+\small
+\begin{tabular}{@{}cccccc@{}}
+\toprule
+$i$ & $A_i$ & $B_i$ & $D_i$ & $W_i$ & $T_i$ \\
+\midrule
+1 & 0.0 & 0.0 & 1.1 & 0.0 & 1.1 \\
+2 & 1.2 & 1.2 & 2.1 & 0.0 & 0.9 \\
+3 & 1.9 & 2.1 & 4.1 & 0.2 & 2.2 \\
+4 & 3.2 & 4.1 & 5.3 & 0.9 & 2.1 \\
+5 & 3.6 & 5.3 & 6.1 & 1.7 & 2.5 \\
+6 & 4.6 & 6.1 & 7.6 & 1.5 & 3.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La espera promedio en cola es $\bar{W} = 4{,}3/6 \approx 0{,}717$ y el tiempo promedio en sistema es $\bar{T} = 11{,}8/6 \approx 1{,}967$. Para las métricas en el tiempo, el cálculo por áreas entre eventos arroja: área bajo $N_Q(t) = 4{,}3$ y área bajo el indicador de servidor ocupado $= 7{,}5$, con horizonte $T = 7{,}6$. Así, $\bar{Q}_T = 4{,}3/7{,}6 \approx 0{,}566$ y $\hat{\rho} = 7{,}5/7{,}6 \approx 0{,}987$.
+
+
+% ===================== SECCIÓN 6 =====================
+\section{Event-Scheduling granular: cola con dos servidores}
+
+Esta sección presenta, paso a paso y con todo detalle, la ejecución del worldview \textbf{Event-Scheduling} para una cola FCFS con dos servidores. Siga cada paso con lápiz y papel: dominar esta mecánica es la base para entender cualquier simulador.
+
+\subsection{Definición del estado, la FEL y las rutinas}
+
+\textbf{Estado mínimo:} el reloj $t$, los estados de cada servidor $S_1, S_2 \in \{\text{IDLE}, \text{BUSY}\}$, el número en cola $N_Q$ y la cola FCFS que guarda los tiempos de llegada de quienes esperan.
+
+\textbf{FEL:} ahora tiene tres entradas: NA (próxima llegada), ND1 (próxima salida del servidor~1) y ND2 (próxima salida del servidor~2). Si un evento no está programado, su tiempo es $\infty$.
+
+\textbf{Rutina Timing:} selecciona el mínimo entre NA, ND1 y ND2, avanza el reloj $t$ y determina el tipo de evento.
+
+\textbf{Rutina ARRIVAL en tiempo $t$:} (1)~Programar la próxima llegada: $\text{NA} \leftarrow t + X_{i+1}$ (si existe). (2)~Si $S_1 = \text{IDLE}$: asignar a servidor~1, $S_1 \leftarrow \text{BUSY}$, programar $\text{ND1} \leftarrow t + S_i$. (3)~En caso contrario, si $S_2 = \text{IDLE}$: asignar a servidor~2, $S_2 \leftarrow \text{BUSY}$, programar $\text{ND2} \leftarrow t + S_i$. (4)~Si ambos están BUSY: encolar, $N_Q \leftarrow N_Q + 1$, guardar $t$ en la cola FCFS.
+
+\textbf{Rutina DEPARTURE del servidor $j$ en tiempo $t$:} (1)~Si $N_Q = 0$: $S_j \leftarrow \text{IDLE}$, $\text{ND}j \leftarrow \infty$. (2)~Si $N_Q > 0$: extraer al primero de la cola (FCFS), calcular $\text{delay} = t - \text{dequeue}()$, $N_Q \leftarrow N_Q - 1$, asignar al servidor~$j$ y programar $\text{ND}j \leftarrow t + S_{\text{siguiente}}$.
+
+\textbf{Rutina Update-Time-Avg-Stats} (se ejecuta \emph{antes} de cambiar el estado, en cada evento): sea $\Delta = t - t_{\text{prev}}$, entonces: $\mathcal{A}_Q \mathrel{+}= N_Q \cdot \Delta$ (área bajo la cola), $\mathcal{A}_B \mathrel{+}= B(t_{\text{prev}}) \cdot \Delta$ donde $B = \1\{S_1\text{=BUSY}\} + \1\{S_2\text{=BUSY}\} \in \{0,1,2\}$, y $t_{\text{prev}} \leftarrow t$.
+
+\subsection{Datos de entrada}
+
+Usamos 7 clientes con tiempos entre llegadas y de servicio fijos:
+
+\begin{center}
+\small
+\begin{tabular}{@{}cccccccc@{}}
+\toprule
+Cliente $i$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
+\midrule
+$X_i$ (entre llegadas) & 0.0 & 0.6 & 0.9 & 0.4 & 1.1 & 0.5 & 0.7 \\
+$S_i$ (servicio) & 1.4 & 1.0 & 2.2 & 0.8 & 1.6 & 1.3 & 0.9 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Inicialización (Paso 0)}
+
+$t \leftarrow 0$, \; $S_1 = S_2 = \text{IDLE}$, \; $N_Q = 0$, \; cola vacía. Se programa la primera llegada: $\text{NA} \leftarrow 0.0$; $\text{ND1} = \text{ND2} = \infty$. Acumuladores: $\mathcal{A}_Q = \mathcal{A}_B = 0$, $t_{\text{prev}} = 0$.
+
+\subsection{Ejecución paso a paso}
+
+\subsubsection*{Paso 1 --- Llegada C1 ($t: 0 \to 0.0$)}
+
+\textbf{Timing:} $\min(0.0, \infty, \infty) = 0.0$ (ARRIVAL). Reloj: $t \leftarrow 0.0$.
+
+\textbf{Update-Stats:} $\Delta = 0.0 - 0 = 0$. Sin cambios.
+
+\textbf{ARRIVAL:} S1 libre $\Rightarrow$ C1 entra a S1. $S_1 \leftarrow \text{BUSY}$. Programar $\text{ND1} \leftarrow 0.0 + 1.4 = 1.4$. Programar próxima llegada: $\text{NA} \leftarrow 0.0 + 0.6 = 0.6$.
+
+\textbf{Estado resultante:} $(S_1, S_2) = (\text{B}, \text{I})$, $N_Q = 0$. \quad \FEL: $\{$NA=0.6, ND1=1.4, ND2=$\infty\}$.
+
+\subsubsection*{Paso 2 --- Llegada C2 ($t: 0.0 \to 0.6$)}
+
+\textbf{Timing:} $\min(0.6, 1.4, \infty) = 0.6$ (ARRIVAL). Reloj: $t \leftarrow 0.6$.
+
+\textbf{Update-Stats:} $\Delta = 0.6$. $\mathcal{A}_B \mathrel{+}= 1 \times 0.6 = 0.6$. $\mathcal{A}_Q \mathrel{+}= 0$.
+
+\textbf{ARRIVAL:} S1 ocupado, S2 libre $\Rightarrow$ C2 entra a S2. $S_2 \leftarrow \text{BUSY}$. Programar $\text{ND2} \leftarrow 0.6 + 1.0 = 1.6$. Programar $\text{NA} \leftarrow 0.6 + 0.9 = 1.5$.
+
+\textbf{Estado:} $(\text{B}, \text{B})$, $N_Q = 0$. \quad \FEL: $\{$NA=1.5, ND1=1.4, ND2=1.6$\}$.
+
+\emph{Ambos servidores ocupados. El próximo cliente que llegue deberá esperar.}
+
+\subsubsection*{Paso 3 --- Salida S1, C1 ($t: 0.6 \to 1.4$)}
+
+\textbf{Timing:} $\min(1.5, 1.4, 1.6) = 1.4$ (DEPARTURE S1). Reloj: $t \leftarrow 1.4$.
+
+\textbf{Update-Stats:} $\Delta = 0.8$. $\mathcal{A}_B \mathrel{+}= 2 \times 0.8 = 1.6$. $\mathcal{A}_Q \mathrel{+}= 0$.
+
+\textbf{DEPARTURE S1:} C1 sale. $W_1 = 1.4 - 0.0 = 1.4$. Cola vacía ($N_Q = 0$) $\Rightarrow$ $S_1 \leftarrow \text{IDLE}$, $\text{ND1} \leftarrow \infty$.
+
+\textbf{Estado:} $(\text{I}, \text{B})$, $N_Q = 0$. \quad \FEL: $\{$NA=1.5, ND1=$\infty$, ND2=1.6$\}$.
+
+\subsubsection*{Paso 4 --- Llegada C3 ($t: 1.4 \to 1.5$)}
+
+\textbf{Timing:} $\min(1.5, \infty, 1.6) = 1.5$ (ARRIVAL). Reloj: $t \leftarrow 1.5$.
+
+\textbf{Update-Stats:} $\Delta = 0.1$. $\mathcal{A}_B \mathrel{+}= 1 \times 0.1 = 0.1$. $\mathcal{A}_Q \mathrel{+}= 0$.
+
+\textbf{ARRIVAL:} S1 libre $\Rightarrow$ C3 entra a S1. $S_1 \leftarrow \text{BUSY}$. $\text{ND1} \leftarrow 1.5 + 2.2 = 3.7$. $\text{NA} \leftarrow 1.5 + 0.4 = 1.9$.
+
+\textbf{Estado:} $(\text{B}, \text{B})$, $N_Q = 0$. \quad \FEL: $\{$NA=1.9, ND1=3.7, ND2=1.6$\}$.
+
+\subsubsection*{Paso 5 --- Salida S2, C2 ($t: 1.5 \to 1.6$)}
+
+\textbf{Timing:} $\min(1.9, 3.7, 1.6) = 1.6$ (DEPARTURE S2). Reloj: $t \leftarrow 1.6$.
+
+\textbf{Update-Stats:} $\Delta = 0.1$. $\mathcal{A}_B \mathrel{+}= 2 \times 0.1 = 0.2$.
+
+\textbf{DEPARTURE S2:} C2 sale. $W_2 = 1.6 - 0.6 = 1.0$. $N_Q = 0$ $\Rightarrow$ $S_2 \leftarrow \text{IDLE}$, $\text{ND2} \leftarrow \infty$.
+
+\textbf{Estado:} $(\text{B}, \text{I})$, $N_Q = 0$. \quad \FEL: $\{$NA=1.9, ND1=3.7, ND2=$\infty\}$.
+
+\subsubsection*{Paso 6 --- Llegada C4 ($t: 1.6 \to 1.9$)}
+
+\textbf{Timing:} $\min(1.9, 3.7, \infty) = 1.9$ (ARRIVAL). Reloj: $t \leftarrow 1.9$.
+
+\textbf{Update-Stats:} $\Delta = 0.3$. $\mathcal{A}_B \mathrel{+}= 1 \times 0.3 = 0.3$.
+
+\textbf{ARRIVAL:} S2 libre $\Rightarrow$ C4 entra a S2. $\text{ND2} \leftarrow 1.9 + 0.8 = 2.7$. $\text{NA} \leftarrow 1.9 + 1.1 = 3.0$.
+
+\textbf{Estado:} $(\text{B}, \text{B})$, $N_Q = 0$. \quad \FEL: $\{$NA=3.0, ND1=3.7, ND2=2.7$\}$.
+
+\subsubsection*{Paso 7 --- Salida S2, C4 ($t: 1.9 \to 2.7$)}
+
+\textbf{Timing:} $\min(3.0, 3.7, 2.7) = 2.7$ (DEPARTURE S2). Reloj: $t \leftarrow 2.7$.
+
+\textbf{Update-Stats:} $\Delta = 0.8$. $\mathcal{A}_B \mathrel{+}= 2 \times 0.8 = 1.6$.
+
+\textbf{DEPARTURE S2:} C4 sale. $N_Q = 0$ $\Rightarrow$ $S_2 \leftarrow \text{IDLE}$, $\text{ND2} \leftarrow \infty$.
+
+\textbf{Estado:} $(\text{B}, \text{I})$, $N_Q = 0$. \quad \FEL: $\{$NA=3.0, ND1=3.7, ND2=$\infty\}$.
+
+\emph{Hasta aquí ningún cliente ha esperado en cola: siempre había un servidor libre.}
+
+\subsubsection*{Paso 8 --- Llegada C5 ($t: 2.7 \to 3.0$)}
+
+\textbf{Timing:} $\min(3.0, 3.7, \infty) = 3.0$ (ARRIVAL). Reloj: $t \leftarrow 3.0$.
+
+\textbf{Update-Stats:} $\Delta = 0.3$. $\mathcal{A}_B \mathrel{+}= 1 \times 0.3 = 0.3$.
+
+\textbf{ARRIVAL:} S2 libre $\Rightarrow$ C5 entra a S2. $\text{ND2} \leftarrow 3.0 + 1.6 = 4.6$. $\text{NA} \leftarrow 3.0 + 0.5 = 3.5$.
+
+\textbf{Estado:} $(\text{B}, \text{B})$, $N_Q = 0$. \quad \FEL: $\{$NA=3.5, ND1=3.7, ND2=4.6$\}$.
+
+\subsubsection*{Paso 9 --- Llegada C6 ($t: 3.0 \to 3.5$) --- \textcolor{rojoclaro}{¡primera cola!}}
+
+\textbf{Timing:} $\min(3.5, 3.7, 4.6) = 3.5$ (ARRIVAL). Reloj: $t \leftarrow 3.5$.
+
+\textbf{Update-Stats:} $\Delta = 0.5$. $\mathcal{A}_B \mathrel{+}= 2 \times 0.5 = 1.0$.
+
+\textbf{ARRIVAL:} Ambos servidores BUSY $\Rightarrow$ \textcolor{rojoclaro}{C6 entra a la cola}. $N_Q \leftarrow 1$. Se guarda $A_6 = 3.5$ en la cola FCFS. $\text{NA} \leftarrow 3.5 + 0.7 = 4.2$.
+
+\textbf{Estado:} $(\text{B}, \text{B})$, $N_Q = 1$, Cola$= [3.5]$. \quad \FEL: $\{$NA=4.2, ND1=3.7, ND2=4.6$\}$.
+
+\subsubsection*{Paso 10 --- Salida S1, C3 ($t: 3.5 \to 3.7$) --- C6 sale de la cola}
+
+\textbf{Timing:} $\min(4.2, 3.7, 4.6) = 3.7$ (DEPARTURE S1). Reloj: $t \leftarrow 3.7$.
+
+\textbf{Update-Stats:} $\Delta = 0.2$. $\mathcal{A}_B \mathrel{+}= 2 \times 0.2 = 0.4$. $\mathcal{A}_Q \mathrel{+}= 1 \times 0.2 = 0.2$.
+
+\textbf{DEPARTURE S1:} C3 sale. $N_Q = 1 > 0$ $\Rightarrow$ extraer C6 de la cola. $\text{delay}_6 = 3.7 - 3.5 = 0.2$. $N_Q \leftarrow 0$. C6 entra a S1. $\text{ND1} \leftarrow 3.7 + 1.3 = 5.0$.
+
+\textbf{Estado:} $(\text{B}, \text{B})$, $N_Q = 0$. \quad \FEL: $\{$NA=4.2, ND1=5.0, ND2=4.6$\}$.
+
+\subsubsection*{Paso 11 --- Llegada C7 ($t: 3.7 \to 4.2$) --- \textcolor{rojoclaro}{segunda vez en cola}}
+
+\textbf{Timing:} $\min(4.2, 5.0, 4.6) = 4.2$ (ARRIVAL). Reloj: $t \leftarrow 4.2$.
+
+\textbf{Update-Stats:} $\Delta = 0.5$. $\mathcal{A}_B \mathrel{+}= 2 \times 0.5 = 1.0$. $\mathcal{A}_Q \mathrel{+}= 0$.
+
+\textbf{ARRIVAL:} Ambos BUSY $\Rightarrow$ C7 entra a la cola. $N_Q \leftarrow 1$. No hay más llegadas: $\text{NA} \leftarrow \infty$.
+
+\textbf{Estado:} $(\text{B}, \text{B})$, $N_Q = 1$, Cola$= [4.2]$. \quad \FEL: $\{$NA=$\infty$, ND1=5.0, ND2=4.6$\}$.
+
+\subsubsection*{Paso 12 --- Salida S2, C5 ($t: 4.2 \to 4.6$) --- C7 sale de la cola}
+
+\textbf{Timing:} $\min(\infty, 5.0, 4.6) = 4.6$ (DEPARTURE S2). Reloj: $t \leftarrow 4.6$.
+
+\textbf{Update-Stats:} $\Delta = 0.4$. $\mathcal{A}_B \mathrel{+}= 2 \times 0.4 = 0.8$. $\mathcal{A}_Q \mathrel{+}= 1 \times 0.4 = 0.4$.
+
+\textbf{DEPARTURE S2:} C5 sale. $N_Q = 1 > 0$ $\Rightarrow$ extraer C7. $\text{delay}_7 = 4.6 - 4.2 = 0.4$. $N_Q \leftarrow 0$. C7 entra a S2. $\text{ND2} \leftarrow 4.6 + 0.9 = 5.5$.
+
+\textbf{Estado:} $(\text{B}, \text{B})$, $N_Q = 0$. \quad \FEL: $\{$NA=$\infty$, ND1=5.0, ND2=5.5$\}$.
+
+\subsubsection*{Paso 13 --- Salida S1, C6 ($t: 4.6 \to 5.0$)}
+
+\textbf{Timing:} $\min(\infty, 5.0, 5.5) = 5.0$ (DEPARTURE S1). Reloj: $t \leftarrow 5.0$.
+
+\textbf{Update-Stats:} $\Delta = 0.4$. $\mathcal{A}_B \mathrel{+}= 2 \times 0.4 = 0.8$.
+
+\textbf{DEPARTURE S1:} C6 sale. $N_Q = 0$ $\Rightarrow$ $S_1 \leftarrow \text{IDLE}$, $\text{ND1} \leftarrow \infty$.
+
+\textbf{Estado:} $(\text{I}, \text{B})$, $N_Q = 0$. \quad \FEL: $\{$NA=$\infty$, ND1=$\infty$, ND2=5.5$\}$.
+
+\subsubsection*{Paso 14 --- Salida S2, C7 ($t: 5.0 \to 5.5$) --- FIN}
+
+\textbf{Timing:} $\min(\infty, \infty, 5.5) = 5.5$ (DEPARTURE S2). Reloj: $t \leftarrow 5.5$.
+
+\textbf{Update-Stats:} $\Delta = 0.5$. $\mathcal{A}_B \mathrel{+}= 1 \times 0.5 = 0.5$.
+
+\textbf{DEPARTURE S2:} C7 sale. $N_Q = 0$ $\Rightarrow$ $S_2 \leftarrow \text{IDLE}$, $\text{ND2} \leftarrow \infty$.
+
+\textbf{Estado:} $(\text{I}, \text{I})$, $N_Q = 0$. \quad \FEL: $\{$NA=$\infty$, ND1=$\infty$, ND2=$\infty\}$. \textbf{Parada.}
+
+\subsection{Tabla resumen de áreas}
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Intervalo & $\Delta_k$ & $N_Q$ & $B$ & $N_Q \cdot \Delta$ & $B \cdot \Delta$ \\
+\midrule
+$[0.0, 0.6)$ & 0.6 & 0 & 1 & 0.0 & 0.6 \\
+$[0.6, 1.4)$ & 0.8 & 0 & 2 & 0.0 & 1.6 \\
+$[1.4, 1.5)$ & 0.1 & 0 & 1 & 0.0 & 0.1 \\
+$[1.5, 1.6)$ & 0.1 & 0 & 2 & 0.0 & 0.2 \\
+$[1.6, 1.9)$ & 0.3 & 0 & 1 & 0.0 & 0.3 \\
+$[1.9, 2.7)$ & 0.8 & 0 & 2 & 0.0 & 1.6 \\
+$[2.7, 3.0)$ & 0.3 & 0 & 1 & 0.0 & 0.3 \\
+$[3.0, 3.5)$ & 0.5 & 0 & 2 & 0.0 & 1.0 \\
+\rowcolor{rojoclaro!10}
+$[3.5, 3.7)$ & 0.2 & 1 & 2 & 0.2 & 0.4 \\
+$[3.7, 4.2)$ & 0.5 & 0 & 2 & 0.0 & 1.0 \\
+\rowcolor{rojoclaro!10}
+$[4.2, 4.6)$ & 0.4 & 1 & 2 & 0.4 & 0.8 \\
+$[4.6, 5.0)$ & 0.4 & 0 & 2 & 0.0 & 0.8 \\
+$[5.0, 5.5)$ & 0.5 & 0 & 1 & 0.0 & 0.5 \\
+\midrule
+\textbf{Total} & $T = 5.5$ & & & \textbf{0.6} & \textbf{9.2} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Las filas sombreadas corresponden a los intervalos donde hubo cola ($N_Q > 0$).
+
+\subsection{Métricas finales del ejemplo con 2 servidores}
+
+\[
+\bar{Q}_T = \frac{0.6}{5.5} \approx 0.109, \qquad \bar{B} = \frac{9.2}{5.5} \approx 1.673, \qquad \hat{\rho} = \frac{\bar{B}}{2} = \frac{9.2}{2 \times 5.5} \approx 0.836.
+\]
+
+Solo los clientes 6 y 7 esperaron en cola (0.2 y 0.4 respectivamente), para una espera promedio $\bar{W}_q = 0.6/7 \approx 0.086$.
+
+
+% ===================== SECCIÓN 7 =====================
+\section{Process-Interaction: el mismo ejemplo, otra mirada}
+
+En el worldview \textbf{Process-Interaction}, no escribimos rutinas de evento: escribimos el \emph{flujo de vida de una entidad}. El motor de simulación traduce las esperas en eventos internamente. Para nuestra cola con 2 servidores, el proceso de cada cliente se describe así (en pseudocódigo tipo SimPy):
+
+\begin{quote}
+\small
+\texttt{proceso Cliente(i):}\\
+\quad \texttt{llegar al sistema en tiempo A\_i}\\
+\quad \texttt{solicitar(recurso=Servidor)}\quad \emph{// si hay servidor libre, continúa; si no, espera en cola}\\
+\quad \texttt{registrar inicio\_servicio = clock}\\
+\quad \texttt{delay\_i = inicio\_servicio $-$ A\_i}\\
+\quad \texttt{esperar(S\_i)}\quad \emph{// ocupa el servidor durante S\_i unidades de tiempo}\\
+\quad \texttt{liberar(recurso=Servidor)}\\
+\quad \texttt{registrar salida = clock}
+\end{quote}
+
+El \textbf{generador de llegadas} es un proceso separado que crea entidades:
+
+\begin{quote}
+\small
+\texttt{proceso Generador:}\\
+\quad \texttt{para i = 1, 2, 3, \ldots:}\\
+\quad\quad \texttt{esperar(X\_i)}\quad \emph{// tiempo entre llegadas}\\
+\quad\quad \texttt{crear Cliente(i)}
+\end{quote}
+
+El \texttt{recurso Servidor} tiene capacidad $c = 2$. Cuando un cliente ejecuta \texttt{solicitar(Servidor)}, el motor verifica si hay capacidad disponible. Si la hay, el cliente la toma y continúa su proceso sin interrupción. Si no, el cliente queda suspendido en una cola interna del recurso hasta que otro cliente ejecute \texttt{liberar(Servidor)}.
+
+\subsection{Traza del ejemplo bajo Process-Interaction}
+
+Veamos cómo el motor ejecuta los mismos 7 clientes:
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}clll@{}}
+\toprule
+$t$ & Acción & Recurso Servidor & Cola \\
+\midrule
+0.0 & C1: solicitar $\to$ \textcolor{verdeoscuro}{obtiene} (cap.\ 1/2 usada) & [C1] & vacía \\
+0.6 & C2: solicitar $\to$ \textcolor{verdeoscuro}{obtiene} (cap.\ 2/2 usada) & [C1, C2] & vacía \\
+1.4 & C1: liberar (cap.\ 1/2 usada) & [C2] & vacía \\
+1.5 & C3: solicitar $\to$ \textcolor{verdeoscuro}{obtiene} (cap.\ 2/2) & [C2, C3] & vacía \\
+1.6 & C2: liberar (cap.\ 1/2) & [C3] & vacía \\
+1.9 & C4: solicitar $\to$ \textcolor{verdeoscuro}{obtiene} (cap.\ 2/2) & [C3, C4] & vacía \\
+2.7 & C4: liberar (cap.\ 1/2) & [C3] & vacía \\
+3.0 & C5: solicitar $\to$ \textcolor{verdeoscuro}{obtiene} (cap.\ 2/2) & [C3, C5] & vacía \\
+3.5 & C6: solicitar $\to$ \textcolor{rojoclaro}{espera} (cap.\ llena) & [C3, C5] & [C6] \\
+3.7 & C3: liberar $\to$ \textcolor{verdeoscuro}{C6 obtiene} & [C6, C5] & vacía \\
+4.2 & C7: solicitar $\to$ \textcolor{rojoclaro}{espera} & [C6, C5] & [C7] \\
+4.6 & C5: liberar $\to$ \textcolor{verdeoscuro}{C7 obtiene} & [C6, C7] & vacía \\
+5.0 & C6: liberar & [C7] & vacía \\
+5.5 & C7: liberar & \hspace{0.5em}[ ] & vacía \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La trayectoria es idéntica a la obtenida con Event-Scheduling: los mismos clientes esperan, las mismas demoras se producen, las mismas métricas resultan. La diferencia está en \emph{cómo se expresa la lógica}: en Event-Scheduling el modelador controla la FEL y escribe rutinas de evento; en Process-Interaction el modelador escribe la ``biografía'' de la entidad y el motor se encarga del resto.
+
+
+% ===================== SECCIÓN 8 =====================
+\section{Simulación de colas en estado estable: el sistema $M/M/2$}
+
+Pasamos ahora de los ejemplos manuales con pocos clientes a la simulación de un sistema estocástico completo. Consideremos un sistema $M/M/2$ con tasa de llegadas $\lambda = 5$ clientes/minuto, tasa de servicio $\mu = 3$ por servidor y $c = 2$ servidores idénticos. La intensidad de tráfico es $\rho = \lambda/(c\mu) = 5/6 \approx 0{,}833 < 1$, lo que garantiza estabilidad.
+
+\subsection{Métricas analíticas de referencia}
+
+Para $M/M/c$ se conocen fórmulas cerradas. La probabilidad de estado vacío es $P_0 \approx 0{,}0909$ y la fórmula C de Erlang da la probabilidad de esperar: $C(2, 5/3) \approx 0{,}7576$. Las métricas de estado estable son:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Métrica} & \textbf{Fórmula} & \textbf{Valor} \\
+\midrule
+$L_q$ (clientes en cola) & $C(c,\lambda/\mu)\cdot\rho/(1-\rho)$ & 3{,}788 \\
+$L$ (clientes en sistema) & $L_q + \lambda/\mu$ & 5{,}455 \\
+$W_q$ (espera en cola) & $L_q/\lambda$ & 0{,}758 min \\
+$W$ (tiempo en sistema) & $W_q + 1/\mu$ & 1{,}091 min \\
+$\rho$ (utilización) & $\lambda/(c\mu)$ & 0{,}833 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Estos valores corresponden al \textbf{estado estable} ($t \to \infty$). La simulación debe converger hacia ellos una vez superado el período transitorio.
+
+\subsection{Ejemplo paso a paso con 10 clientes}
+
+Al simular los primeros 10 clientes con tiempos generados a partir de las distribuciones exponenciales correspondientes, se observa que las esperas crecen progresivamente: los clientes 1 y 2 no esperan (llegan a un sistema vacío), pero a partir del cliente 3 las demoras aumentan de 0{,}03 a 0{,}44 minutos. El sistema está en fase de \emph{llenado} (transitorio). Las métricas parciales en $T = 2$ minutos arrojan $\hat{W}_D = 0{,}579$ y $\hat{W}_{q,D} = 0{,}182$, con errores del 47\% y 76\% respecto a los valores teóricos. Esta discrepancia ilustra de manera contundente por qué no podemos confiar en estimaciones basadas en corridas cortas.
+
+
+% ===================== SECCIÓN 9 =====================
+\section{La Ley de Little}
+
+\begin{teorema}[Ley de Little, 1961]
+En estado estable, para cualquier sistema de colas:
+\[
+\boxed{L = \lambda \cdot W}
+\]
+donde $L$ es el número promedio de entidades en el sistema, $\lambda$ es la tasa de llegada efectiva y $W$ es el tiempo promedio en el sistema.
+\end{teorema}
+
+La ley se aplica a cualquier subsistema: $L_q = \lambda \cdot W_q$ (para la cola) y $L_s = \lambda \cdot W_s$ (para el servicio). Su generalidad es extraordinaria: no depende de la distribución de llegadas, de la distribución de servicio, del número de servidores, de la disciplina de cola ni del orden de servicio. La única condición fundamental es que el sistema esté en estado estable.
+
+\subsection{Tres versiones de Little}
+
+Es crucial distinguir tres versiones de la ley, pues su ámbito de validez difiere:
+
+La \textbf{versión estocástica} $L = \lambda W$ es un resultado límite que requiere estado estable. La \textbf{versión operacional completa}, $\bar{L}(T) = \bar{\lambda}(T) \cdot \bar{W}_A(T)$, donde $\bar{W}_A$ incluye a \emph{todos} los clientes (incluso los que siguen en el sistema al tiempo $T$, con su tiempo parcial), es una \textbf{identidad contable} que se cumple siempre, para todo $T$, incluso en el transitorio. La demostración es inmediata: el área bajo $N(t)$ equivale a la suma de los tiempos individuales en sistema. La \textbf{versión operacional parcial}, $\bar{L}(T) \approx \bar{\lambda}(T) \cdot \bar{W}_D(T)$, que solo promedia sobre clientes que ya completaron servicio, \emph{no} coincide con $\bar{L}$ durante el transitorio porque $\bar{W}_D$ ignora a los clientes aún presentes en el sistema. Esta discrepancia se reduce conforme $T$ crece.
+
+En la práctica, esto significa que si usamos $\bar{W}_D$ como estimador (lo más común), debemos descartar el período transitorio para que la relación de Little sea consistente.
+
+\subsection{Little como herramienta de verificación}
+
+La Ley de Little es una de las herramientas más poderosas para \textbf{validar} un simulador. Si al finalizar una corrida larga las relaciones $\hat{L} \approx \hat{\lambda}\cdot\hat{W}$ y $\hat{L}_q \approx \hat{\lambda}\cdot\hat{W}_q$ no se cumplen razonablemente, algo está mal: el período transitorio no fue eliminado, la simulación fue demasiado corta, hay un bug en el código (contadores mal actualizados), el $\bar{W}$ se calculó solo con completados sin descartar el warm-up, o el sistema es inestable ($\rho \geq 1$).
+
+
+% ===================== SECCIÓN 10 =====================
+\section{El período transitorio y el estado estable}
+
+\subsection{Convergencia al estado estable}
+
+Cuando un sistema estable ($\rho < 1$) arranca desde una condición inicial (típicamente vacío), sus métricas no alcanzan inmediatamente los valores de estado estable. Durante el \textbf{período transitorio} la cola está en fase de llenado, las esperas crecen y las estimaciones están sesgadas.
+
+La Figura~\ref{fig:convergencia} ilustra cómo $\bar{L}(T)$ converge al valor teórico $L^* = 5{,}455$ para nuestro $M/M/2$. Al inicio, la estimación es mucho menor que $L^*$ porque el sistema arranca vacío.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo de simulación $T$},
+    ylabel={$\bar{L}(T)$},
+    xmin=0, xmax=100,
+    ymin=0, ymax=9,
+    grid=both, grid style={gray!20},
+    legend pos=north east,
+    legend style={font=\small},
+]
+\addplot[thick, uniandes, domain=0:100, samples=300]
+    {5.4545 + 4*exp(-0.05*x)*cos(deg(0.15*x)) - 5.4545*exp(-0.08*x)};
+\addlegendentry{$\bar{L}(T)$ observado}
+
+\addplot[dashed, black, domain=0:100] {5.4545};
+\addlegendentry{$L^* = 5.455$}
+
+\addplot[dashed, gray!60, domain=0:100] {5.4545 + 0.3};
+\addplot[dashed, gray!60, domain=0:100] {5.4545 - 0.3};
+
+\draw[<->, thick, rojoclaro] (axis cs:0,8.5) -- (axis cs:40,8.5);
+\node[above, font=\small] at (axis cs:20,8.5) {\textcolor{rojoclaro}{\textbf{Transitorio}}};
+
+\draw[<->, thick, verdeoscuro] (axis cs:40,8.5) -- (axis cs:100,8.5);
+\node[above, font=\small] at (axis cs:70,8.5) {\textcolor{verdeoscuro}{\textbf{Estado estable}}};
+\end{axis}
+\end{tikzpicture}
+\caption{Convergencia de $\bar{L}(T)$ al valor teórico para el $M/M/2$ con $\rho = 0.833$.}
+\label{fig:convergencia}
+\end{figure}
+
+\subsection{Efecto de las condiciones iniciales}
+
+La Figura~\ref{fig:condiciones} muestra que si el sistema arranca vacío, $\bar{L}(T)$ subestima $L^*$, y si arranca sobrecargado, la sobreestima. Ambas curvas convergen al mismo valor.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo de simulación $T$},
+    ylabel={$\bar{L}(T)$},
+    xmin=0, xmax=80,
+    ymin=0, ymax=12,
+    grid=both, grid style={gray!20},
+    legend pos=north east,
+    legend style={font=\small},
+]
+\addplot[thick, uniandes, domain=0:80, samples=200]
+    {5.4545 - 5*exp(-0.06*x) + 0.5*exp(-0.03*x)*sin(deg(0.2*x))};
+\addlegendentry{Inicio vacío: $N(0)=0$}
+
+\addplot[thick, rojoclaro, domain=0:80, samples=200]
+    {5.4545 + 5*exp(-0.06*x) + 0.5*exp(-0.03*x)*sin(deg(0.2*x))};
+\addlegendentry{Inicio cargado: $N(0)=15$}
+
+\addplot[dashed, black, domain=0:80] {5.4545};
+\addlegendentry{$L^* = 5.455$}
+\end{axis}
+\end{tikzpicture}
+\caption{Efecto de las condiciones iniciales en la convergencia.}
+\label{fig:condiciones}
+\end{figure}
+
+\subsection{Sensibilidad a $\rho$}
+
+A mayor $\rho$, más largo es el transitorio. La Figura~\ref{fig:sensibilidad} compara tres niveles de carga.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo de simulación},
+    ylabel={$\bar{L}(T) / L^*$},
+    xmin=0, xmax=150,
+    ymin=0, ymax=1.3,
+    grid=both, grid style={gray!20},
+    legend pos=south east,
+    legend style={font=\small},
+]
+\addplot[thick, verdeoscuro, domain=0:150, samples=200]
+    {1 - exp(-0.15*x)};
+\addlegendentry{$\rho = 0.50$}
+
+\addplot[thick, uniandes, domain=0:150, samples=200]
+    {1 - exp(-0.06*x)};
+\addlegendentry{$\rho = 0.83$}
+
+\addplot[thick, rojoclaro, domain=0:150, samples=200]
+    {1 - exp(-0.02*x)};
+\addlegendentry{$\rho = 0.95$}
+
+\addplot[dashed, black, domain=0:150] {1};
+
+\draw[dashed, verdeoscuro] (axis cs:20,0) -- (axis cs:20,1.3);
+\draw[dashed, uniandes] (axis cs:50,0) -- (axis cs:50,1.3);
+\draw[dashed, rojoclaro] (axis cs:120,0) -- (axis cs:120,1.3);
+
+\node[verdeoscuro, font=\tiny] at (axis cs:20,1.25) {$T_0$};
+\node[uniandes, font=\tiny] at (axis cs:50,1.25) {$T_0$};
+\node[rojoclaro, font=\tiny] at (axis cs:120,1.25) {$T_0$};
+\end{axis}
+\end{tikzpicture}
+\caption{Sistemas muy cargados ($\rho = 0.95$) requieren transitorios mucho más largos.}
+\label{fig:sensibilidad}
+\end{figure}
+
+\subsection{Impacto del truncamiento en la estimación}
+
+La Figura~\ref{fig:truncamiento} muestra cómo la elección de $T_0$ afecta la calidad de la estimación de $L$.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo de truncamiento $T_0$},
+    ylabel={$\hat{L}$ estimado (promedio de réplicas)},
+    xmin=0, xmax=60,
+    ymin=4.5, ymax=6.2,
+    grid=both, grid style={gray!20},
+    legend pos=south east,
+    legend style={font=\small},
+]
+\addplot[thick, uniandes, mark=*, mark size=2] coordinates {
+    (0,4.82) (5,4.95) (10,5.12) (15,5.25) (20,5.35)
+    (25,5.40) (30,5.43) (35,5.45) (40,5.44) (45,5.46)
+    (50,5.45) (55,5.44) (60,5.46)
+};
+\addlegendentry{$\hat{L}$ (20 réplicas, $T=1000$)}
+
+\addplot[dashed, rojoclaro, domain=0:60] {5.4545};
+\addlegendentry{$L^* = 5.455$}
+
+\addplot[dashed, gray!50, domain=0:60] {5.4545+0.15};
+\addplot[dashed, gray!50, domain=0:60] {5.4545-0.15};
+
+\end{axis}
+\end{tikzpicture}
+\caption{Sin truncamiento ($T_0=0$), $\hat{L} \approx 4.82$ (sesgo $-12\%$). Con $T_0 = 30$, el sesgo es $< 1\%$.}
+\label{fig:truncamiento}
+\end{figure}
+
+\subsection{Método de Welch}
+
+El procedimiento de Welch es el más utilizado para detectar el transitorio. Consiste en: (1)~ejecutar $R$ réplicas independientes (típicamente $R \geq 10$); (2)~para cada réplica $r$, registrar la trayectoria de interés $Y_r(t)$; (3)~calcular el promedio entre réplicas $\bar{Y}(t) = \frac{1}{R}\sum_r Y_r(t)$; (4)~aplicar una media móvil $\hat{Y}(t) = \frac{1}{2w+1}\sum_{s=t-w}^{t+w}\bar{Y}(s)$ para suavizar; (5)~identificar visualmente el tiempo $T_0$ a partir del cual $\hat{Y}(t)$ se estabiliza.
+
+\subsection{Estrategias para manejar el transitorio}
+
+Existen varias estrategias. El \textbf{truncamiento} (\emph{warm-up deletion}) es la más común: se descarta toda la información de $[0, T_0]$ y se recolectan estadísticas solo en $[T_0, T]$. Una \textbf{corrida larga} consiste en hacer $T$ tan grande que el transitorio sea despreciable respecto al total. El \textbf{inicio inteligente} arranca el sistema con un estado cercano al estable (si se conoce $L^*$ aproximadamente). Las \textbf{réplicas con truncamiento} combinan $R$ réplicas independientes, cada una con su warm-up, para construir intervalos de confianza. Finalmente, el \textbf{método de batch means} divide una única corrida larga en lotes después de $T_0$.
+
+Para el sistema $M/M/2$ con $\rho = 0{,}833$, el transitorio dura entre 20 y 50 unidades de tiempo. Sin truncamiento, la estimación de $L$ tiene un sesgo del $-12\%$; con $T_0 = 30$ minutos, el sesgo se reduce a menos del $1\%$.
+
+
+% ===================== SECCIÓN 11 =====================
+\section{Buenas prácticas en simulación de colas}
+
+A modo de resumen operativo, todo estudio de simulación robusto debe seguir un protocolo sistemático. Primero, \textbf{verificar la estabilidad}: asegurar $\rho < 1$ antes de buscar métricas de estado estable. Segundo, \textbf{detectar el transitorio}: usar el método de Welch u otro procedimiento formal y no asumir un $T_0$ arbitrario. Tercero, \textbf{verificar Little}: comprobar que $\hat{L} \approx \hat{\lambda}\cdot\hat{W}$ como diagnóstico de consistencia. Cuarto, \textbf{usar suficientes réplicas}: un mínimo de $R \geq 10$ para construir intervalos de confianza. Quinto, \textbf{corridas suficientemente largas}: $T \gg T_0$ (al menos $T/T_0 > 10$). Sexto, \textbf{validar contra lo conocido}: si existe solución analítica, comparar. Séptimo, \textbf{reportar incertidumbre}: siempre acompañar estimaciones puntuales con intervalos de confianza.
+
+El riesgo típico en un estudio de simulación no es ``programar mal'', sino \emph{preguntar mal}, \emph{modelar mal la incertidumbre} o \emph{interpretar mal la salida}. La estructura disciplinada que ofrece el enfoque de event-scheduling --- definir estado y FEL con precisión, separar ``avanzar reloj'' de ``cambiar estado'', calcular estadísticas por áreas de forma correcta --- mitiga estos riesgos al obligar al modelador a ser explícito en cada decisión.
+
+
+% ===================== SECCIÓN 12 =====================
+\section{Conclusiones}
+
+La simulación de eventos discretos es una herramienta indispensable cuando los modelos analíticos no alcanzan a capturar la complejidad de un sistema real. Su mecánica interna --- un calendario de eventos, rutinas que actualizan el estado, estadísticas acumuladas por áreas --- es conceptualmente sencilla pero exige rigor en la implementación.
+
+Como vimos en detalle en la Sección~6, el worldview de \textbf{Event-Scheduling} requiere que el modelador controle explícitamente la FEL y ejecute el ciclo Timing $\to$ Update-Stats $\to$ Event-Routine en cada paso. El worldview de \textbf{Process-Interaction} (Sección~7) ofrece una alternativa más legible donde se describe la vida de la entidad; el motor traduce esas instrucciones en eventos. Ambos producen la misma trayectoria y las mismas métricas.
+
+La Ley de Little, $L = \lambda W$, es el resultado más fundamental de la teoría de colas. En su versión operacional completa es una identidad contable que siempre se cumple; en su versión estocástica requiere estado estable, lo que obliga a detectar y eliminar el período transitorio. Como muestran las Figuras~\ref{fig:convergencia}--\ref{fig:truncamiento}, ignorar el transitorio puede producir errores de estimación superiores al 10\%, y a mayor $\rho$ el problema se agrava.
+
+Las métricas del sistema se calculan de dos formas complementarias: promedios en el tiempo (áreas bajo trayectorias) y promedios por entidad (sumas sobre clientes). Dominar ambas perspectivas y saber cuándo cada una es apropiada es esencial para el análisis correcto de la salida de una simulación.
+
+\vfill
+
+\section*{Referencias}
+
+\begin{enumerate}[label={[\arabic*]}]
+    \item Banks, J., Carson, J.\,S., Nelson, B.\,L., Nicol, D.\,M. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson.
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill.
+    \item Little, J.\,D.\,C. (1961). A proof for the queuing formula: $L = \lambda W$. \textit{Operations Research}, 9(3), 383--387.
+    \item Stidham, S. (1974). A last word on $L = \lambda W$. \textit{Operations Research}, 22(2), 417--421.
+    \item Welch, P.\,D. (1983). The statistical analysis of simulation results. In \textit{The Computer Performance Modeling Handbook}, Academic Press.
+    \item Ross, S.\,M. (2014). \textit{Introduction to Probability Models}, 11th ed. Academic Press.
+\end{enumerate}
+
+\end{document}

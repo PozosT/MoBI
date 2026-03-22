@@ -1,0 +1,204 @@
+\documentclass[11pt, letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+
+% Configuración de código Python
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{\textbf{Lectura 1: Introducción al Modelamiento y Simulación bajo Incertidumbre}}
+\author{Alejandra Tabares Pozos}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introducción}
+La ingeniería, en su esencia, busca diseñar, optimizar y controlar sistemas. Sin embargo, el mundo real rara vez se comporta de manera perfectamente predecible. La variabilidad y la incertidumbre son inherentes a los sistemas financieros, logísticos y de manufactura. Esta lectura introduce el paradigma de la simulación como una herramienta indispensable para analizar sistemas donde la intuición y los métodos analíticos tradicionales resultan insuficientes.
+
+\section{Sistemas Determinísticos vs. Estocásticos}
+
+Para comprender la simulación, primero debemos distinguir entre dos visiones del mundo modelado:
+
+\subsection{Sistemas Determinísticos}
+Un sistema es determinístico si no contiene componentes aleatorios. En este tipo de modelos, las salidas están completamente determinadas por las entradas y la estructura del modelo. Si se ejecuta el modelo múltiples veces con las mismas entradas, se obtendrán exactamente los mismos resultados.
+\[ Y = f(X) \]
+Donde $Y$ es la salida y $X$ son las entradas fijas. Ejemplo: La Ley de Ohm $V = I \cdot R$.
+
+\subsection{Sistemas Estocásticos}
+Un sistema es estocástico si contiene al menos una variable aleatoria de entrada. Las salidas del modelo son, por tanto, aleatorias y deben tratarse como estimaciones estadísticas de las verdaderas características del sistema.
+\[ Y = f(X, \epsilon) \]
+Donde $\epsilon$ representa el componente de error o aleatoriedad.
+
+\subsubsection{Ejemplo 1: Retorno de Inversión}
+
+Suponga que desea evaluar el valor futuro de una inversión de \$1,000 USD después de un año.
+
+\textbf{Enfoque Determinístico:}
+Asumimos una tasa de interés fija del 5\%.
+\[ V_f = 1000 \times (1 + 0.05) = 1050 \]
+El resultado es único y cierto.
+
+\textbf{Enfoque Estocástico:}
+Reconocemos la incertidumbre del mercado. Asumimos que el retorno ($R$) sigue una distribución de probabilidad discreta basada en datos históricos:
+\begin{itemize}
+    \item Escenario A (Optimista, 30\% prob.): $R = 10\%$
+    \item Escenario B (Base, 50\% prob.): $R = 4\%$
+    \item Escenario C (Pesimista, 20\% prob.): $R = -2\%$
+\end{itemize}
+
+El valor esperado (media) sería:
+\[ E[V_f] = 1000 \times [ (1.10)(0.30) + (1.04)(0.50) + (0.98)(0.20) ] \]
+\[ E[V_f] = 1000 \times [ 0.33 + 0.52 + 0.196 ] = 1000 \times 1.046 = 1046 \]
+
+Aunque el valor esperado es \$1,046, el enfoque estocástico nos revela que existe un 20\% de riesgo de perder dinero (obtener \$980), información que el modelo determinístico oculta.
+
+\section{¿Qué es la Simulación?}
+
+Definimos formalmente la simulación como la imitación de la operación de un proceso o sistema del mundo real a lo largo del tiempo. La simulación implica la generación de una historia artificial del sistema y la observación de dicha historia para extraer inferencias sobre las características operativas del sistema real.
+
+El comportamiento del sistema se estudia desarrollando un modelo de simulación. Este modelo toma la forma de un conjunto de supuestos sobre el funcionamiento del sistema, expresados mediante relaciones matemáticas, lógicas y simbólicas.
+
+\section{Tipos de Simulación}
+
+Los modelos de simulación se clasifican generalmente a lo largo de tres dimensiones:
+
+\begin{enumerate}
+    \item \textbf{Estática vs. Dinámica:}
+    \begin{itemize}
+        \item \textit{Estática:} Representa un sistema en un punto particular en el tiempo. El tiempo no juega un papel en la simulación.
+        \item \textit{Dinámica:} Representa sistemas que evolucionan a lo largo del tiempo (ej. una línea de producción).
+    \end{itemize}
+    
+    \item \textbf{Determinística vs. Estocástica:} (Como se definió anteriormente).
+    
+    \item \textbf{Continua vs. Discreta:}
+    \begin{itemize}
+        \item \textit{Continua:} Las variables de estado cambian continuamente con respecto al tiempo (ej. flujo de fluidos, ecuaciones diferenciales).
+        \item \textit{Discreta:} Las variables de estado cambian solo en puntos discretos en el tiempo (ej. el número de clientes en una cola cambia solo cuando alguien llega o sale).
+    \end{itemize}
+\end{enumerate}
+
+\section{¿Cuándo es Apropiada la Simulación?}
+
+\subsection{Uso Apropiado}
+\begin{itemize}
+    \item Cuando no existe una formulación matemática completa del problema o cuando los métodos analíticos (como la teoría de colas o la programación lineal) son imposibles de resolver debido a la complejidad.
+    \item Cuando se desea experimentar con nuevas políticas o diseños sin perturbar el sistema real (ej. cambiar rutas de vuelo en un aeropuerto).
+    \item Para verificar soluciones analíticas.
+    \item Cuando se necesita comprimir o expandir el tiempo para observar fenómenos de largo plazo.
+\end{itemize}
+
+\subsection{Uso No Apropiado}
+\begin{itemize}
+    \item Cuando el problema puede resolverse utilizando sentido común.
+    \item Cuando existe una solución analítica cerrada (fórmula exacta).
+    \item Cuando es más fácil o económico realizar experimentos directos en el sistema real.
+    \item Cuando no se dispone de recursos (tiempo, dinero, datos) para validar el modelo.
+\end{itemize}
+
+\section{Ventajas y Desventajas}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}p{0.45\textwidth}p{0.45\textwidth}@{}}
+\toprule
+\textbf{Ventajas} & \textbf{Desventajas} \\ \midrule
+Permite responder preguntas del tipo "¿Qué pasaría si...?" (Análisis de escenarios). & La construcción de modelos requiere capacitación especial y puede ser costosa en tiempo. \\
+Permite estudiar la interacción entre variables complejas. & Los resultados son estimaciones (aproximaciones), no valores exactos. Es difícil interpretar la salida si no se conoce estadística. \\
+Se pueden simular años de operación en segundos. & Un modelo inválido o mal construido llevará a decisiones erróneas ("Garbage In, Garbage Out"). \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\section{Ejemplo 2: Simulación de Utilidades bajo Demanda Incierta}
+
+Consideremos una empresa que fabrica un producto tecnológico. 
+\begin{itemize}
+    \item Precio de venta por unidad ($P$): \$50
+    \item Costo variable por unidad ($C_v$): \$30
+    \item Costos fijos ($C_f$): \$10,000
+\end{itemize}
+La demanda ($D$) es incierta y sigue una distribución normal con media $\mu = 600$ y desviación estándar $\sigma = 100$.
+La utilidad ($U$) se calcula como:
+\[ U = (P - C_v) \times D - C_f \]
+
+Queremos estimar:
+1. La utilidad media esperada.
+2. La probabilidad de tener pérdidas ($U < 0$).
+
+A continuación, presentamos un código en Python para realizar esta simulación (Método de Monte Carlo) con 10,000 iteraciones.
+
+\begin{lstlisting}[language=Python, caption=Simulación de Utilidad en Python]
+import numpy as np
+
+# Parametros del modelo
+precio_venta = 50
+costo_variable = 30
+costo_fijo = 10000
+
+# Parametros de la demanda (Incertidumbre)
+media_demanda = 600
+desv_std_demanda = 100
+num_simulaciones = 1000000
+
+# Generacion de escenarios de demanda (Numeros aleatorios)
+np.random.seed(42) # Para reproducibilidad
+demandas_simuladas = np.random.normal(media_demanda, desv_std_demanda, num_simulaciones)
+
+# Calculo de utilidades para cada escenario
+# Utilidad = (Margen * Demanda) - Costo Fijo
+utilidades = ((precio_venta - costo_variable) * demandas_simuladas) - costo_fijo
+
+# Analisis de resultados
+utilidad_promedio = np.mean(utilidades)
+probabilidad_perdida = np.sum(utilidades < 0) / num_simulaciones
+
+print(f"Resultados tras {num_simulaciones} simulaciones:")
+print(f"Utilidad Promedio Esperada: ${utilidad_promedio:.2f}")
+print(f"Probabilidad de Perdida: {probabilidad_perdida * 100:.2f}%")
+
+# Resultado teorico para validacion:
+# Punto de equilibrio = 10000 / (50-30) = 500 unidades
+# Probabilidad de demanda < 500 en N(600, 100) es aprox 15.8%
+\end{lstlisting}
+
+Al ejecutar este código, obtendremos una utilidad promedio cercana a \$2,000. Sin embargo, la simulación revela que existe aproximadamente un 15-16\% de probabilidad de que la empresa pierda dinero, dado que la demanda podría caer por debajo del punto de equilibrio (500 unidades). Un modelo determinístico que solo usara la media de 600 unidades simplemente proyectaría una ganancia de \$2,000 sin alertar sobre el riesgo significativo de pérdida.
+
+\section{Conclusión}
+La simulación no es una bola de cristal que predice el futuro con certeza, sino una herramienta analítica que nos permite comprender el rango de posibles futuros y sus probabilidades asociadas. En un mundo incierto, la capacidad de cuantificar el riesgo a través de la simulación es una ventaja competitiva fundamental para el ingeniero moderno.
+
+\end{document}

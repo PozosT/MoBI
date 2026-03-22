@@ -1,0 +1,986 @@
+% !TEX program = pdflatex
+\documentclass[aspectratio=169,9pt]{beamer}
+
+%================================================
+% PAQUETES
+%================================================
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath, amsfonts, amssymb, bm, mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multicol}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+
+%================================================
+% TEMA Y ESTILO
+%================================================
+\usetheme{CambridgeUS}
+\usecolortheme{beaver}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+\definecolor{darkred}{RGB}{139,0,0}
+\setbeamercolor{structure}{fg=darkred}
+\setbeamercolor{item projected}{bg=darkred, fg=white}
+\setbeamercolor{block title}{bg=darkred, fg=white}
+\setbeamercolor{block body}{bg=black!2, fg=black}
+\setbeamercolor{alerted text}{fg=darkred}
+
+%================================================
+% LISTINGS (Python)
+%================================================
+\definecolor{codegreen}{rgb}{0,0.5,0}
+\definecolor{codegray}{rgb}{0.45,0.45,0.45}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.94}
+
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour},
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{Magenta},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\ttfamily\footnotesize,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numbersep=6pt,
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2
+}
+\lstset{style=mystyle}
+
+%================================================
+% MACROS MATEMÁTICOS
+%================================================
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Pp}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\1}{\mathbf{1}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\q}{q} % cuantiles
+
+%================================================
+% METADATOS
+%================================================
+\title[]{Monte Carlo en práctica: distribuciones, réplicas, salida y TLC\\(con ejemplos financieros e inventario)}
+\author{Alejandra Tabares Pozos}
+\institute[Uniandes]{Universidad de los Andes \\ Departamento de Ingeniería Industrial}
+\date{\today}
+
+\begin{document}
+
+%================================================
+% PORTADA
+%================================================
+\begin{frame}
+  \titlepage
+\end{frame}
+
+%================================================
+% MAPA CONCEPTUAL (2 slides)
+%================================================
+\begin{frame}{La plantilla única (para todos los ejemplos)}
+\small
+\begin{block}{Formalismo mínimo}
+Trabajamos sobre un espacio de probabilidad $(\Omega,\mathcal{F},\Pp)$.
+\[
+\xi:\Omega\to\R^d \quad\text{(entrada aleatoria)},\qquad
+Y=g(\xi)\quad\text{(salida / resultado de una réplica)}.
+\]
+\end{block}
+
+\begin{block}{Tres tipos de preguntas (funcionales de la distribución de salida)}
+Sea $F_Y(y)=\Pp(Y\le y)$ la CDF inducida por el sistema.
+\[
+\underbrace{\mu=\E[Y]}_{\text{promedio / costo esperado}},\qquad
+\underbrace{\pi(\tau)=\Pp(Y>\tau)=1-F_Y(\tau)}_{\text{cola / evento}},\qquad
+\underbrace{\q_\alpha(Y)=\inf\{y:F_Y(y)\ge \alpha\}}_{\text{cuantil (VaR)}}
+\]
+y, cuando interesa cola extrema,
+\[
+\mathrm{CVaR}_\alpha(Y)=\E\!\big[\,Y\mid Y\ge \q_\alpha(Y)\,\big].
+\]
+\end{block}
+
+\begin{alertblock}{Idea guía}
+Cada ejemplo seguirá el mismo guion: \textbf{(i) contexto}, \textbf{(ii) modelo + pasos}, \textbf{(iii) mini-corrida (15 datos)}, \textbf{(iv) TLC para estimadores}.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{TLC: cuándo aparece y qué te permite reportar}
+\small
+\begin{block}{Caso A: estimar una esperanza $\theta=\E[h(Y)]$}
+Si $Y_1,\dots,Y_N$ son i.i.d.\ (réplicas) y $\Var(h(Y))<\infty$, entonces
+\[
+\widehat{\theta}_N=\frac{1}{N}\sum_{i=1}^N h(Y_i),
+\qquad
+\sqrt{N}\,\frac{\widehat{\theta}_N-\theta}{\sigma_h}\Rightarrow\mathcal{N}(0,1),
+\quad \sigma_h^2=\Var(h(Y)).
+\]
+\textbf{IC 95\% (aprox.):}\quad
+$\theta\in \widehat{\theta}_N \pm 1.96\,\dfrac{s_h}{\sqrt{N}}$,\;
+$s_h^2$ varianza muestral de $h(Y_i)$.
+\end{block}
+
+\begin{block}{Caso B: estimar una probabilidad $\pi(\tau)=\Pp(Y>\tau)$}
+Usa $h(Y)=\1\{Y>\tau\}$ (Bernoulli). Entonces
+\[
+\widehat{\pi}_N=\frac{1}{N}\sum_{i=1}^N \1\{Y_i>\tau\},
+\qquad
+\sqrt{N}\,\big(\widehat{\pi}_N-\pi(\tau)\big)\Rightarrow \mathcal{N}\!\big(0,\pi(1-\pi)\big).
+\]
+\end{block}
+
+\begin{alertblock}{Advertencia (importante en finanzas)}
+Si $h(Y)$ tiene varianza infinita (colas demasiado pesadas), el TLC clásico puede fallar o requerir $N$ enormes.
+\end{alertblock}
+\end{frame}
+
+%================================================
+%================================================
+% EJEMPLO 1 (nivel 1): Crédito (Bernoulli + Beta)
+%================================================
+%================================================
+\section*{Ejemplo 1: Riesgo de crédito (nivel 1)}
+
+\begin{frame}{Ejemplo 1 (Finanzas, nivel 1): pérdidas por \emph{default} en una cartera pequeña}
+\small
+\begin{block}{Contexto (prosa)}
+Un equipo de riesgo evalúa pérdidas mensuales de una cartera de \textbf{créditos pequeños}.
+Cada cliente puede entrar en \textbf{default} en el mes (evento raro), y si ocurre default,
+la pérdida depende de la \textbf{severidad} (LGD: \emph{loss given default}) que vive en $[0,1]$.
+\end{block}
+
+\begin{block}{Pregunta(s) de interés}
+\begin{itemize}
+\item \textbf{Pérdida esperada mensual} de la cartera: $\mu=\E[Y]$.
+\item \textbf{Probabilidad de pérdida positiva} (al menos un default): $\pi=\Pp(Y>0)$.
+\end{itemize}
+\end{block}
+
+\begin{alertblock}{Dónde está el repaso de distribuciones}
+\textbf{Bernoulli} para el evento (default / no default) y \textbf{Beta} para LGD (severidad acotada).
+\end{alertblock}
+\end{frame}
+
+% ======= CAMBIO: frame con lstlisting => fragile =======
+\begin{frame}[fragile]{Ejemplo 1: modelo probabilístico y pasos de simulación}
+\small
+\begin{block}{Modelo (entrada $\xi$ y salida $Y=g(\xi)$)}
+Cartera de $m=15$ obligores, EAD fija $=10{,}000$.
+\[
+D_i\sim\mathrm{Bernoulli}(p),\quad p=0.08,
+\qquad
+\mathrm{LGD}_i\sim\mathrm{Beta}(2,5),
+\quad \text{indep.}
+\]
+La pérdida mensual total (una réplica del sistema) es
+\[
+Y=\sum_{i=1}^{m} \underbrace{\mathrm{EAD}}_{10{,}000}\cdot \mathrm{LGD}_i\cdot D_i.
+\]
+\end{block}
+
+\begin{block}{Pasos (Monte Carlo)}
+\begin{enumerate}
+\item Para $i=1,\dots,m$: generar $U_i\sim\mathrm{Unif}(0,1)$ y poner $D_i=\1\{U_i<p\}$.
+\item Generar $\mathrm{LGD}_i\sim\mathrm{Beta}(2,5)$.
+\item Calcular pérdidas individuales y sumar $\Rightarrow Y$.
+\item Repetir $N$ meses simulados para estimar $\mu=\E[Y]$ y $\pi=\Pp(Y>0)$.
+\end{enumerate}
+\end{block}
+
+\begin{block}{Implementación (esqueleto)}
+\begin{lstlisting}[language=Python]
+U = np.random.rand(m)
+D = (U < p).astype(int)
+LGD = np.random.beta(2,5,m)
+Y = EAD * np.sum(LGD * D)
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+\begin{frame}{Ejemplo 1: una corrida ilustrativa (15 datos = 15 obligores)}
+\scriptsize
+\begin{columns}[T]
+\column{0.49\textwidth}
+\begin{block}{Una réplica del mes: (obligores 1--8)}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rcccc@{}}
+\toprule
+$i$ & $U_i$ & $D_i$ & LGD$_i$ & Loss$_i$ \\
+\midrule
+1 & 0.5118 & 0 & 0.387 & 0.0 \\
+2 & 0.9505 & 0 & 0.249 & 0.0 \\
+3 & 0.1442 & 0 & 0.668 & 0.0 \\
+4 & 0.9486 & 0 & 0.186 & 0.0 \\
+5 & 0.3118 & 0 & 0.054 & 0.0 \\
+6 & 0.4233 & 0 & 0.123 & 0.0 \\
+7 & 0.8277 & 0 & 0.400 & 0.0 \\
+8 & 0.4092 & 0 & 0.334 & 0.0 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\column{0.51\textwidth}
+\begin{block}{(obligores 9--15)}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rcccc@{}}
+\toprule
+$i$ & $U_i$ & $D_i$ & LGD$_i$ & Loss$_i$ \\
+\midrule
+9 & 0.5496 & 0 & 0.137 & 0.0 \\
+10 & 0.0276 & 1 & 0.182 & 1824.2 \\
+11 & 0.7535 & 0 & 0.120 & 0.0 \\
+12 & 0.5381 & 0 & 0.264 & 0.0 \\
+13 & 0.3297 & 0 & 0.189 & 0.0 \\
+14 & 0.7884 & 0 & 0.320 & 0.0 \\
+15 & 0.3032 & 0 & 0.168 & 0.0 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\begin{alertblock}{Salida de esta réplica}
+$Y=\sum_i \text{Loss}_i = 1824.2$;\quad
+\textbf{evento}: $Y>0$ (hubo default).
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo 1: TLC para $\mu=\E[Y]$ y $\pi=\Pp(Y>0)$}
+\small
+\begin{block}{Estimadores Monte Carlo (con $N$ meses simulados)}
+\[
+\widehat{\mu}_N=\frac{1}{N}\sum_{j=1}^N Y^{(j)},\qquad
+\widehat{\pi}_N=\frac{1}{N}\sum_{j=1}^N \1\{Y^{(j)}>0\}.
+\]
+\end{block}
+
+\begin{block}{TLC e IC 95\% (aprox.)}
+Si $\Var(Y)<\infty$:
+\[
+\widehat{\mu}_N \approx \mathcal{N}\!\left(\mu,\frac{\sigma_Y^2}{N}\right),
+\qquad
+\mu\in \widehat{\mu}_N \pm 1.96\,\frac{s_Y}{\sqrt{N}}.
+\]
+Para la probabilidad (Bernoulli):
+\[
+\widehat{\pi}_N \approx \mathcal{N}\!\left(\pi,\frac{\pi(1-\pi)}{N}\right),
+\qquad
+\pi\in \widehat{\pi}_N \pm 1.96\,\sqrt{\frac{\widehat{\pi}_N(1-\widehat{\pi}_N)}{N}}.
+\]
+\end{block}
+
+\begin{alertblock}{Lectura pedagógica}
+\textbf{La distribución de salida} describe pérdidas del mes ($Y$).
+\textbf{El TLC} describe la variabilidad del \emph{estimador} por usar $N$ finito.
+\end{alertblock}
+\end{frame}
+
+%================================================
+%================================================
+% EJEMPLO 2 (nivel 2): Opción europea (Lognormal)
+%================================================
+%================================================
+\section*{Ejemplo 2: Opción europea (nivel 2)}
+
+\begin{frame}{Ejemplo 2 (Finanzas, nivel 2): precio de una opción europea por Monte Carlo}
+\small
+\begin{block}{Contexto (prosa)}
+Una mesa de derivados quiere valorar una \textbf{opción Call europea} con vencimiento $T$.
+Bajo el supuesto Black--Scholes, el precio terminal $S_T$ es \textbf{lognormal}.
+La salida de una réplica es el \textbf{payoff descontado} de la opción.
+\end{block}
+
+\begin{block}{Pregunta(s) de interés}
+\begin{itemize}
+\item \textbf{Precio} $C=\E\big[e^{-rT}(S_T-K)_+\big]$ (esperanza).
+\item \textbf{Probabilidad de terminar in-the-money} $\Pp(S_T>K)$ (evento).
+\end{itemize}
+\end{block}
+
+\begin{alertblock}{Repaso de distribuciones}
+Normal $\Rightarrow$ transformación exponencial $\Rightarrow$ Lognormal.
+\end{alertblock}
+\end{frame}
+
+% ======= CAMBIO: frame con lstlisting => fragile =======
+\begin{frame}[fragile]{Ejemplo 2: modelo y pasos de simulación}
+\small
+\begin{block}{Modelo (una réplica)}
+Parámetros: $S_0=100$, $K=105$, $r=0.03$, $\sigma=0.25$, $T=0.5$.
+\[
+Z\sim\mathcal{N}(0,1),\qquad
+S_T=S_0\exp\!\left((r-\tfrac12\sigma^2)T+\sigma\sqrt{T}\,Z\right).
+\]
+Salida (una réplica):
+\[
+Y=e^{-rT}(S_T-K)_+.
+\]
+\end{block}
+
+\begin{block}{Pasos (Monte Carlo)}
+\begin{enumerate}
+\item Generar $Z^{(i)}\sim\mathcal{N}(0,1)$.
+\item Transformar $\Rightarrow S_T^{(i)}$ (lognormal).
+\item Calcular $Y_i=e^{-rT}(S_T^{(i)}-K)_+$.
+\item Estimar $C=\E[Y]$ por promedio; estimar $\Pp(S_T>K)$ con indicadores.
+\end{enumerate}
+\end{block}
+
+\begin{block}{Esqueleto (Python)}
+\begin{lstlisting}[language=Python]
+Z = np.random.randn(N)
+ST = S0*np.exp((r-0.5*sigma**2)*T + sigma*np.sqrt(T)*Z)
+Y  = np.exp(-r*T)*np.maximum(ST-K,0.0)
+C_hat = Y.mean()
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+\begin{frame}{Ejemplo 2: mini-corrida (15 réplicas) para ver qué se está promediando}
+\scriptsize
+\begin{columns}[T]
+\column{0.49\textwidth}
+\begin{block}{Réplicas 1--8}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rcccc@{}}
+\toprule
+$i$ & $Z$ & $S_T$ & $(S_T-K)_+$ & $Y$ \\
+\midrule
+1 & 0.189 & 103.33 & 0.00 & 0.00 \\
+2 & -0.523 & 91.12 & 0.00 & 0.00 \\
+3 & -0.413 & 92.90 & 0.00 & 0.00 \\
+4 & -2.441 & 65.21 & 0.00 & 0.00 \\
+5 & 1.800 & 137.20 & 32.20 & 31.72 \\
+6 & 1.144 & 122.17 & 17.17 & 16.92 \\
+7 & -0.325 & 94.40 & 0.00 & 0.00 \\
+8 & 0.774 & 114.78 & 9.78 & 9.63 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\column{0.51\textwidth}
+\begin{block}{Réplicas 9--15}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rcccc@{}}
+\toprule
+$i$ & $Z$ & $S_T$ & $(S_T-K)_+$ & $Y$ \\
+\midrule
+9 & 0.281 & 104.93 & 0.00 & 0.00 \\
+10 & -0.554 & 90.62 & 0.00 & 0.00 \\
+11 & 0.978 & 119.64 & 14.64 & 14.43 \\
+12 & -0.311 & 94.64 & 0.00 & 0.00 \\
+13 & -0.329 & 94.33 & 0.00 & 0.00 \\
+14 & -0.792 & 86.87 & 0.00 & 0.00 \\
+15 & 0.455 & 108.78 & 3.78 & 3.72 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\begin{alertblock}{Qué se estima con estos 15 datos}
+$\widehat{C}_{15}=\frac{1}{15}\sum_{i=1}^{15}Y_i \approx 5.02$;\quad
+$\widehat{\Pp}(S_T>K)=\frac{1}{15}\sum \1\{Y_i>0\}=0.40$.
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo 2: TLC para el precio $C=\E[Y]$}
+\small
+\begin{block}{Estimador y varianza}
+\[
+\widehat{C}_N=\frac{1}{N}\sum_{i=1}^N Y_i,\qquad
+\Var(\widehat{C}_N)=\frac{\Var(Y)}{N}.
+\]
+\end{block}
+
+\begin{block}{TLC $\Rightarrow$ IC 95\%}
+Si $\Var(Y)<\infty$,
+\[
+\widehat{C}_N \approx \mathcal{N}\!\left(C,\frac{\sigma_Y^2}{N}\right)
+\Rightarrow
+C\in \widehat{C}_N \pm 1.96\,\frac{s_Y}{\sqrt{N}}.
+\]
+Con la mini-corrida ($N=15$) se obtiene $s_Y\approx 9.32$ (gran variabilidad porque hay muchos ceros y pocos payoffs grandes).
+\end{block}
+
+\begin{alertblock}{Lectura}
+En derivados, $Y$ puede ser \textbf{muy asimétrico} (masa en 0 + cola derecha).
+Por eso, para reducir el error por factor 2 necesitas $\approx 4$ veces más réplicas.
+\end{alertblock}
+\end{frame}
+
+%================================================
+%================================================
+% EJEMPLO 3 (nivel 3): Portafolio correlacionado + VaR (cuantil)
+%================================================
+%================================================
+\section*{Ejemplo 3: Portafolio correlacionado (nivel 3)}
+
+\begin{frame}{Ejemplo 3 (Finanzas, nivel 3): pérdida diaria de un portafolio correlacionado}
+\small
+\begin{block}{Contexto (prosa)}
+Un área de \textbf{riesgo de mercado} monitorea pérdidas diarias de un portafolio con dos activos.
+El punto central no es la media (cercana a 0) sino \textbf{la cola}: \emph{¿qué tan grande puede ser una pérdida mala?}
+Aquí aparecen cuantiles: VaR.
+\end{block}
+
+\begin{block}{Pregunta(s) de interés}
+\begin{itemize}
+\item \textbf{VaR} al nivel $\alpha$: $\mathrm{VaR}_\alpha = \q_\alpha(L)$ donde $L$ es pérdida.
+\item \textbf{Probabilidad de exceder un umbral} $\Pp(L>\ell)$ (evento).
+\end{itemize}
+\end{block}
+
+\begin{alertblock}{Repaso}
+Normal multivariada + correlación (Cholesky) + funcional no lineal (cuantil).
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Ejemplo 3: modelo y pasos (correlación explícita)}
+\small
+\begin{block}{Modelo (retornos correlacionados)}
+Retornos diarios (media 0):
+\[
+\bm{R}=(R_1,R_2)^\top \sim \mathcal{N}(\bm{0},\Sigma),
+\quad
+\Sigma=
+\begin{pmatrix}
+\sigma_1^2 & \rho\sigma_1\sigma_2\\
+\rho\sigma_1\sigma_2 & \sigma_2^2
+\end{pmatrix},
+\ 
+\sigma_1=0.015,\ \sigma_2=0.02,\ \rho=0.3.
+\]
+Portafolio con valor $V_0=10^6$ y pesos $w_1=0.6, w_2=0.4$.
+Pérdida diaria:
+\[
+L = -V_0(w_1R_1+w_2R_2).
+\]
+\end{block}
+
+\begin{block}{Pasos (Monte Carlo con Cholesky)}
+\begin{enumerate}
+\item Generar $\bm{Z}\sim\mathcal{N}(\bm{0},I_2)$.
+\item Construir $\bm{R}=A\bm{Z}$ donde $AA^\top=\Sigma$ (Cholesky).
+\item Calcular $L=-V_0\bm{w}^\top \bm{R}$.
+\item Repetir $N$ veces y estimar: (i) $\Pp(L>\ell)$; (ii) $\mathrm{VaR}_\alpha=\q_\alpha(L)$.
+\end{enumerate}
+\end{block}
+\end{frame}
+
+\begin{frame}{Ejemplo 3: mini-corrida (15 escenarios) y lectura de VaR}
+\scriptsize
+\begin{columns}[T]
+\column{0.49\textwidth}
+\begin{block}{Escenarios 1--8}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rccc@{}}
+\toprule
+$i$ & $R_1$ & $R_2$ & $L$ (COP) \\
+\midrule
+1 & 3.06\% & 0.48\% & -20,284 \\
+2 & -3.83\% & -0.61\% & 25,457 \\
+3 & 0.63\% & -0.20\% & -2,946 \\
+4 & -0.84\% & -2.48\% & 14,985 \\
+5 & -2.74\% & -3.37\% & 31,677 \\
+6 & -1.07\% & -2.13\% & 17,240 \\
+7 & -1.55\% & -0.05\% & 9,336 \\
+8 & 0.75\% & -0.14\% & -3,936 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\column{0.51\textwidth}
+\begin{block}{Escenarios 9--15}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rccc@{}}
+\toprule
+$i$ & $R_1$ & $R_2$ & $L$ (COP) \\
+\midrule
+9 & -0.39\% & -0.15\% & 3,124 \\
+10 & 2.31\% & 1.27\% & -18,776 \\
+11 & 0.72\% & 0.28\% & -5,432 \\
+12 & 3.26\% & 1.38\% & -22,649 \\
+13 & 2.16\% & 1.52\% & -18,035 \\
+14 & -1.52\% & -3.14\% & 25,331 \\
+15 & 5.20\% & 2.23\% & -36,487 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\begin{alertblock}{Lectura (cuantil en muestra pequeña)}
+Con estos 15 valores, el cuantil empírico:
+$\widehat{\mathrm{VaR}}_{0.95}=\widehat{\q}_{0.95}(L)\approx 17{,}240$.
+Aquí \emph{se ve} que cuantiles altos son muy sensibles a $N$ pequeño.
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo 3: TLC y cuantiles (VaR) -- idea asintótica}
+\small
+\begin{block}{Probabilidad (sí es TLC directo)}
+Para $\pi(\ell)=\Pp(L>\ell)$:
+\[
+\widehat{\pi}_N(\ell)=\frac{1}{N}\sum_{i=1}^N \1\{L_i>\ell\},
+\qquad
+\sqrt{N}\big(\widehat{\pi}_N(\ell)-\pi(\ell)\big)\Rightarrow \mathcal{N}(0,\pi(1-\pi)).
+\]
+\end{block}
+
+\begin{block}{VaR (cuantil): normalidad asintótica (derivada del CLT para la CDF empírica)}
+Sea $q_\alpha=\q_\alpha(L)$ y $f_L(q_\alpha)$ la densidad de $L$ en el cuantil. Entonces,
+\[
+\sqrt{N}\big(\widehat{q}_\alpha-q_\alpha\big)\Rightarrow
+\mathcal{N}\!\left(0,\ \frac{\alpha(1-\alpha)}{f_L(q_\alpha)^2}\right).
+\]
+\textbf{Interpretación:} si $f_L(q_\alpha)$ es pequeña (cola plana), el error del cuantil crece.
+\end{block}
+
+\begin{alertblock}{Consecuencia práctica}
+Percentiles altos (0.95, 0.99) requieren $N$ mucho mayor que una media,
+porque estiman comportamiento en una región con poca masa y densidad pequeña.
+\end{alertblock}
+\end{frame}
+
+%================================================
+%================================================
+% EJEMPLO 4 (nivel 4): Inventario (Gamma) + métricas (media/prob)
+%================================================
+%================================================
+\section*{Ejemplo 4: Inventario (nivel 4)}
+
+\begin{frame}{Ejemplo 4 (Inventario, nivel 4): Newsvendor con demanda Gamma}
+\small
+\begin{block}{Contexto (prosa)}
+Un e-commerce decide cuánto ordenar ($Q$) para mañana. La demanda $D$ es positiva y asimétrica:
+la mayoría de los días es moderada, pero hay algunos días con demanda alta.
+Ese patrón es típico de distribuciones \textbf{Gamma}.
+\end{block}
+
+\begin{block}{Pregunta(s) de interés}
+\begin{itemize}
+\item \textbf{Utilidad esperada}: $\mu(Q)=\E[\Pi(Q,D)]$.
+\item \textbf{Nivel de servicio}: $\pi(Q)=\Pp(D>Q)$ (probabilidad de quiebre/stockout).
+\end{itemize}
+\end{block}
+
+\begin{alertblock}{Repaso}
+Gamma (soporte positivo, asimetría) + función no lineal min/max en la utilidad.
+\end{alertblock}
+\end{frame}
+
+% ======= CAMBIO: frame con lstlisting => fragile =======
+\begin{frame}[fragile]{Ejemplo 4: modelo y pasos de simulación}
+\small
+\begin{block}{Modelo}
+Demanda:
+\[
+D\sim\mathrm{Gamma}(k,\theta),\quad k=4,\ \theta=25 \Rightarrow \E[D]=100.
+\]
+Decisión $Q=110$. Precio $p=12$, costo $c=7$, salvamento $v=3$.
+Utilidad por día:
+\[
+\Pi(Q,D)=p\min(D,Q) + v(Q-\min(D,Q)) - cQ.
+\]
+Salida (una réplica): $Y=\Pi(Q,D)$.
+\end{block}
+
+\begin{block}{Pasos (Monte Carlo)}
+\begin{enumerate}
+\item Simular $D^{(i)}\sim\mathrm{Gamma}(k,\theta)$.
+\item Calcular $Y_i=\Pi(Q,D^{(i)})$.
+\item Estimar $\mu(Q)=\E[Y]$ con promedio; $\pi(Q)=\Pp(D>Q)$ con indicador.
+\end{enumerate}
+\end{block}
+
+\begin{block}{Esqueleto (Python)}
+\begin{lstlisting}[language=Python]
+D = np.random.gamma(k, theta, N)
+sales = np.minimum(D, Q)
+profit = p*sales + v*(Q-sales) - c*Q
+mu_hat = profit.mean()
+pi_hat = np.mean(D > Q)
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+\begin{frame}{Ejemplo 4: mini-corrida (15 días) para ver $D$ y la salida $Y$}
+\scriptsize
+\begin{columns}[T]
+\column{0.49\textwidth}
+\begin{block}{Días 1--8}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rccc@{}}
+\toprule
+$i$ & $D$ & $\Pi(Q,D)$ & $\1\{D>Q\}$ \\
+\midrule
+1 & 63.9 & 134.8 & 0 \\
+2 & 196.6 & 550.0 & 1 \\
+3 & 33.4 & -139.4 & 0 \\
+4 & 87.6 & 288.8 & 0 \\
+5 & 106.4 & 513.6 & 0 \\
+6 & 109.0 & 546.0 & 0 \\
+7 & 150.6 & 550.0 & 1 \\
+8 & 86.1 & 271.2 & 0 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\column{0.51\textwidth}
+\begin{block}{Días 9--15}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rccc@{}}
+\toprule
+$i$ & $D$ & $\Pi(Q,D)$ & $\1\{D>Q\}$ \\
+\midrule
+9 & 62.6 & 119.2 & 0 \\
+10 & 108.8 & 535.2 & 0 \\
+11 & 196.2 & 550.0 & 1 \\
+12 & 57.0 & 52.0 & 0 \\
+13 & 70.6 & 215.2 & 0 \\
+14 & 136.0 & 550.0 & 1 \\
+15 & 87.1 & 281.2 & 0 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\begin{alertblock}{Qué se estima con estos 15 datos}
+$\widehat{\mu}_{15}\approx 246.3$;\quad
+$\widehat{\pi}_{15}=\frac{4}{15}\approx 0.2667$.
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo 4: TLC para utilidad esperada y nivel de servicio}
+\small
+\begin{block}{Estimadores}
+\[
+\widehat{\mu}_N(Q)=\frac{1}{N}\sum_{i=1}^N \Pi(Q,D^{(i)}),
+\qquad
+\widehat{\pi}_N(Q)=\frac{1}{N}\sum_{i=1}^N \1\{D^{(i)}>Q\}.
+\]
+\end{block}
+
+\begin{block}{TLC (dos veces, dos lecturas)}
+\[
+\widehat{\mu}_N(Q)\approx \mathcal{N}\!\left(\mu(Q),\frac{\sigma_\Pi^2(Q)}{N}\right),
+\quad
+\mu(Q)\in \widehat{\mu}_N(Q)\pm 1.96\frac{s_\Pi(Q)}{\sqrt{N}}.
+\]
+\[
+\widehat{\pi}_N(Q)\approx \mathcal{N}\!\left(\pi(Q),\frac{\pi(Q)(1-\pi(Q))}{N}\right).
+\]
+\end{block}
+
+\begin{alertblock}{Interpretación geométrica mínima}
+El \textbf{promedio} es un funcional lineal de la distribución de salida.
+La \textbf{probabilidad de stockout} es un promedio de indicadores (Bernoulli) $\Rightarrow$ mismo TLC, distinta varianza.
+\end{alertblock}
+\end{frame}
+
+%================================================
+%================================================
+% EJEMPLO 5 (nivel 5): Riesgo operacional (Poisson compuesto)
+%================================================
+%================================================
+\section*{Ejemplo 5: Riesgo operacional (nivel 5)}
+
+\begin{frame}{Ejemplo 5 (Finanzas, nivel 5): pérdida anual operacional (Poisson compuesto)}
+\small
+\begin{block}{Contexto (prosa)}
+Un banco modela pérdidas anuales por eventos operacionales: fraudes, fallas, sanciones.
+Hay dos incertidumbres: \textbf{frecuencia} de eventos en el año y \textbf{severidad} de cada evento.
+El resultado anual es una \textbf{suma aleatoria} (\emph{compound process}).
+\end{block}
+
+\begin{block}{Pregunta(s) de interés}
+\begin{itemize}
+\item \textbf{Stop-loss premium} (capa de seguro): $\theta=\E[(Y-d)_+]$.
+\item \textbf{Probabilidad de exceder capital} $d$: $\pi=\Pp(Y>d)$.
+\end{itemize}
+\end{block}
+
+\begin{alertblock}{Repaso}
+Poisson (conteo) + Lognormal (severidad positiva con cola) $\Rightarrow$ suma aleatoria.
+\end{alertblock}
+\end{frame}
+
+% ======= CAMBIO: frame con lstlisting => fragile =======
+\begin{frame}[fragile]{Ejemplo 5: modelo y pasos de simulación}
+\small
+\begin{block}{Modelo (una réplica anual)}
+\[
+N\sim\mathrm{Poisson}(\lambda),\ \lambda=2,
+\qquad
+X_j\sim\mathrm{Lognormal}(\mu,\sigma^2),\ \mu=8.5,\ \sigma=0.7,
+\]
+independientes, y la pérdida agregada anual:
+\[
+Y=\sum_{j=1}^{N} X_j.
+\]
+Capa (deducible) $d=15{,}000$. Salida para seguro: $h(Y)=(Y-d)_+$.
+\end{block}
+
+\begin{block}{Pasos (Monte Carlo)}
+\begin{enumerate}
+\item Generar $N^{(i)}\sim\mathrm{Poisson}(\lambda)$.
+\item Generar severidades $X_1,\dots,X_{N^{(i)}}$ y sumar $\Rightarrow Y_i$.
+\item Calcular $h(Y_i)=(Y_i-d)_+$ y el indicador $\1\{Y_i>d\}$.
+\item Promediar sobre $N$ años simulados.
+\end{enumerate}
+\end{block}
+
+\begin{block}{Esqueleto (Python)}
+\begin{lstlisting}[language=Python]
+N = np.random.poisson(lam, size=Nsim)
+Y = np.array([np.random.lognormal(mu,sigma,k).sum() if k>0 else 0.0 for k in N])
+theta_hat = np.mean(np.maximum(Y-d,0.0))
+pi_hat    = np.mean(Y > d)
+\end{lstlisting}
+\end{block}
+\end{frame}
+
+\begin{frame}{Ejemplo 5: mini-corrida (15 años) para ver suma aleatoria y cola}
+\scriptsize
+\begin{columns}[T]
+\column{0.49\textwidth}
+\begin{block}{Años 1--8}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rcccc@{}}
+\toprule
+año & $N$ & $Y$ & $(Y-d)_+$ & $\1\{Y>d\}$ \\
+\midrule
+1 & 3 & 20,480 & 5,480 & 1 \\
+2 & 0 & 0 & 0 & 0 \\
+3 & 2 & 8,219 & 0 & 0 \\
+4 & 0 & 0 & 0 & 0 \\
+5 & 3 & 11,319 & 0 & 0 \\
+6 & 5 & 28,309 & 13,309 & 1 \\
+7 & 0 & 0 & 0 & 0 \\
+8 & 2 & 6,175 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\column{0.51\textwidth}
+\begin{block}{Años 9--15}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rcccc@{}}
+\toprule
+año & $N$ & $Y$ & $(Y-d)_+$ & $\1\{Y>d\}$ \\
+\midrule
+9 & 0 & 0 & 0 & 0 \\
+10 & 2 & 16,279 & 1,279 & 1 \\
+11 & 2 & 34,278 & 19,278 & 1 \\
+12 & 1 & 7,703 & 0 & 0 \\
+13 & 2 & 17,732 & 2,732 & 1 \\
+14 & 2 & 7,894 & 0 & 0 \\
+15 & 1 & 12,648 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\begin{alertblock}{Qué se estima con estos 15 datos}
+$\widehat{\theta}_{15}=\widehat{\E[(Y-d)_+]}\approx 2805$;\quad
+$\widehat{\pi}_{15}=\frac{5}{15}\approx 0.333$.
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo 5: TLC para stop-loss y excedencia}
+\small
+\begin{block}{Aplicación directa del TLC (esperanza)}
+Con $h(Y)=(Y-d)_+$:
+\[
+\widehat{\theta}_N=\frac{1}{N}\sum_{i=1}^N h(Y_i),
+\qquad
+\widehat{\theta}_N \approx \mathcal{N}\!\left(\theta,\frac{\sigma_h^2}{N}\right).
+\]
+\textbf{IC 95\%:}\quad $\theta\in \widehat{\theta}_N \pm 1.96\,\dfrac{s_h}{\sqrt{N}}$.
+\end{block}
+
+\begin{block}{Probabilidad de exceder $d$}
+\[
+\widehat{\pi}_N=\frac{1}{N}\sum_{i=1}^N \1\{Y_i>d\}
+\approx \mathcal{N}\!\left(\pi,\frac{\pi(1-\pi)}{N}\right).
+\]
+\end{block}
+
+\begin{alertblock}{Comentario técnico (cola pesada)}
+Si la severidad tuviera cola Pareto con exponente $\alpha\le 2$, la varianza podría ser infinita.
+En ese caso: (i) el TLC clásico no aplica; (ii) la simulación sigue siendo posible, pero el error baja más lento y es más errático.
+\end{alertblock}
+\end{frame}
+
+%================================================
+%================================================
+% EJEMPLO 6 (nivel 6): Opción barrera (path-dependent) con 15 pasos
+%================================================
+%================================================
+\section*{Ejemplo 6: Derivado path-dependent (nivel 6)}
+
+\begin{frame}{Ejemplo 6 (Finanzas, nivel 6): opción barrera (path-dependent) con monitoreo discreto}
+\small
+\begin{block}{Contexto (prosa)}
+Una opción \textbf{Up-and-Out Call} paga como una Call \emph{solo si} el precio nunca supera una barrera $B$ antes del vencimiento.
+Esto introduce \textbf{dependencia de trayectoria}: la salida no depende solo de $S_T$, sino del \emph{máximo} en el camino.
+\end{block}
+
+\begin{block}{Pregunta(s) de interés}
+\begin{itemize}
+\item \textbf{Precio}: $C=\E\big[e^{-rT}(S_T-K)_+\1\{\max_{t\le T}S_t<B\}\big]$.
+\item \textbf{Probabilidad de knock-out}: $\Pp(\max_{t\le T}S_t\ge B)$.
+\end{itemize}
+\end{block}
+
+\begin{alertblock}{Repaso}
+Increments normales (Browniano discretizado) + no linealidad extrema (máximo + indicador) $\Rightarrow$ masa en 0.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Ejemplo 6: modelo y pasos (GBM discretizado, 15 pasos)}
+\small
+\begin{block}{Modelo (discretización Euler exacta en log-precio)}
+Parámetros: $S_0=100$, $K=100$, $B=130$, $r=0.02$, $\sigma=0.2$, $T=1$.
+Monitoreo en $m=15$ fechas, $\Delta t=T/m$.
+\[
+Z_t\sim\mathcal{N}(0,1)\ \text{i.i.d.},\qquad
+S_{t+\Delta t}=S_t\exp\!\left((r-\tfrac12\sigma^2)\Delta t + \sigma\sqrt{\Delta t}\,Z_t\right).
+\]
+Salida (una réplica = una trayectoria):
+\[
+Y=e^{-rT}(S_T-K)_+\cdot \1\Big\{\max_{k=1,\dots,m} S_{k\Delta t}<B\Big\}.
+\]
+\end{block}
+
+\begin{block}{Pasos (Monte Carlo)}
+\begin{enumerate}
+\item Simular $Z_1,\dots,Z_m$ y construir el camino $S_{k\Delta t}$.
+\item Evaluar el evento de barrera (máximo) y el payoff final.
+\item Repetir $N$ trayectorias para estimar precio y probabilidad de knock-out.
+\end{enumerate}
+\end{block}
+\end{frame}
+
+\begin{frame}{Ejemplo 6: una réplica (15 pasos) para ver \emph{trayectoria} y knock-out}
+\scriptsize
+\begin{columns}[T]
+\column{0.49\textwidth}
+\begin{block}{Pasos 1--8}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rccc@{}}
+\toprule
+$t$ & $Z_t$ & $S_t$ & $\1\{S_t<B\}$ \\
+\midrule
+1 & 1.053 & 105.59 & 1 \\
+2 & 1.776 & 115.73 & 1 \\
+3 & -2.553 & 101.44 & 1 \\
+4 & -0.138 & 100.72 & 1 \\
+5 & 1.014 & 106.13 & 1 \\
+6 & 1.352 & 113.81 & 1 \\
+7 & 0.654 & 118.28 & 1 \\
+8 & -0.678 & 114.03 & 1 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\column{0.51\textwidth}
+\begin{block}{Pasos 9--15}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}rccc@{}}
+\toprule
+$t$ & $Z_t$ & $S_t$ & $\1\{S_t<B\}$ \\
+\midrule
+9 & 1.000 & 121.05 & 1 \\
+10 & 0.551 & 132.82 & 0 \\
+11 & 0.179 & 134.05 & 0 \\
+12 & -0.169 & 132.13 & 0 \\
+13 & -0.220 & 129.56 & 1 \\
+14 & -0.271 & 126.43 & 1 \\
+15 & -0.061 & 125.56 & 1 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\begin{alertblock}{Salida de esta réplica}
+Se superó la barrera ($\max S_t\approx 134.05>B$) $\Rightarrow$ \textbf{knock-out} $\Rightarrow Y=0$.
+Esta es la fuente de la \textbf{masa en 0} en la distribución de salida.
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo 6: TLC para el precio y para la probabilidad de knock-out}
+\small
+\begin{block}{Precio (esperanza) $\Rightarrow$ TLC estándar}
+Con $Y_i$ payoff descontado de la trayectoria $i$:
+\[
+\widehat{C}_N=\frac{1}{N}\sum_{i=1}^N Y_i
+\approx \mathcal{N}\!\left(C,\frac{\sigma_Y^2}{N}\right),
+\quad
+C\in \widehat{C}_N\pm 1.96\frac{s_Y}{\sqrt{N}}.
+\]
+\end{block}
+
+\begin{block}{Probabilidad de knock-out (evento) $\Rightarrow$ TLC Bernoulli}
+Defina $K_i=\1\{\max_t S_t^{(i)}\ge B\}$.
+\[
+\widehat{p}_{KO}=\frac{1}{N}\sum_{i=1}^N K_i
+\approx \mathcal{N}\!\left(p_{KO},\frac{p_{KO}(1-p_{KO})}{N}\right).
+\]
+\end{block}
+
+\begin{alertblock}{Lectura}
+Aquí el sistema es dinámico (trayectoria), pero la estadística final sigue siendo:
+\textbf{promedios de i.i.d.} $\Rightarrow$ TLC para el error Monte Carlo.
+\end{alertblock}
+\end{frame}
+
+%================================================
+% CIERRE
+%================================================
+\begin{frame}{Cierre: qué repasa cada ejemplo (y qué mirar en la salida)}
+\small
+\begin{block}{Seis contextos, seis familias de distribuciones}
+\begin{itemize}
+\item Ej.1 Crédito: Bernoulli (evento) + Beta (severidad en $[0,1]$).
+\item Ej.2 Opción europea: Normal $\to$ Lognormal (transformación).
+\item Ej.3 Portafolio: Normal multivariada + correlación (Cholesky) + cuantil (VaR).
+\item Ej.4 Inventario: Gamma (positiva, asimétrica) + no linealidad min/max.
+\item Ej.5 Operacional: Poisson compuesto (suma aleatoria) + Lognormal (cola).
+\item Ej.6 Barrera: incrementos normales + máximo + indicador (masa en 0).
+\end{itemize}
+\end{block}
+
+\begin{block}{Checklist mínimo al simular}
+\begin{enumerate}
+\item Definir claramente $\xi$, $g(\cdot)$ y $Y=g(\xi)$.
+\item Distinguir: \textbf{distribución de salida} ($Y$) vs \textbf{distribución del estimador} ($\widehat{\theta}_N$).
+\item Reportar: estimación + \textbf{barra de error} (TLC) + diagnóstico (histograma/ECDF).
+\end{enumerate}
+\end{block}
+\end{frame}
+
+\end{document}

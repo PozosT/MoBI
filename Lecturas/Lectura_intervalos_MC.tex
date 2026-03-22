@@ -1,0 +1,123 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+
+\geometry{margin=1in}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstset{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\title{\textbf{Estimación de Intervalos de Confianza en Simulación de Monte Carlo}}
+\author{Modelado de Sistemas Bajo Incertidumbre}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introducción}
+En la práctica de la ingeniería, una simulación de Monte Carlo no tiene como objetivo generar un único número, sino cuantificar la incertidumbre. Cuando ejecutamos $n$ réplicas de un modelo, obtenemos una muestra de resultados $X_1, X_2, \dots, X_n$. El promedio muestral $\bar{X}$ es nuestro estimador puntual del valor esperado real $\mu$. Sin embargo, debido a la naturaleza estocástica, este promedio variará si volvemos a correr la simulación. 
+
+Para comunicar resultados con rigor, debemos construir un \textbf{Intervalo de Confianza (IC)}. Este intervalo nos proporciona un rango de valores dentro del cual, con una probabilidad determinada (típicamente 95\%), se encuentra el verdadero parámetro del sistema.
+
+\section{Fundamento Teórico: El Teorema Central del Límite}
+El Teorema Central del Límite (TCL) indica que, para un tamaño de muestra $n$ suficientemente grande, la distribución de la media muestral $\bar{X}$ se aproxima a una distribución Normal, independientemente de la distribución original de los datos.
+
+La varianza del estimador $\bar{X}$ se define como:
+\begin{equation}
+Var(\bar{X}) = \frac{\sigma^2}{n}
+\end{equation}
+
+Dado que usualmente desconocemos la varianza poblacional $\sigma^2$, utilizamos la varianza muestral $S^2$:
+\begin{equation}
+S^2 = \frac{1}{n-1} \sum_{i=1}^{n} (X_i - \bar{X})^2
+\end{equation}
+
+El intervalo de confianza al $100(1-\alpha)\%$ se calcula como:
+\begin{equation}
+\bar{X} \pm t_{n-1, 1-\alpha/2} \frac{S}{\sqrt{n}}
+\end{equation}
+
+Donde $t_{n-1, 1-\alpha/2}$ es el valor crítico de la distribución t-Student con $n-1$ grados de libertad. Para $n > 30$, este valor suele aproximarse mediante la distribución Normal estándar ($z \approx 1.96$ para un 95\% de confianza).
+
+\section{Ejemplo 1: Introductorio - Estimación de Costo de Materia Prima}
+Un analista financiero desea estimar el costo promedio de una orden de compra. El precio y la cantidad son aleatorios. Se realizan 50 simulaciones independientes y se obtienen los siguientes estadísticos:
+\begin{itemize}
+    \item Media muestral ($\bar{X}$): \$1,250 USD
+    \item Desviación estándar muestral ($S$): \$200 USD
+    \item Tamaño de muestra ($n$): 50
+\end{itemize}
+
+Para un nivel de confianza del 95\% ($\alpha = 0.05$):
+1. Grados de libertad: $50 - 1 = 49$.
+2. Valor crítico $t_{49, 0.975} \approx 2.009$.
+3. Error estándar: $200 / \sqrt{50} \approx 28.28$.
+4. Margen de error: $2.009 \times 28.28 \approx 56.82$.
+
+\textbf{Resultado:} El costo promedio esperado está entre \textbf{\$1,193.18 y \$1,306.82} con un 95\% de confianza.
+
+\section{Ejemplo 2: Nivel Medio - Análisis de Riesgo en Proyectos}
+Supongamos que el costo total de un proyecto depende de tres variables: mano de obra ($L \sim Triang(10, 15, 20)$), materiales ($M \sim Norm(50, 5)$) y contingencias ($C \sim Unif(5, 15)$). Queremos determinar la precisión de nuestra estimación del costo promedio tras 10,000 iteraciones.
+
+A continuación, se presenta la implementación en Python para calcular el IC y visualizar la distribución.
+
+\begin{lstlisting}[language=Python, caption=Cálculo de Intervalo de Confianza en Python]
+import numpy as np
+import scipy.stats as st
+
+# Parametros de simulacion
+n = 10000
+confianza = 0.95
+
+# Generacion de variables aleatorias
+L = np.random.triangular(10, 15, 20, n)
+M = np.random.normal(50, 5, n)
+C = np.random.uniform(5, 15, n)
+
+# Variable de salida: Costo Total
+costos = L + M + C
+
+# Estadisticos descriptivos
+media = np.mean(costos)
+desv_std = np.std(costos, ddof=1)
+error_estandar = desv_std / np.sqrt(n)
+
+# Intervalo de Confianza
+intervalo = st.t.interval(confianza, n-1, loc=media, scale=error_estandar)
+
+print(f"Media: {media:.2f}")
+print(f"Intervalo de Confianza (95%): ({intervalo[0]:.2f}, {intervalo[1]:.2f})")
+\end{lstlisting}
+
+\section{Interpretación y Errores Comunes}
+Es vital entender que el intervalo de confianza \textbf{no} contiene el 95\% de los datos de los costos (ese sería un intervalo de predicción). El IC del 95\% significa que, si repitiéramos este experimento de simulación 100 veces, en 95 de esas veces el intervalo calculado contendría el verdadero valor medio del sistema.
+
+Si el ancho del intervalo es demasiado grande para la toma de decisiones, el ingeniero tiene una sola vía: \textbf{aumentar el número de réplicas ($n$)}. Dado que el error disminuye con $\sqrt{n}$, para reducir el error a la mitad se requiere cuadruplicar el número de simulaciones.
+
+\end{document}

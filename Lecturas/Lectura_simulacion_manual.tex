@@ -1,0 +1,254 @@
+\documentclass[11pt, letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
+
+% Configuración de márgenes
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+
+% Configuración para código Python
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.94}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{\textbf{La Dinámica de los Eventos Discretos}}
+\author{Modelado Bajo Incertidumbre}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Esta lectura disecciona la arquitectura interna de un modelo de Simulación de Eventos Discretos (DES). Se explican los mecanismos de avance del tiempo, con énfasis en el enfoque de "Próximo Evento", y se detalla la estructura de la Lista de Eventos Futuros (FEL). Finalmente, se presenta una traza manual completa (Hand Simulation) de un sistema de colas para ilustrar la actualización de variables de estado y contadores estadísticos.
+\end{abstract}
+
+\section{Definición de Sistemas de Eventos Discretos}
+
+Un sistema de eventos discretos es aquel en el que las variables de estado cambian solo en puntos discretos en el tiempo. Estos puntos se denominan \textbf{eventos}. Un evento se define como una ocurrencia instantánea que puede cambiar el estado del sistema.
+
+Entre dos eventos consecutivos, no ocurre ningún cambio en el sistema; el sistema permanece "congelado". Esta propiedad es fundamental para la eficiencia computacional de la simulación.
+
+\textbf{Conceptos Clave:}
+\begin{itemize}
+    \item \textbf{Reloj de Simulación (CLOCK):} Una variable que almacena el valor actual del tiempo simulado. No tiene relación con el tiempo real de ejecución de la computadora.
+    \item \textbf{Variables de Estado:} Colección mínima de variables necesarias para describir el sistema en un tiempo $t$ (ej. número de clientes en cola $L_q(t)$, estado del servidor $L_s(t)$).
+    \item \textbf{Contadores Estadísticos:} Variables que acumulan datos para el análisis de salida (ej. total de espera, número de clientes atendidos).
+\end{itemize}
+
+\section{Mecanismos de Avance del Tiempo}
+
+Existen dos enfoques principales para avanzar el reloj de simulación:
+
+\subsection{Incremento de Tiempo Fijo (Fixed-Increment)}
+El reloj avanza en intervalos constantes $\Delta t$. Después de cada actualización ($t \to t + \Delta t$), se verifica si ha ocurrido algún evento durante ese intervalo.
+\begin{itemize}
+    \item \textit{Desventaja:} Si $\Delta t$ es pequeño, se desperdician muchos ciclos de CPU verificando intervalos donde no pasa nada. Si $\Delta t$ es grande, se pierde precisión en la ocurrencia exacta de los eventos.
+    \item \textit{Uso:} Común en sistemas continuos (Dinámica de Sistemas) o simulaciones de tiempo real, pero ineficiente para eventos discretos.
+\end{itemize}
+
+\subsection{Avance al Próximo Evento (Next-Event Time Advance)}
+Este es el mecanismo estándar en la simulación moderna.
+1. El reloj se inicializa en $t=0$.
+2. Se determinan los tiempos de ocurrencia de los eventos futuros (almacenados en la FEL).
+3. El reloj \textbf{salta} inmediatamente desde el tiempo actual $t$ hasta el tiempo del evento más inminente $t_{min}$.
+4. Se actualiza el estado del sistema según la lógica de ese evento.
+5. Se repite el proceso.
+
+Los periodos de inactividad se saltan instantáneamente, lo que permite simular años de operación en segundos. 
+
+\section{La Lista de Eventos Futuros (FEL)}
+
+La \textbf{Future Event List (FEL)} es la estructura de datos central del motor de simulación. Es una lista ordenada (ranking) de todos los eventos que se sabe que ocurrirán, ordenados cronológicamente por su tiempo de ocurrencia.
+
+La FEL contiene "avisos de eventos" (event notices). Cada aviso tiene al menos dos datos:
+\begin{enumerate}
+    \item \textbf{Tiempo del evento:} Cuándo ocurrirá.
+    \item \textbf{Tipo de evento:} Qué sucederá (ej. "Llegada", "Salida", "Fin de Simulación").
+\end{enumerate}
+
+La dinámica es cíclica: procesar el evento al tope de la lista (head) a menudo genera nuevos eventos que se insertan en la FEL en su posición correcta.
+
+\section{Simulación Manual (The Hand Simulation)}
+
+Para comprender la interacción entre el Reloj, la FEL y las variables de estado, realizaremos una simulación paso a paso de un sistema de colas simple con un solo servidor (Single Server Queue) .
+
+\subsection{Escenario}
+\begin{itemize}
+    \item \textbf{Variables de Estado:} $LQ(t)$ (longitud de cola), $LS(t)$ (estado servidor: 0=Ocioso, 1=Ocupado).
+    \item \textbf{Entradas (Determinísticas para este ejercicio):}
+    \begin{itemize}
+        \item Tiempos entre llegadas (Interarrival Times - IA): $A_1=2, A_2=4, A_3=3$. (Primera llegada en $t=0$).
+        \item Tiempos de servicio (Service Times - S): $S_1=3, S_2=3, S_3=2$.
+    \end{itemize}
+    \item \textbf{Eventos Posibles:} $(A)$ Llegada de cliente, $(D)$ Salida de cliente.
+\end{itemize}
+
+\subsection{Traza Paso a Paso}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|c|c|c|c|l|l|}
+\hline
+\textbf{Paso} & \textbf{Reloj} & \textbf{LQ} & \textbf{LS} & \textbf{Lista de Eventos Futuros (FEL)} & \textbf{Comentarios y Acciones} \\ 
+ & $(t)$ & & & \textit{[(Tipo, Tiempo)]} & \\ \hline
+\hline
+\textbf{0} & 0 & 0 & 0 & [(A, 0)] & \textbf{Inicialización.} Se programa la primera llegada. \\ \hline
+\textbf{1} & 0 & 0 & 1 & [(D, 3), (A, 2)] & \textbf{Evento: Llegada (Cliente 1).} \\
+ & & & & & 1. Reloj avanza a 0. \\
+ & & & & & 2. Servidor ocioso $\to$ Pasa a atender. LS=1. \\
+ & & & & & 3. Generar Salida: $t + S_1 = 0 + 3 = 3$. \\
+ & & & & & 4. Generar Prox. Llegada: $t + IA_1 = 0 + 2 = 2$. \\ \hline
+\textbf{2} & 2 & 1 & 1 & [(D, 3), (A, 6)] & \textbf{Evento: Llegada (Cliente 2).} \\
+ & & & & & 1. Reloj avanza a 2. \\
+ & & & & & 2. Servidor ocupado (LS=1) $\to$ A cola. LQ=1. \\
+ & & & & & 3. Generar Prox. Llegada: $t + IA_2 = 2 + 4 = 6$. \\
+ & & & & & *Nota: El evento (D, 3) sigue pendiente. \\ \hline
+\textbf{3} & 3 & 0 & 1 & [(A, 6), (D, 6)] & \textbf{Evento: Salida (Cliente 1).} \\
+ & & & & & 1. Reloj avanza a 3. \\
+ & & & & & 2. Hay cola (LQ=1) $\to$ Cliente 2 entra a servicio. \\
+ & & & & & 3. LQ decrementar a 0. LS sigue en 1. \\
+ & & & & & 4. Generar Salida C2: $t + S_2 = 3 + 3 = 6$. \\ \hline
+\textbf{4} & 6 & 1 & 1 & [(D, 6)*, (A, 9)] & \textbf{Evento: Llegada (Cliente 3).} \\
+ & & & & & *Empate en tiempo (6). Arbitrariamente procesamos Llegada primero. \\
+ & & & & & 1. Reloj avanza a 6. \\
+ & & & & & 2. Servidor ocupado $\to$ Cola. LQ=1. \\
+ & & & & & 3. Generar Prox. Llegada: $t + IA_3 = 6 + 3 = 9$. \\ \hline
+\textbf{5} & 6 & 0 & 1 & [(A, 9), (D, 8)] & \textbf{Evento: Salida (Cliente 2).} \\
+ & & & & & 1. Reloj en 6 (sin cambio). \\
+ & & & & & 2. Cliente 3 entra a servicio. LQ=0. \\
+ & & & & & 3. Generar Salida C3: $t + S_3 = 6 + 2 = 8$. \\ \hline
+\end{tabular}
+\caption{Traza manual de simulación (M/G/1)}
+\end{table}
+
+\textbf{Análisis de la Traza:}
+Observe el paso 4. Ocurren dos eventos simultáneamente en $t=6$. En la lógica computacional, debemos tener reglas de desempate (prioridades). En este caso, procesamos la llegada antes que la salida, pero el orden podría afectar momentáneamente las estadísticas de longitud máxima de cola.
+
+\section{Implementación}
+
+A continuación, implementaremos un motor de simulación básico (bare-bones) que replica la lógica de la FEL y el avance de tiempo, sin utilizar librerías de simulación externas. Esto demuestra cómo se programa la estructura subyacente.
+
+\begin{lstlisting}[language=Python, caption=Implementación de un Motor de Simulación de Eventos Discretos (FEL)]
+import heapq  # Usaremos un heap para mantener la FEL ordenada eficientemente
+
+class Evento:
+    def __init__(self, tiempo, tipo, data=None):
+        self.tiempo = tiempo
+        self.tipo = tipo
+        self.data = data
+
+    # Necesario para que la FEL (heap) sepa como ordenar eventos
+    def __lt__(self, other):
+        return self.tiempo < other.tiempo
+
+    def __repr__(self):
+        return f"[{self.tiempo:.2f} : {self.tipo}]"
+
+class SimuladorManual:
+    def __init__(self):
+        self.reloj = 0.0
+        self.fel = []  # Future Event List
+        self.cola = 0
+        self.servidor_ocupado = False
+        
+        # Estadisticas
+        self.tiempo_ultimo_evento = 0.0
+        self.area_bajo_q = 0.0  # Para calcular Lq promedio
+    
+    def programar_evento(self, tiempo, tipo):
+        evento = Evento(tiempo, tipo)
+        heapq.heappush(self.fel, evento)
+    
+    def correr(self, tiempo_fin):
+        # 1. Inicializacion
+        self.programar_evento(0.0, "LLEGADA")
+        
+        print(f"{'RELOJ':<8} | {'TIPO':<10} | {'COLA':<5} | {'SERV':<5} | {'FEL'}")
+        print("-" * 60)
+
+        # 2. Ciclo Principal (Main Loop)
+        while self.fel and self.reloj < tiempo_fin:
+            # A. Obtener el evento inminente (POP de la FEL)
+            evento_actual = heapq.heappop(self.fel)
+            
+            # B. Avanzar Reloj (Next-Event Time Advance)
+            tiempo_anterior = self.reloj
+            self.reloj = evento_actual.tiempo
+            
+            # C. Actualizar Estadisticas (Acumuladores integrales)
+            delta = self.reloj - tiempo_anterior
+            self.area_bajo_q += self.cola * delta
+            
+            # D. Ejecutar logica del evento
+            if evento_actual.tipo == "LLEGADA":
+                self.manejar_llegada()
+            elif evento_actual.tipo == "SALIDA":
+                self.manejar_salida()
+            
+            # Visualizacion del paso
+            fel_str = " ".join([str(e) for e in self.fel])
+            print(f"{self.reloj:<8.2f} | {evento_actual.tipo:<10} | {self.cola:<5} | {int(self.servidor_ocupado):<5} | {fel_str}")
+
+    def manejar_llegada(self):
+        # Programar la siguiente llegada (ej. determinista +2 para replicar tabla)
+        self.programar_evento(self.reloj + 2.0, "LLEGADA")
+        
+        if not self.servidor_ocupado:
+            self.servidor_ocupado = True
+            # Programar salida (ej. determinista +3)
+            tiempo_servicio = 3.0
+            self.programar_evento(self.reloj + tiempo_servicio, "SALIDA")
+        else:
+            self.cola += 1
+
+    def manejar_salida(self):
+        if self.cola > 0:
+            self.cola -= 1
+            # Programar salida del siguiente (ej. determinista +3)
+            tiempo_servicio = 3.0 
+            self.programar_evento(self.reloj + tiempo_servicio, "SALIDA")
+        else:
+            self.servidor_ocupado = False
+
+# Ejecutar simulacion
+sim = SimuladorManual()
+sim.correr(tiempo_fin=10.0)
+\end{lstlisting}
+
+\section{Conclusión}
+Comprender la manipulación de la FEL es vital. Cuando un software comercial arroja errores o resultados extraños, casi siempre se debe a una mala lógica en la programación de eventos (ej. bucles infinitos de eventos en tiempo cero). La simulación manual, aunque tediosa, revela la contabilidad exacta que valida nuestros modelos computacionales. Es una herramienta valiosa para validar la lógica que hemos usado para crear nuestra simulación.
+
+\end{document}

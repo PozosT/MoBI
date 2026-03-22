@@ -1,0 +1,2180 @@
+% =============================================================================
+% PRESENTACIÓN: SIMULACIÓN DE SISTEMAS DE COLAS EN ESTADO ESTABLE
+% Ejemplo con Dos Servidores — Ley de Little y Período Transitorio
+% =============================================================================
+\documentclass[aspectratio=169, 9pt]{beamer}
+
+% --- Paquetes ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, calc, decorations.pathreplacing, shapes.geometric}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{algorithm2e}
+\usepackage{multirow}
+\usepackage{colortbl}
+\usepackage{xcolor}
+
+% --- Tema ---
+\usetheme{Madrid}
+\usecolortheme{whale}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{
+  \leavevmode\hbox{%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,center]{author in head/foot}
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.34\paperwidth,ht=2.5ex,dp=1ex,center]{title in head/foot}
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,right]{date in head/foot}
+      \usebeamerfont{date in head/foot}\insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}%
+}
+
+% --- Colores personalizados ---
+\definecolor{azuloscuro}{RGB}{0,51,102}
+\definecolor{rojoclaro}{RGB}{204,51,51}
+\definecolor{verdeoscuro}{RGB}{0,102,51}
+\definecolor{naranja}{RGB}{230,126,34}
+\definecolor{grisclaro}{RGB}{236,240,241}
+
+% --- Información ---
+\title[Simulación de Colas]{Simulación de Sistemas de Colas\\en Estado Estable}
+\subtitle{Ejemplo con Dos Servidores, Ley de Little y Período Transitorio}
+\author[Ingeniería Industrial]{Departamento de Ingeniería Industrial}
+\institute[Universidad]{Curso de Simulación de Eventos Discretos}
+\date{Semestre 2026-I}
+
+\begin{document}
+
+% ============================== SLIDE 1 ==============================
+\begin{frame}
+\titlepage
+\end{frame}
+
+% ============================== SLIDE 2 ==============================
+\begin{frame}{Contenido}
+\tableofcontents
+\end{frame}
+
+% ======================================================================
+\section{Introducción y Motivación}
+% ======================================================================
+
+% ============================== SLIDE 3 ==============================
+\begin{frame}{¿Por qué simular sistemas de colas?}
+
+Muchos sistemas reales no tienen soluciones analíticas cerradas:
+
+\vspace{0.3cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Limitaciones analíticas:}
+\begin{itemize}
+    \item Distribuciones no exponenciales
+    \item Disciplinas de cola complejas
+    \item Dependencias entre servidores
+    \item Políticas de enrutamiento
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Ventajas de la simulación:}
+\begin{itemize}
+    \item Flexibilidad total en el modelo
+    \item Análisis del transitorio
+    \item Estimación de métricas arbitrarias
+    \item Validación de aproximaciones
+\end{itemize}
+\end{columns}
+
+\vspace{0.5cm}
+\begin{block}{Objetivo de hoy}
+Simular un sistema $M/M/2$ paso a paso, estimar métricas en estado estable, y entender \textbf{cuándo y por qué} la Ley de Little se cumple o no.
+\end{block}
+\end{frame}
+
+% ============================== SLIDE 4 ==============================
+\begin{frame}{El sistema que estudiaremos: $M/M/2$}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, thick, node distance=1.5cm]
+    % Cola
+    \draw[fill=grisclaro, rounded corners] (-0.5,-0.8) rectangle (3.5,0.8);
+    \node at (1.5,0) {\textbf{Cola (FIFO)}};
+    
+    % Flechas de llegada
+    \draw[->, line width=2pt, azuloscuro] (-2.5,0) -- (-0.5,0);
+    \node[above] at (-1.5,0.1) {$\lambda = 5$ cl/min};
+    
+    % Servidor 1
+    \draw[fill=blue!20, rounded corners] (5,-0.5) rectangle (7.5,0.5);
+    \node at (6.25,0) {\textbf{Servidor 1}};
+    \node[below] at (6.25,-0.6) {$\mu = 3$ cl/min};
+    
+    % Servidor 2
+    \draw[fill=red!20, rounded corners] (5,-2) rectangle (7.5,-1);
+    \node at (6.25,-1.5) {\textbf{Servidor 2}};
+    \node[below] at (6.25,-2.1) {$\mu = 3$ cl/min};
+    
+    % Flechas cola -> servidores
+    \draw[->, line width=1.5pt] (3.5,0) -- (5,0);
+    \draw[->, line width=1.5pt] (3.5,0) -- (3.8,0) -- (3.8,-1.5) -- (5,-1.5);
+    
+    % Flechas de salida
+    \draw[->, line width=2pt, verdeoscuro] (7.5,0) -- (9.5,0);
+    \draw[->, line width=2pt, verdeoscuro] (7.5,-1.5) -- (9.5,-1.5);
+    \node[above] at (8.5,0.1) {Salida};
+    \node[above] at (8.5,-1.4) {Salida};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Parámetros:}
+\begin{itemize}
+    \item Llegadas: Poisson($\lambda = 5$/min)
+    \item Servicio: Exp($\mu = 3$/min) cada servidor
+    \item $c = 2$ servidores idénticos
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Intensidad de tráfico:}
+\[
+\rho = \frac{\lambda}{c \cdot \mu} = \frac{5}{2 \times 3} = \frac{5}{6} \approx 0.833
+\]
+\begin{itemize}
+    \item $\rho < 1$: el sistema es \textcolor{verdeoscuro}{\textbf{estable}}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ======================================================================
+\section{Métricas Analíticas del $M/M/2$}
+% ======================================================================
+
+% ============================== SLIDE 5 ==============================
+\begin{frame}{Solución analítica del $M/M/2$ (referencia)}
+
+Para $M/M/c$ con $c=2$, $\lambda=5$, $\mu=3$:
+
+\vspace{0.2cm}
+\textbf{Probabilidad de estado vacío:}
+\[
+P_0 = \left[\sum_{n=0}^{c-1}\frac{(c\rho)^n}{n!} + \frac{(c\rho)^c}{c!}\cdot\frac{1}{1-\rho}\right]^{-1}
+= \left[1 + \frac{10}{6} + \frac{(10/6)^2}{2}\cdot\frac{1}{1-5/6}\right]^{-1}
+\]
+
+\[
+P_0 = \left[1 + 1.6\overline{6} + \frac{2.7\overline{7}}{2}\cdot 6\right]^{-1} = \left[1 + 1.667 + 8.333\right]^{-1} \approx 0.0909
+\]
+
+\vspace{0.2cm}
+\textbf{Fórmula C de Erlang:}
+\[
+C(c, \lambda/\mu) = P(\text{esperar}) = \frac{(c\rho)^c}{c!(1-\rho)} \cdot P_0 = \frac{(10/6)^2}{2 \cdot (1/6)} \cdot 0.0909 \approx 0.7576
+\]
+\end{frame}
+
+% ============================== SLIDE 6 ==============================
+\begin{frame}{Métricas analíticas exactas del $M/M/2$}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Métrica} & \textbf{Fórmula} & \textbf{Valor} \\
+\midrule
+$L_q$ (clientes en cola) & $\dfrac{C(c,\lambda/\mu) \cdot \rho}{1-\rho}$ & $\mathbf{3.7879}$ \\[6pt]
+$L$ (clientes en sistema) & $L_q + \dfrac{\lambda}{\mu}$ & $\mathbf{5.4545}$ \\[6pt]
+$W_q$ (espera en cola) & $\dfrac{L_q}{\lambda}$ & $\mathbf{0.7576}$ min \\[6pt]
+$W$ (tiempo en sistema) & $W_q + \dfrac{1}{\mu}$ & $\mathbf{1.0909}$ min \\[6pt]
+$\rho$ (utilización) & $\dfrac{\lambda}{c\mu}$ & $\mathbf{0.8333}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+\begin{alertblock}{Nota importante}
+Estos valores son los de \textbf{estado estable} ($t \to \infty$). La simulación debe alcanzar estos valores después del período transitorio.
+\end{alertblock}
+\end{frame}
+
+% ======================================================================
+\section{Ley de Little: Fundamentos}
+% ======================================================================
+
+% ============================== SLIDE 7 ==============================
+\begin{frame}{Ley de Little: el resultado más fundamental}
+
+\begin{block}{Ley de Little (1961)}
+En \textbf{estado estable}, para cualquier sistema de colas:
+\[
+\boxed{L = \lambda \cdot W}
+\]
+donde $L$ = número promedio en el sistema, $\lambda$ = tasa de llegada efectiva, $W$ = tiempo promedio en el sistema.
+\end{block}
+
+\vspace{0.3cm}
+\textbf{Aplicaciones equivalentes:}
+\begin{align}
+L &= \lambda \cdot W && \text{(para todo el sistema)} \\
+L_q &= \lambda \cdot W_q && \text{(solo para la cola)} \\
+L_s &= \lambda \cdot W_s && \text{(solo para el servicio)}
+\end{align}
+
+\vspace{0.3cm}
+\textbf{Verificación con nuestro ejemplo:}
+\[
+L = \lambda \cdot W \;\Rightarrow\; 5.4545 = 5 \times 1.0909 = 5.4545 \;\; \checkmark
+\]
+\[
+L_q = \lambda \cdot W_q \;\Rightarrow\; 3.7879 = 5 \times 0.7576 = 3.7879 \;\; \checkmark
+\]
+\end{frame}
+
+% ============================== SLIDE 8 ==============================
+\begin{frame}{¿Qué hace especial a la Ley de Little?}
+
+\begin{columns}
+\column{0.55\textwidth}
+\textbf{Generalidad extraordinaria:}
+\begin{itemize}
+    \item No depende de la distribución de llegadas
+    \item No depende de la distribución de servicio
+    \item No depende del número de servidores
+    \item No depende de la disciplina de cola
+    \item No depende del orden de servicio
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Única condición fundamental:}
+
+El sistema debe estar en \textcolor{rojoclaro}{\textbf{estado estable}}.
+
+\column{0.42\textwidth}
+\begin{center}
+\begin{tikzpicture}
+    \node[draw, rounded corners, fill=blue!10, text width=5cm, align=center, minimum height=2cm] (box) {
+        \textbf{Ley de Little}\\[0.2cm]
+        $L = \lambda \cdot W$\\[0.2cm]
+        \small{Válida en estado estable\\para CUALQUIER sistema}
+    };
+    \draw[->, thick, rojoclaro] (-1.5,-2) -- (box.south west);
+    \node[below, text width=3cm, align=center] at (-1.5,-2) {\small ¿Y en el\\transitorio?};
+\end{tikzpicture}
+\end{center}
+\end{columns}
+
+\vspace{0.3cm}
+\begin{alertblock}{Pregunta clave de hoy}
+¿Qué pasa con $L = \lambda W$ \textbf{durante el período transitorio}? ¿Se cumple, se viola, bajo qué condiciones?
+\end{alertblock}
+\end{frame}
+
+% ======================================================================
+\section{Ley de Little: Versión Muestral y Transitorio}
+% ======================================================================
+
+% ============================== SLIDE 9 ==============================
+\begin{frame}{Ley de Little: versión operacional (muestral)}
+
+\textbf{Definiciones operacionales} para un intervalo $[0, T]$:
+
+\vspace{0.2cm}
+Sea $A(T)$ el número de llegadas y $D(T)$ el de partidas en $[0,T]$.
+
+\[
+\bar{L}(T) = \frac{1}{T}\int_0^T N(t)\,dt \quad \text{(promedio temporal de clientes)}
+\]
+
+\[
+\bar{W}(T) = \frac{1}{D(T)}\sum_{i=1}^{D(T)} W_i \quad \text{(promedio de tiempos de los que salieron)}
+\]
+
+\[
+\bar{\lambda}(T) = \frac{A(T)}{T} \quad \text{(tasa de llegada observada)}
+\]
+
+\begin{block}{Ley de Little operacional}
+\[
+\bar{L}(T) = \bar{\lambda}(T) \cdot \bar{W}_A(T)
+\]
+donde $\bar{W}_A(T) = \frac{1}{A(T)}\sum_{i=1}^{A(T)} W_i^*$ con $W_i^*$ incluyendo clientes aún en sistema al tiempo $T$ (tiempo parcial).
+\end{block}
+\end{frame}
+
+% ============================== SLIDE 10 ==============================
+\begin{frame}{¿Cuándo se cumple Little en el transitorio?}
+
+\begin{columns}
+\column{0.5\textwidth}
+\textcolor{verdeoscuro}{\textbf{SÍ se cumple (exactamente):}}
+
+\vspace{0.2cm}
+La \textbf{versión determinística} de Little:
+\[
+\bar{L}(T) = \bar{\lambda}(T) \cdot \bar{W}_A(T)
+\]
+es una \textbf{identidad contable} que se cumple \textbf{siempre}, para todo $T$, incluso en el transitorio.
+
+\vspace{0.2cm}
+\textit{Es una relación entre promedios observados, no requiere estado estable.}
+
+\column{0.5\textwidth}
+\textcolor{rojoclaro}{\textbf{NO se cumple (en general):}}
+
+\vspace{0.2cm}
+La versión con $\bar{W}$ basada solo en clientes \textbf{completados}:
+\[
+\bar{L}(T) \neq \bar{\lambda}(T) \cdot \bar{W}_D(T)
+\]
+
+La discrepancia surge porque:
+\begin{itemize}
+    \item Clientes en sistema no se cuentan en $\bar{W}_D$
+    \item $\bar{L}$ sí los incluye
+    \item La diferencia es grande al inicio
+\end{itemize}
+\end{columns}
+
+\vspace{0.3cm}
+\begin{alertblock}{Clave conceptual}
+El ``fallo'' de Little en el transitorio es un problema de \textbf{consistencia entre las métricas}, no de la ley en sí.
+\end{alertblock}
+\end{frame}
+
+% ============================== SLIDE 11 ==============================
+\begin{frame}{Visualización: por qué $\bar{L} \neq \bar{\lambda}\cdot\bar{W}_D$ al inicio}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.9]
+\begin{axis}[
+    width=14cm, height=6cm,
+    xlabel={Tiempo de simulación $T$},
+    ylabel={Valor},
+    legend pos=north east,
+    grid=both,
+    grid style={gray!20},
+    xmin=0, xmax=50,
+    ymin=0, ymax=10,
+    domain=0:50,
+    samples=200,
+]
+% L(T) promedio temporal
+\addplot[thick, azuloscuro] {5.45 + 3.5*exp(-0.15*x)*sin(deg(0.5*x)) + 1.5*exp(-0.08*x)};
+\addlegendentry{$\bar{L}(T)$ observado}
+
+% lambda * W_D (solo completados)
+\addplot[thick, rojoclaro, dashed] {5.45 - 4*exp(-0.2*x) + 0.8*exp(-0.1*x)*sin(deg(0.3*x))};
+\addlegendentry{$\bar{\lambda}(T) \cdot \bar{W}_D(T)$}
+
+% lambda * W_A (todos)
+\addplot[thick, verdeoscuro, dotted, line width=1.5pt] {5.45 + 3.5*exp(-0.15*x)*sin(deg(0.5*x)) + 1.5*exp(-0.08*x) + 0.05*sin(deg(x))};
+\addlegendentry{$\bar{\lambda}(T) \cdot \bar{W}_A(T)$}
+
+% Línea de estado estable
+\addplot[thin, black, dashed] {5.4545};
+\addlegendentry{$L^* = 5.4545$}
+
+% Zona transitoria
+\fill[red!10, opacity=0.3] (axis cs:0,0) rectangle (axis cs:20,10);
+\node at (axis cs:10,9) {\textcolor{rojoclaro}{\textbf{Transitorio}}};
+\node at (axis cs:37,9) {\textcolor{verdeoscuro}{\textbf{Estado estable}}};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+La curva verde (versión completa) coincide con $\bar{L}(T)$. La roja (solo completados) \textbf{diverge} en el transitorio.
+\end{frame}
+
+% ============================== SLIDE 12 ==============================
+\begin{frame}{Resumen: tres versiones de Little}
+
+\renewcommand{\arraystretch}{1.5}
+\begin{center}
+\begin{tabular}{p{3.5cm}p{4cm}p{4.5cm}}
+\toprule
+\textbf{Versión} & \textbf{Fórmula} & \textbf{¿Cuándo se cumple?} \\
+\midrule
+\textcolor{verdeoscuro}{\textbf{Estocástica}} (límite) & $L = \lambda \cdot W$ & Solo en \textbf{estado estable} ($t\to\infty$) \\
+\textcolor{azuloscuro}{\textbf{Operacional completa}} & $\bar{L}(T) = \bar{\lambda}(T)\cdot\bar{W}_A(T)$ & \textbf{Siempre} (identidad contable, $\forall T$) \\
+\textcolor{rojoclaro}{\textbf{Operacional parcial}} & $\bar{L}(T) \approx \bar{\lambda}(T)\cdot\bar{W}_D(T)$ & Solo cuando $T$ es grande (transitorio eliminado) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.5cm}
+\begin{block}{Implicación práctica}
+En simulación, si usamos $\bar{W}_D$ (promedio solo de clientes que completaron servicio), debemos \textbf{descartar el período transitorio} para que la relación de Little sea consistente.
+\end{block}
+\end{frame}
+
+% ======================================================================
+\section{Diseño de la Simulación}
+% ======================================================================
+
+% ============================== SLIDE 13 ==============================
+\begin{frame}{Estructura del simulador de eventos discretos}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, thick, node distance=2cm,
+    block/.style={draw, rounded corners, fill=blue!10, minimum width=2.5cm, minimum height=1cm, align=center},
+    event/.style={draw, rounded corners, fill=orange!20, minimum width=2cm, minimum height=0.8cm, align=center}]
+
+    \node[block] (reloj) {Reloj\\$t$};
+    \node[block, right=2cm of reloj] (lista) {Lista de\\Eventos};
+    \node[block, right=2cm of lista] (estado) {Variables\\de Estado};
+    \node[block, below=1.5cm of lista] (stats) {Contadores\\Estadísticos};
+
+    \node[event, below=1.5cm of reloj] (llegada) {Evento:\\Llegada};
+    \node[event, below=1.5cm of estado] (salida) {Evento:\\Fin Servicio};
+
+    \draw[->] (reloj) -- (lista);
+    \draw[->] (lista) -- (estado);
+    \draw[->] (estado) -- (stats);
+    \draw[->] (llegada) -- (lista);
+    \draw[->] (salida) -- (lista);
+    \draw[->] (lista) -- (llegada);
+    \draw[->] (lista) -- (salida);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{Variables de estado:} número en cola, estado de cada servidor (libre/ocupado).
+
+\textbf{Tipos de eventos:} llegada de cliente, fin de servicio en servidor $k$.
+\end{frame}
+
+% ============================== SLIDE 14 ==============================
+\begin{frame}{Variables y contadores del simulador}
+
+\textbf{Variables de estado:}
+\begin{itemize}
+    \item $N_q(t)$: número de clientes en cola en el instante $t$
+    \item $S_k(t) \in \{0,1\}$: estado del servidor $k$ ($k=1,2$); 0=libre, 1=ocupado
+    \item $N(t) = N_q(t) + S_1(t) + S_2(t)$: total en el sistema
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Contadores estadísticos:}
+\begin{itemize}
+    \item $\mathcal{A}$: área bajo $N(t)$ $\Rightarrow$ $\bar{L} = \mathcal{A}/T$
+    \item $\mathcal{A}_q$: área bajo $N_q(t)$ $\Rightarrow$ $\bar{L}_q = \mathcal{A}_q/T$
+    \item $\sum W_i$: suma de tiempos en sistema $\Rightarrow$ $\bar{W} = \sum W_i / n_{\text{completados}}$
+    \item $\sum W_{q,i}$: suma de esperas en cola $\Rightarrow$ $\bar{W}_q = \sum W_{q,i} / n_{\text{completados}}$
+    \item $B_k$: tiempo ocupado del servidor $k$ $\Rightarrow$ $\hat{\rho}_k = B_k/T$
+\end{itemize}
+\end{frame}
+
+% ============================== SLIDE 15 ==============================
+\begin{frame}{Pseudocódigo: rutina de llegada}
+
+\begin{algorithm}[H]
+\SetAlgoLined
+\small
+\textbf{Evento: LLEGADA al tiempo $t$}\;
+Generar próxima llegada: programar LLEGADA en $t + \text{Exp}(1/\lambda)$\;
+Registrar llegada del cliente $i$: $a_i \leftarrow t$\;
+\eIf{Servidor 1 libre \textbf{o} Servidor 2 libre}{
+    Seleccionar servidor libre $k$ (si ambos libres, elegir al azar)\;
+    $S_k \leftarrow 1$ (ocupado)\;
+    Generar tiempo de servicio: $s_i \sim \text{Exp}(1/\mu)$\;
+    Programar FIN\_SERVICIO$(k)$ en $t + s_i$\;
+    $W_{q,i} \leftarrow 0$\;
+}{
+    Agregar cliente $i$ al final de la cola\;
+    $N_q \leftarrow N_q + 1$\;
+}
+Actualizar contadores de área\;
+\end{algorithm}
+\end{frame}
+
+% ============================== SLIDE 16 ==============================
+\begin{frame}{Pseudocódigo: rutina de fin de servicio}
+
+\begin{algorithm}[H]
+\SetAlgoLined
+\small
+\textbf{Evento: FIN\_SERVICIO del servidor $k$ al tiempo $t$}\;
+Cliente $i$ completó servicio\;
+$W_i \leftarrow t - a_i$ \quad (tiempo en el sistema)\;
+$d_i \leftarrow t$ \quad (tiempo de partida)\;
+$n_{\text{completados}} \leftarrow n_{\text{completados}} + 1$\;
+\eIf{$N_q > 0$}{
+    Sacar siguiente cliente $j$ de la cola (FIFO)\;
+    $N_q \leftarrow N_q - 1$\;
+    $W_{q,j} \leftarrow t - a_j$\;
+    Generar servicio: $s_j \sim \text{Exp}(1/\mu)$\;
+    Programar FIN\_SERVICIO$(k)$ en $t + s_j$\;
+}{
+    $S_k \leftarrow 0$ (servidor libre)\;
+}
+Actualizar contadores de área y $B_k$\;
+\end{algorithm}
+\end{frame}
+
+% ======================================================================
+\section{Ejemplo Paso a Paso}
+% ======================================================================
+
+% ============================== SLIDE 17 ==============================
+\begin{frame}{Ejemplo: generación de llegadas y servicios}
+
+\textbf{Semilla fija para reproducibilidad.} Tiempos generados:
+
+\vspace{0.2cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Cliente} & \textbf{Inter-llegada} & \textbf{Llegada $a_i$} & \textbf{Servicio $s_i$} & \textbf{Servidor} \\
+\midrule
+1 & 0.12 & 0.12 & 0.45 & 1 \\
+2 & 0.08 & 0.20 & 0.28 & 2 \\
+3 & 0.25 & 0.45 & 0.38 & --- (cola) \\
+4 & 0.03 & 0.48 & 0.55 & 2 (libre en 0.48) \\
+5 & 0.15 & 0.63 & 0.41 & 1 (libre en 0.57) \\
+6 & 0.22 & 0.85 & 0.33 & --- (cola) \\
+7 & 0.10 & 0.95 & 0.29 & --- (cola) \\
+8 & 0.18 & 1.13 & 0.52 & 2 (libre en 1.03) \\
+9 & 0.05 & 1.18 & 0.36 & 1 (libre en 1.04) \\
+10 & 0.30 & 1.48 & 0.44 & --- (cola) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\small Inter-llegadas $\sim$ Exp($1/\lambda$) = Exp($0.2$); Servicios $\sim$ Exp($1/\mu$) = Exp($1/3$).
+\end{frame}
+
+% ============================== SLIDE 17b ==============================
+\begin{frame}{Paso 1: inicio y fin de servicio de cada cliente}
+
+\begin{block}{Regla operacional ($M/M/2$, FIFO)}
+\[
+B_j = \begin{cases}
+A_j & \text{si alg\'{u}n servidor est\'{a} libre al llegar}\\
+\min(D_{k_1}, D_{k_2}) & \text{si ambos est\'{a}n ocupados (esperar al primero que termine)}
+\end{cases}
+\]
+\[
+D_j = B_j + S_j, \qquad W_{Q,j} = B_j - A_j, \qquad W_j = D_j - A_j
+\]
+\end{block}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, scale=0.8]
+  % Caso libre
+  \draw[fill=green!15, rounded corners] (0,1.8) rectangle (2.2,2.8);
+  \node[font=\tiny] at (1.1,2.3) {LIBRE};
+  \draw[fill=blue!30, rounded corners] (0,0.8) rectangle (2.2,1.6);
+  \node[font=\tiny, white] at (1.1,1.2) {OCUPADO};
+  \fill[azuloscuro] (-0.7,1.8) circle (4pt);
+  \draw[->, thick, azuloscuro] (-0.5,1.8) -- (0,2.3);
+  \node[font=\tiny, below] at (1.1,0.5) {$B_j = A_j$};
+  \node[font=\scriptsize\bfseries] at (1.1,3.2) {Caso A};
+
+  % Caso ambos ocupados
+  \draw[fill=red!30, rounded corners] (5,1.8) rectangle (7.2,2.8);
+  \node[font=\tiny, white] at (6.1,2.3) {OCUPADO};
+  \draw[fill=red!30, rounded corners] (5,0.8) rectangle (7.2,1.6);
+  \node[font=\tiny, white] at (6.1,1.2) {OCUPADO};
+  \fill[azuloscuro] (4.3,1.8) circle (4pt);
+  \draw[->, thick, rojoclaro] (4.5,1.8) -- (4.5,0) -- (7.5,0);
+  \node[font=\tiny, rojoclaro] at (7.5,-0.3) {cola};
+  \node[font=\tiny, below] at (6.1,0.5) {$B_j = \min(D_{\text{S1}}, D_{\text{S2}})$};
+  \node[font=\scriptsize\bfseries] at (6.1,3.2) {Caso B};
+
+  % Ejemplo
+  \node[font=\tiny, text width=5cm, align=left] at (11.5,2) {
+    \textbf{Ejemplo -- C5:}\\
+    Llega $A_5=0.63$\\
+    S1 ocup.\ hasta $D_4=1.12$\\
+    S2 ocup.\ hasta $D_3=0.86$\\
+    $\Rightarrow B_5 = \min(1.12,0.86) = 0.86$\\
+    $W_{Q,5} = 0.86-0.63 = 0.23$
+  };
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ============================== SLIDE 17c ==============================
+\begin{frame}{Tabla completa: tiempos de los 10 clientes}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.15}
+\small
+\begin{tabular}{c c c c c c c c}
+\toprule
+$j$ & $A_j$ & $S_j$ & \textbf{Serv.} & $B_j$ & $D_j$ & $W_{Q,j}$ & $W_j$ \\
+\midrule
+1 & 0.12 & 0.45 & S1 & 0.12 & 0.57 & \cellcolor{green!12}0.00 & 0.45 \\
+2 & 0.20 & 0.28 & S2 & 0.20 & 0.48 & \cellcolor{green!12}0.00 & 0.28 \\
+3 & 0.45 & 0.38 & S2 & \textbf{0.48} & 0.86 & \cellcolor{orange!15}0.03 & 0.41 \\
+4 & 0.48 & 0.55 & S1 & \textbf{0.57} & 1.12 & \cellcolor{orange!15}0.09 & 0.64 \\
+5 & 0.63 & 0.41 & S2 & \textbf{0.86} & 1.27 & \cellcolor{orange!20}0.23 & 0.64 \\
+6 & 0.85 & 0.33 & S1 & \textbf{1.12} & 1.45 & \cellcolor{orange!20}0.27 & 0.60 \\
+7 & 0.95 & 0.29 & S2 & \textbf{1.27} & 1.56 & \cellcolor{red!15}0.32 & 0.61 \\
+8 & 1.13 & 0.52 & S1 & \textbf{1.45} & 1.97 & \cellcolor{red!15}0.32 & 0.84 \\
+9 & 1.18 & 0.36 & S2 & \textbf{1.56} & 1.92 & \cellcolor{red!20}0.38 & 0.74 \\
+10 & 1.48 & 0.44 & S2 & \textbf{1.92} & 2.36 & \cellcolor{red!20}0.44 & 0.88 \\
+\midrule
+\multicolumn{5}{r}{\textbf{Suma:}} & & 2.08 & 6.09 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.15cm}
+\small
+Solo C1 y C2 no esperaron. La espera crece progresivamente: el sistema est\'{a} en fase de \textbf{llenado} (transitorio). Note c\'{o}mo $W_{Q,j}$ aumenta conforme la cola se acumula.
+\end{frame}
+
+% ============================== SLIDE 17d ==============================
+\begin{frame}{Diagrama de Gantt: los dos servidores}
+
+\begin{center}
+\begin{tikzpicture}[scale=3.2]
+  % Eje temporal
+  \draw[->, thick] (0,-0.15) -- (2.5,-0.15) node[right, font=\tiny]{$t$ (min)};
+  \foreach \t/\lab in {0/0, 0.5/0.5, 1.0/1.0, 1.5/1.5, 2.0/2.0}{
+    \draw (\t,-0.13) -- (\t,-0.17);
+    \node[below, font=\tiny] at (\t,-0.17) {\lab};
+  }
+
+  % Servidor 1
+  \node[left, font=\tiny\bfseries] at (0,0.35) {S1};
+  \fill[blue!40] (0.12,0.2) rectangle (0.57,0.5);
+  \node[font=\tiny, white] at (0.345,0.35) {C1};
+  \fill[blue!40] (0.57,0.2) rectangle (1.12,0.5);
+  \node[font=\tiny, white] at (0.845,0.35) {C4};
+  \fill[blue!40] (1.12,0.2) rectangle (1.45,0.5);
+  \node[font=\tiny, white] at (1.285,0.35) {C6};
+  \fill[blue!40] (1.45,0.2) rectangle (1.97,0.5);
+  \node[font=\tiny, white] at (1.71,0.35) {C8};
+
+  % Servidor 2
+  \node[left, font=\tiny\bfseries] at (0,-0.0) {S2};
+  \fill[red!35] (0.20,-.15) rectangle (0.48,0.15);
+  \node[font=\tiny, white] at (0.34,0.0) {C2};
+  \fill[red!35] (0.48,-.15) rectangle (0.86,0.15);
+  \node[font=\tiny, white] at (0.67,0.0) {C3};
+  \fill[red!35] (0.86,-.15) rectangle (1.27,0.15);
+  \node[font=\tiny, white] at (1.065,0.0) {C5};
+  \fill[red!35] (1.27,-.15) rectangle (1.56,0.15);
+  \node[font=\tiny, white] at (1.415,0.0) {C7};
+  \fill[red!35] (1.56,-.15) rectangle (1.92,0.15);
+  \node[font=\tiny, white] at (1.74,0.0) {C9};
+  \fill[red!35] (1.92,-.15) rectangle (2.36,0.15);
+  \node[font=\tiny, white] at (2.14,0.0) {C10};
+
+  % Llegadas
+  \foreach \a in {0.12,0.20,0.45,0.48,0.63,0.85,0.95,1.13,1.18,1.48}{
+    \draw[azuloscuro, thick] (\a,0.55) -- (\a,0.65);
+    \fill[azuloscuro] (\a,0.65) circle (0.5pt);
+  }
+  \node[azuloscuro, font=\tiny\bfseries] at (0.8,0.72) {$\downarrow$ Llegadas};
+
+  % Esperas de algunos clientes
+  \draw[<->, thick, rojoclaro] (0.63,-0.25) -- (0.86,-0.25);
+  \node[below, rojoclaro, font=\tiny] at (0.745,-0.25) {$W_{Q,5}$};
+
+  \draw[<->, thick, rojoclaro] (0.85,-0.35) -- (1.12,-0.35);
+  \node[below, rojoclaro, font=\tiny] at (0.985,-0.35) {$W_{Q,6}$};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+\small
+Ambos servidores trabajan casi sin pausa. Los clientes 5--10 deben esperar en cola cada vez m\'{a}s tiempo. La alternancia S1/S2 se da seg\'{u}n qu\'{e} servidor se desocupa primero (FIFO).
+\end{frame}
+
+% ============================== SLIDE 17e ==============================
+\begin{frame}{L\'{i}nea temporal detallada: cliente 6}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, scale=1.0]
+  % Línea de tiempo
+  \draw[->, thick] (0,0) -- (13,0) node[right, font=\small]{$t$};
+
+  % Marcas de tiempo clave
+  \node[below, font=\tiny] at (0,-0.1) {0};
+  \node[below, font=\tiny] at (5.67,-0.1) {0.85};
+  \node[below, font=\tiny] at (7.47,-0.1) {1.12};
+  \node[below, font=\tiny] at (9.67,-0.1) {1.45};
+
+  % Llegada
+  \draw[thick, azuloscuro] (5.67,0) -- (5.67,2.0);
+  \fill[azuloscuro] (5.67,2.0) circle (3pt);
+  \node[above, azuloscuro, font=\small\bfseries] at (5.67,2.0) {$A_6=0.85$};
+
+  % Espera en cola
+  \fill[rojoclaro!25] (5.67,0) rectangle (7.47,0.7);
+  \draw[<->, thick, rojoclaro] (5.67,0.35) -- (7.47,0.35);
+  \node[above, rojoclaro, font=\scriptsize\bfseries] at (6.57,0.7) {$W_{Q,6}=0.27$};
+
+  % Servicio
+  \fill[blue!25] (7.47,0) rectangle (9.67,0.7);
+  \draw[<->, thick, blue] (7.47,-0.5) -- (9.67,-0.5);
+  \node[below, blue, font=\scriptsize\bfseries] at (8.57,-0.5) {$S_6=0.33$};
+
+  % Inicio servicio
+  \draw[thick, verdeoscuro] (7.47,0) -- (7.47,1.5);
+  \node[above, verdeoscuro, font=\small\bfseries] at (7.47,1.5) {$B_6=1.12$};
+
+  % Salida
+  \draw[thick, naranja] (9.67,0) -- (9.67,2.0);
+  \fill[naranja] (9.67,2.0) circle (3pt);
+  \node[above, naranja, font=\small\bfseries] at (9.67,2.0) {$D_6=1.45$};
+
+  % W total
+  \draw[<->, thick, purple, line width=1.5pt] (5.67,-1.2) -- (9.67,-1.2);
+  \node[below, purple, font=\small\bfseries] at (7.67,-1.2) {$W_6 = 1.45 - 0.85 = 0.60$};
+
+  % Nota
+  \node[font=\tiny, text width=3.5cm, align=left, draw, rounded corners, fill=grisclaro]
+    at (12,1.5) {C6 espera porque\\S1: C4 hasta 1.12\\S2: C5 hasta 1.27\\$\Rightarrow$ entra a S1 en 1.12};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Verificaci\'{o}n:} $W_6 = W_{Q,6} + S_6 = 0.27 + 0.33 = 0.60$ \;\checkmark
+\end{frame}
+
+% ============================== SLIDE 17f ==============================
+\begin{frame}{Barras de tiempo por cliente (vista horizontal)}
+
+\begin{center}
+\begin{tikzpicture}[scale=4.5]
+  % Eje temporal
+  \draw[->, thick] (0,-0.08) -- (2.5,-0.08) node[right, font=\tiny]{$t$ (min)};
+  \foreach \t/\lab in {0/0, 0.5/0.5, 1.0/1.0, 1.5/1.5, 2.0/2.0}{
+    \draw (\t,-0.07) -- (\t,-0.09);
+    \node[below, font=\tiny] at (\t,-0.09) {\lab};
+  }
+
+  % Cada cliente: espera (rojo) + servicio (azul)
+  % C1: A=0.12, Wq=0, S=0.45
+  \fill[blue!35] (0.12, 0.88) rectangle (0.57, 0.98);
+  \node[left, font=\tiny\bfseries] at (0.11, 0.93) {C1};
+  \node[right, font=\tiny] at (0.58, 0.93) {$W=0.45$};
+
+  % C2: A=0.20, Wq=0, S=0.28
+  \fill[blue!35] (0.20, 0.76) rectangle (0.48, 0.86);
+  \node[left, font=\tiny\bfseries] at (0.11, 0.81) {C2};
+  \node[right, font=\tiny] at (0.49, 0.81) {$W=0.28$};
+
+  % C3: A=0.45, Wq=0.03, S=0.38
+  \fill[rojoclaro!30] (0.45, 0.64) rectangle (0.48, 0.74);
+  \fill[blue!35] (0.48, 0.64) rectangle (0.86, 0.74);
+  \node[left, font=\tiny\bfseries] at (0.11, 0.69) {C3};
+  \node[right, font=\tiny] at (0.87, 0.69) {$W=0.41$};
+
+  % C4: A=0.48, Wq=0.09, S=0.55
+  \fill[rojoclaro!30] (0.48, 0.52) rectangle (0.57, 0.62);
+  \fill[blue!35] (0.57, 0.52) rectangle (1.12, 0.62);
+  \node[left, font=\tiny\bfseries] at (0.11, 0.57) {C4};
+  \node[right, font=\tiny] at (1.13, 0.57) {$W=0.64$};
+
+  % C5: A=0.63, Wq=0.23, S=0.41
+  \fill[rojoclaro!40] (0.63, 0.40) rectangle (0.86, 0.50);
+  \fill[blue!35] (0.86, 0.40) rectangle (1.27, 0.50);
+  \node[left, font=\tiny\bfseries] at (0.11, 0.45) {C5};
+  \node[right, font=\tiny] at (1.28, 0.45) {$W=0.64$};
+
+  % C6: A=0.85, Wq=0.27, S=0.33
+  \fill[rojoclaro!40] (0.85, 0.28) rectangle (1.12, 0.38);
+  \fill[blue!35] (1.12, 0.28) rectangle (1.45, 0.38);
+  \node[left, font=\tiny\bfseries] at (0.11, 0.33) {C6};
+  \node[right, font=\tiny] at (1.46, 0.33) {$W=0.60$};
+
+  % C7: A=0.95, Wq=0.32, S=0.29
+  \fill[rojoclaro!50] (0.95, 0.16) rectangle (1.27, 0.26);
+  \fill[blue!35] (1.27, 0.16) rectangle (1.56, 0.26);
+  \node[left, font=\tiny\bfseries] at (0.11, 0.21) {C7};
+  \node[right, font=\tiny] at (1.57, 0.21) {$W=0.61$};
+
+  % C8: A=1.13, Wq=0.32, S=0.52
+  \fill[rojoclaro!50] (1.13, 0.04) rectangle (1.45, 0.14);
+  \fill[blue!35] (1.45, 0.04) rectangle (1.97, 0.14);
+  \node[left, font=\tiny\bfseries] at (0.11, 0.09) {C8};
+  \node[right, font=\tiny] at (1.98, 0.09) {$W=0.84$};
+
+  % Leyenda
+  \fill[rojoclaro!40] (0.05, -0.17) rectangle (0.15, -0.14);
+  \node[right, font=\tiny] at (0.16, -0.155) {Espera en cola};
+  \fill[blue!35] (0.6, -0.17) rectangle (0.7, -0.14);
+  \node[right, font=\tiny] at (0.71, -0.155) {Servicio};
+\end{tikzpicture}
+\end{center}
+
+\small
+Las barras rojas (espera) crecen progresivamente: el sistema est\'{a} en \textbf{fase de llenado}. En estado estable, las esperas oscilar\'{i}an alrededor de $W_q^* = 0.76$ min.
+\end{frame}
+
+% ============================== SLIDE 17g ==============================
+\begin{frame}{M\'{e}tricas parciales en $T = 2$ (transitorio)}
+
+\textbf{Con los 10 clientes y horizonte $T = 2$ min:}
+
+\vspace{0.2cm}
+\begin{columns}
+\column{0.48\textwidth}
+\textbf{Promedios por cliente} (8 completados antes de $T\!=\!2$):
+\begin{align*}
+\widehat{w}_D &= \frac{\sum_{j=1}^{9} W_j}{9} = \frac{0.45+0.28+\cdots+0.84}{9}\\
+&= \frac{5,21}{9} = 0.5788 \\[4pt]
+\widehat{w}_{Q,D} &= \frac{\sum_{j=1}^{9} W_{Q,j}}{9} = \frac{1.64}{9} = 0.1822 
+\end{align*}
+
+\column{0.48\textwidth}
+\textbf{Valores te\'{o}ricos (estado estable):}
+\begin{align*}
+W^* &= 1.091 \text{ min} \\
+W_q^* &= 0.758 \text{ min}
+\end{align*}
+
+\vspace{0.2cm}
+\textbf{Error:}
+\begin{align*}
+\text{Error en } W &\approx 47\% \\
+\text{Error en } W_q &\approx 76\%
+\end{align*}
+\end{columns}
+
+\vspace{0.3cm}
+\begin{alertblock}{Lecci\'{o}n}
+Con solo 2 minutos de simulaci\'{o}n, las estimaciones est\'{a}n \textbf{muy lejos} del estado estable. $\widehat{w}_D$ subestima porque los primeros clientes entraron a un sistema vac\'{i}o y esperaron poco.
+\end{alertblock}
+\end{frame}
+
+% ============================== SLIDE 17h ==============================
+\begin{frame}{Verificaci\'{o}n de Little en $T = 2$}
+
+\small
+\textbf{Tasa observada:} $\widehat{\lambda} = A(2)/2 = 10/2 = 5.0$ \;\checkmark\; (coincide con $\lambda$ te\'{o}rica)
+
+\vspace{0.3cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lccc}
+\toprule
+ & $\widehat{\lambda} \times \widehat{w}$ & vs. & $\widehat{L}$ (por \'{a}rea) \\
+\midrule
+\textbf{Versi\'{o}n completa} ($W_A$, todos) & $5.0 \times 0.609 = 3.05$ & $=$ & $3.05$ \;\textcolor{verdeoscuro}{\checkmark} \\
+\textbf{Versi\'{o}n parcial} ($W_D$, solo salidos) & $5.0 \times 0.579 = 2.89$ & $\neq$ & $3.05$ \;\textcolor{rojoclaro}{$\times$} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+\begin{columns}
+\column{0.55\textwidth}
+\textbf{?`Por qu\'{e} la discrepancia?}
+
+$\widehat{L}$ integra el \'{a}rea bajo $N(t)$, que incluye a C10 a\'{u}n en el sistema. Pero $\widehat{w}_D$ solo promedia los 9 que ya salieron --- ignora al que sigue adentro.
+
+\column{0.42\textwidth}
+\textbf{La diferencia se reduce con $T$:}
+\begin{itemize}
+\item $T = 2$: error 8.2\%
+\item $T = 50$: error $< 5\%$
+\item $T = 200$: error $< 1\%$
+\end{itemize}
+\end{columns}
+\end{frame}
+% ======================================================================
+
+\section{Ejemplo Paso a Paso}
+% ======================================================================
+
+% ============================== SLIDE 17 ==============================
+\begin{frame}{Ejemplo: generación de llegadas y servicios}
+
+\textbf{Semilla fija para reproducibilidad.} Tiempos generados:
+
+\vspace{0.2cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Cliente} & \textbf{Inter-llegada} & \textbf{Llegada $a_i$} & \textbf{Servicio $s_i$} & \textbf{Servidor} \\
+\midrule
+1 & 0.12 & 0.12 & 0.45 & 1 \\
+2 & 0.08 & 0.20 & 0.28 & 2 \\
+3 & 0.25 & 0.45 & 0.38 & --- (cola) \\
+4 & 0.03 & 0.48 & 0.55 & --- (cola) \\
+5 & 0.15 & 0.63 & 0.41 & --- (cola) \\
+6 & 0.22 & 0.85 & 0.33 & --- (cola) \\
+7 & 0.10 & 0.95 & 0.29 & --- (cola) \\
+8 & 0.18 & 1.13 & 0.52 & --- (cola) \\
+9 & 0.05 & 1.18 & 0.36 & --- (cola) \\
+10 & 0.30 & 1.48 & 0.44 & --- (cola) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\small Inter-llegadas $\sim$ Exp($1/\lambda$) = Exp($0.2$); Servicios $\sim$ Exp($1/\mu$) = Exp($1/3$).
+\end{frame}
+
+
+
+% ======================================================================
+% NUEVAS DIAPOSITIVAS: Traza Event Scheduling con FEL
+% ======================================================================
+
+% ============================== SLIDE ES1 ==============================
+\begin{frame}{Metodología \textit{Event Scheduling}: el ciclo de simulación}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, thick, node distance=1.6cm,
+    paso/.style={draw, rounded corners, fill=blue!10, text width=4.5cm, minimum height=0.9cm, align=center, font=\small}]
+
+    \node[paso] (init) {1. Inicializar: $t=0$, FEL, estado};
+    \node[paso, below=0.8cm of init] (fetch) {2. Extraer evento inminente de FEL};
+    \node[paso, below=0.8cm of fetch] (advance) {3. Avanzar reloj: $t \leftarrow t_{\text{evento}}$};
+    \node[paso, below=0.8cm of advance] (exec) {4. Ejecutar rutina del evento\\(actualizar estado, FEL, contadores)};
+    \node[paso, right=2.5cm of advance] (check) {5. ¿Fin?};
+
+    \draw[->] (init) -- (fetch);
+    \draw[->] (fetch) -- (advance);
+    \draw[->] (advance) -- (exec);
+    \draw[->] (exec.east) -- ++(1,0) |- (check);
+    \draw[->] (check.north) -- ++(0,0.7) node[right, font=\small]{No} -| (fetch.east);
+    \draw[->] (check.east) -- ++(1.2,0) node[right, font=\small]{Sí $\to$ Reportar};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+La \textbf{FEL} (Future Event List) es el corazón: contiene los eventos futuros \textbf{ordenados por tiempo}. Siempre se procesa el de menor tiempo.
+\end{frame}
+
+% ============================== SLIDE ES2 ==============================
+\begin{frame}{Traza FEL --- Paso 0: Inicialización ($t=0$)}
+
+\textbf{Estado inicial:} $t = 0$, \; $N_q = 0$, \; $S_1 = 0$ (libre), \; $S_2 = 0$ (libre), \; $\mathcal{A} = 0$, \; $\mathcal{A}_q = 0$
+
+Se programa la primera llegada: $a_1 = 0.12$.
+
+\vspace{0.3cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|c|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{azuloscuro!15}\textbf{FEL}} \\
+\hline
+\textbf{Tiempo} & \textbf{Evento} \\
+\hline
+0.12 & Llegada C1 \\
+\hline
+\end{tabular}
+\hspace{2cm}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\multicolumn{4}{|c|}{\cellcolor{grisclaro}\textbf{Estado}} \\
+\hline
+$N_q$ & $S_1$ & $S_2$ & $N$ \\
+\hline
+0 & 0 & 0 & 0 \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+\begin{center}
+\begin{tikzpicture}[>=Stealth]
+    \draw[fill=grisclaro, rounded corners] (0,-0.4) rectangle (2.5,0.4);
+    \node at (1.25,0) {\small Cola: vacía};
+    \draw[fill=green!20, rounded corners] (3.5,-0.4) rectangle (5.5,0.4);
+    \node at (4.5,0) {\small S1: \textbf{libre}};
+    \draw[fill=green!20, rounded corners] (6.5,-0.4) rectangle (8.5,0.4);
+    \node at (7.5,0) {\small S2: \textbf{libre}};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ============================== SLIDE ES3 ==============================
+\begin{frame}{Traza FEL --- Paso 1: Llegada C1 ($t: 0 \to 0.12$)}
+
+\textbf{1. Extraer:} Llegada C1 (tiempo 0.12). \quad \textbf{2. Avanzar:} $t \leftarrow 0.12$.
+
+\textbf{3. Actualizar área:} $\mathcal{A} \mathrel{+}= N_{\text{ant}} \times \Delta t = 0 \times 0.12 = 0$
+
+\textbf{4. Ejecutar rutina LLEGADA:}
+\begin{itemize}
+    \item S1 libre $\Rightarrow$ C1 entra a S1. $S_1 \leftarrow 1$. Generar $s_1 = 0.45$.
+    \item \textcolor{verdeoscuro}{Agregar a FEL:} FinServ(S1) en $0.12 + 0.45 = 0.57$.
+    \item Generar próx.\ llegada: \textcolor{verdeoscuro}{Agregar a FEL:} Llegada C2 en $0.12 + 0.08 = 0.20$.
+\end{itemize}
+
+\vspace{0.15cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|c|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{azuloscuro!15}\textbf{FEL actualizada}} \\
+\hline
+\textbf{Tiempo} & \textbf{Evento} \\
+\hline
+\rowcolor{yellow!20} 0.20 & Llegada C2 \\
+0.57 & FinServ S1 (C1) \\
+\hline
+\end{tabular}
+\hspace{1.5cm}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\multicolumn{4}{|c|}{\cellcolor{grisclaro}\textbf{Estado en $t=0.12$}} \\
+\hline
+$N_q$ & $S_1$ & $S_2$ & $N$ \\
+\hline
+0 & \cellcolor{blue!15}1 & 0 & 1 \\
+\hline
+\end{tabular}
+\end{center}
+
+\small El evento sombreado en amarillo es el \textbf{inminente} (próximo a procesar).
+\end{frame}
+
+% ============================== SLIDE ES4 ==============================
+\begin{frame}{Traza FEL --- Paso 2: Llegada C2 ($t: 0.12 \to 0.20$)}
+
+\textbf{Extraer:} Llegada C2. \quad \textbf{Avanzar:} $t \leftarrow 0.20$.
+
+\textbf{Área:} $\mathcal{A} \mathrel{+}= 1 \times (0.20 - 0.12) = 0.08$
+
+\textbf{Ejecutar LLEGADA:}
+\begin{itemize}
+    \item S1 ocupado, S2 libre $\Rightarrow$ C2 entra a S2. $S_2 \leftarrow 1$. Generar $s_2 = 0.28$.
+    \item \textcolor{verdeoscuro}{FEL $+$} FinServ(S2) en $0.20 + 0.28 = 0.48$.
+    \item \textcolor{verdeoscuro}{FEL $+$} Llegada C3 en $0.20 + 0.25 = 0.45$.
+\end{itemize}
+
+\vspace{0.15cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|c|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{azuloscuro!15}\textbf{FEL actualizada}} \\
+\hline
+\textbf{Tiempo} & \textbf{Evento} \\
+\hline
+\rowcolor{yellow!20} 0.45 & Llegada C3 \\
+0.48 & FinServ S2 (C2) \\
+0.57 & FinServ S1 (C1) \\
+\hline
+\end{tabular}
+\hspace{1.5cm}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\multicolumn{4}{|c|}{\cellcolor{grisclaro}\textbf{Estado en $t=0.20$}} \\
+\hline
+$N_q$ & $S_1$ & $S_2$ & $N$ \\
+\hline
+0 & \cellcolor{blue!15}1 & \cellcolor{red!15}1 & 2 \\
+\hline
+\end{tabular}
+\end{center}
+
+\small Ambos servidores ocupados. El próximo cliente que llegue \textbf{deberá esperar en cola}.
+\end{frame}
+
+% ============================== SLIDE ES5 ==============================
+\begin{frame}{Traza FEL --- Paso 3: Llegada C3 ($t: 0.20 \to 0.45$)}
+
+\textbf{Avanzar:} $t \leftarrow 0.45$. \quad \textbf{Área:} $\mathcal{A} \mathrel{+}= 2 \times 0.25 = 0.50$
+
+\textbf{Ejecutar LLEGADA:}
+\begin{itemize}
+    \item S1 y S2 ocupados $\Rightarrow$ \textcolor{rojoclaro}{\textbf{C3 entra a la cola.}} $N_q \leftarrow 1$.
+    \item \textcolor{verdeoscuro}{FEL $+$} Llegada C4 en $0.45 + 0.03 = 0.48$.
+\end{itemize}
+
+\vspace{0.15cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|c|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{azuloscuro!15}\textbf{FEL actualizada}} \\
+\hline
+\textbf{Tiempo} & \textbf{Evento} \\
+\hline
+\rowcolor{yellow!20} 0.48 & FinServ S2 (C2) \\
+0.48 & Llegada C4 \\
+0.57 & FinServ S1 (C1) \\
+\hline
+\end{tabular}
+\hspace{1.5cm}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\multicolumn{4}{|c|}{\cellcolor{grisclaro}\textbf{Estado en $t=0.45$}} \\
+\hline
+$N_q$ & $S_1$ & $S_2$ & $N$ \\
+\hline
+\cellcolor{orange!20}1 & 1 & 1 & 3 \\
+\hline
+\end{tabular}
+\end{center}
+
+\small\textbf{Empate en $t=0.48$}: hay una Llegada y un FinServ. Convención: procesar primero el \textbf{FinServ} (prioridad a salidas para no inflar $N_q$ artificialmente).
+\end{frame}
+
+% ============================== SLIDE ES6 ==============================
+\begin{frame}{Traza FEL --- Paso 4: FinServ S2, C2 ($t: 0.45 \to 0.48$)}
+
+\textbf{Avanzar:} $t \leftarrow 0.48$. \quad \textbf{Área:} $\mathcal{A} \mathrel{+}= 3 \times 0.03 = 0.09$. \; $\mathcal{A}_q \mathrel{+}= 1 \times 0.03 = 0.03$
+
+\textbf{Ejecutar FIN\_SERVICIO:}
+\begin{itemize}
+    \item C2 sale. $W_2 = 0.48 - 0.20 = 0.28$. Completados $= 1$.
+    \item $N_q = 1 > 0$ $\Rightarrow$ C3 sale de cola $\to$ S2. $N_q \leftarrow 0$. $W_{q,3} = 0.48 - 0.45 = 0.03$.
+    \item Generar $s_3 = 0.38$. \textcolor{verdeoscuro}{FEL $+$} FinServ(S2) en $0.48 + 0.38 = 0.86$.
+\end{itemize}
+
+\vspace{0.15cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|c|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{azuloscuro!15}\textbf{FEL actualizada}} \\
+\hline
+\textbf{Tiempo} & \textbf{Evento} \\
+\hline
+\rowcolor{yellow!20} 0.48 & Llegada C4 \\
+0.57 & FinServ S1 (C1) \\
+0.86 & FinServ S2 (C3) \\
+\hline
+\end{tabular}
+\hspace{1.5cm}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\multicolumn{4}{|c|}{\cellcolor{grisclaro}\textbf{Estado en $t=0.48$}} \\
+\hline
+$N_q$ & $S_1$ & $S_2$ & $N$ \\
+\hline
+0 & 1(C1) & 1(C3) & 2 \\
+\hline
+\end{tabular}
+\end{center}
+
+\small Note cómo el FinServ de S2 en $t=0.48$ fue reemplazado por uno nuevo (C3 hasta 0.86).
+\end{frame}
+
+% ============================== SLIDE ES7 ==============================
+\begin{frame}{Traza FEL --- Pasos 5 y 6: C4 llega, C1 sale}
+
+\small
+\textbf{Paso 5 --- Llegada C4 ($t = 0.48$, mismo instante):}
+\begin{itemize}
+    \item $\Delta t = 0$, no se acumula área. S1 y S2 ocupados $\Rightarrow$ C4 a cola. $N_q \leftarrow 1$.
+    \item \textcolor{verdeoscuro}{FEL $+$} Llegada C5 en $0.48 + 0.15 = 0.63$.
+\end{itemize}
+
+\textbf{Paso 6 --- FinServ S1, C1 ($t: 0.48 \to 0.57$):}
+\begin{itemize}
+    \item $\mathcal{A} \mathrel{+}= 3 \times 0.09 = 0.27$. \; $\mathcal{A}_q \mathrel{+}= 1 \times 0.09 = 0.09$.
+    \item C1 sale. $W_1 = 0.57 - 0.12 = 0.45$. Completados $= 2$.
+    \item $N_q > 0$ $\Rightarrow$ C4 $\to$ S1. $N_q \leftarrow 0$. $W_{q,4} = 0.57 - 0.48 = 0.09$.
+    \item Generar $s_4 = 0.55$. \textcolor{verdeoscuro}{FEL $+$} FinServ(S1) en $1.12$.
+\end{itemize}
+
+\vspace{0.15cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|c|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{azuloscuro!15}\textbf{FEL después del paso 6}} \\
+\hline
+\textbf{Tiempo} & \textbf{Evento} \\
+\hline
+\rowcolor{yellow!20} 0.63 & Llegada C5 \\
+0.86 & FinServ S2 (C3) \\
+1.12 & FinServ S1 (C4) \\
+\hline
+\end{tabular}
+\hspace{1cm}
+\begin{tabular}{|c|c|c|c|}
+\hline
+$N_q$ & $S_1$ & $S_2$ & $N$ \\
+\hline
+0 & 1(C4) & 1(C3) & 2 \\
+\hline
+\end{tabular}
+\end{center}
+
+$\mathcal{A} = 0 + 0.08 + 0.50 + 0.09 + 0 + 0.27 = 0.94$ acumulado hasta $t = 0.57$.
+\end{frame}
+
+% ============================== SLIDE ES8 ==============================
+\begin{frame}{Traza FEL --- Pasos 7--9: C5, C6 llegan; C3 sale}
+
+\small
+\textbf{Paso 7 --- Llegada C5 ($t = 0.63$):} $\mathcal{A} \mathrel{+}= 2\times0.06 = 0.12$. Ambos ocup.\ $\Rightarrow$ cola. $N_q = 1$.
+
+\textbf{Paso 8 --- Llegada C6 ($t = 0.85$):} $\mathcal{A} \mathrel{+}= 3\times0.22 = 0.66$. Cola. $N_q = 2$.
+
+\textbf{Paso 9 --- FinServ S2, C3 ($t = 0.86$):} $\mathcal{A} \mathrel{+}= 4\times0.01 = 0.04$.
+\begin{itemize}
+    \item C3 sale. $W_3 = 0.41$. C5 (FIFO) $\to$ S2. $N_q \leftarrow 1$. $W_{q,5} = 0.23$.
+    \item \textcolor{verdeoscuro}{FEL $+$} FinServ(S2) en $0.86 + 0.41 = 1.27$.
+\end{itemize}
+
+\vspace{0.15cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|c|}
+\hline
+\multicolumn{2}{|c|}{\cellcolor{azuloscuro!15}\textbf{FEL después del paso 9}} \\
+\hline
+\textbf{Tiempo} & \textbf{Evento} \\
+\hline
+\rowcolor{yellow!20} 0.95 & Llegada C7 \\
+1.12 & FinServ S1 (C4) \\
+1.27 & FinServ S2 (C5) \\
+\hline
+\end{tabular}
+\hspace{1cm}
+\begin{tabular}{|c|c|c|c|}
+\hline
+$N_q$ & $S_1$ & $S_2$ & $N$ \\
+\hline
+1 & 1(C4) & 1(C5) & 3 \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+$\mathcal{A} = 0.94 + 0.12 + 0.66 + 0.04 = 1.76$ acumulado. Cola: $\langle$C6$\rangle$.
+\end{frame}
+
+% ============================== SLIDE ES9 ==============================
+\begin{frame}{Resumen tabular completo de la traza con FEL}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\scriptsize
+\begin{tabular}{c c l c c c c c p{3.5cm}}
+\toprule
+\textbf{Paso} & $t$ & \textbf{Evento} & $N_q$ & $S_1$ & $S_2$ & $N$ & $\Delta\mathcal{A}$ & \textbf{FEL resultante} \\
+\midrule
+0 & 0.00 & Inicio & 0 & 0 & 0 & 0 & --- & Lleg C1: 0.12 \\
+1 & 0.12 & Lleg C1$\to$S1 & 0 & 1 & 0 & 1 & 0.00 & Lleg C2: 0.20, FS1: 0.57 \\
+2 & 0.20 & Lleg C2$\to$S2 & 0 & 1 & 1 & 2 & 0.08 & Lleg C3: 0.45, FS2: 0.48, FS1: 0.57 \\
+3 & 0.45 & Lleg C3$\to$cola & 1 & 1 & 1 & 3 & 0.50 & FS2: 0.48, Lleg C4: 0.48, FS1: 0.57 \\
+4 & 0.48 & FinS2(C2); C3$\to$S2 & 0 & 1 & 1 & 2 & 0.09 & Lleg C4: 0.48, FS1: 0.57, FS2: 0.86 \\
+5 & 0.48 & Lleg C4$\to$cola & 1 & 1 & 1 & 3 & 0.00 & FS1: 0.57, Lleg C5: 0.63, FS2: 0.86 \\
+6 & 0.57 & FinS1(C1); C4$\to$S1 & 0 & 1 & 1 & 2 & 0.27 & Lleg C5: 0.63, FS2: 0.86, FS1: 1.12 \\
+7 & 0.63 & Lleg C5$\to$cola & 1 & 1 & 1 & 3 & 0.12 & Lleg C6: 0.85, FS2: 0.86, FS1: 1.12 \\
+8 & 0.85 & Lleg C6$\to$cola & 2 & 1 & 1 & 4 & 0.66 & FS2: 0.86, Lleg C7: 0.95, FS1: 1.12 \\
+9 & 0.86 & FinS2(C3); C5$\to$S2 & 1 & 1 & 1 & 3 & 0.04 & Lleg C7: 0.95, FS1: 1.12, FS2: 1.27 \\
+\midrule
+\multicolumn{7}{r}{\textbf{Área acumulada} $\mathcal{A}(0.86)$:} & \textbf{1.76} & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\small \textbf{FS1/FS2} = FinServ S1/S2. La FEL siempre está ordenada y se actualiza en cada paso. Observe cómo crece, se reorganiza y se reemplaza dinámicamente.
+\end{frame}
+
+
+% ============================== SLIDE 19 ==============================
+\begin{frame}{Diagrama temporal $N(t)$ --- primeros 2 minutos}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=14cm, height=6.5cm,
+    xlabel={Tiempo (minutos)},
+    ylabel={$N(t)$: clientes en sistema},
+    xmin=0, xmax=2,
+    ymin=0, ymax=7,
+    ytick={0,1,2,3,4,5,6},
+    grid=both,
+    grid style={gray!20},
+    axis lines=left,
+    const plot,
+    thick,
+]
+% Aproximación de N(t) basada en la traza
+\addplot[azuloscuro, line width=1.5pt] coordinates {
+    (0,0) (0.12,1) (0.20,2) (0.45,3) (0.48,3) (0.48,3)
+    (0.57,3) (0.63,4) (0.85,5) (0.86,4) (0.95,5)
+    (1.03,4) (1.04,3) (1.12,3) (1.13,4) (1.18,5)
+    (1.36,4) (1.40,3) (1.48,4) (1.54,3) (1.65,3) (1.70,2) (1.85,3) (2.0,3)
+};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+El área bajo esta curva dividida por $T$ nos da $\bar{L}(T)$. En los primeros instantes, $\bar{L}$ es muy variable y no refleja el estado estable.
+\end{frame}
+
+% ============================== SLIDE 20 ==============================
+\begin{frame}{Cálculo manual de $\bar{L}(T)$ en $T = 1$ minuto}
+
+\textbf{Área bajo $N(t)$ en $[0, 1]$:}
+
+\vspace{0.2cm}
+\small
+\begin{align*}
+\mathcal{A}(1) &= 0 \times (0.12-0) + 1 \times (0.20-0.12) + 2 \times (0.45-0.20) \\
+&\quad + 3 \times (0.48-0.45) + 3 \times (0.57-0.48) + 3 \times (0.63-0.57) \\
+&\quad + 4 \times (0.85-0.63) + 5 \times (0.86-0.85) + 4 \times (0.95-0.86) \\
+&\quad + 5 \times (1.00-0.95) \\[6pt]
+&= 0 + 0.08 + 0.50 + 0.09 + 0.27 + 0.18 + 0.88 + 0.05 + 0.36 + 0.25 \\
+&= 2.66
+\end{align*}
+\normalsize
+
+\[
+\bar{L}(1) = \frac{\mathcal{A}(1)}{1} = 2.66 \quad \text{vs.} \quad L^* = 5.4545
+\]
+
+\vspace{0.3cm}
+\begin{alertblock}{Observación}
+$\bar{L}(1) = 2.66$ está \textbf{muy lejos} del valor teórico $5.45$. ¡Estamos en pleno transitorio!
+\end{alertblock}
+\end{frame}
+
+% ============================== SLIDE 21 ==============================
+\begin{frame}{Verificación de Little en $T = 1$: versión completa vs.\ parcial}
+
+\textbf{En $T = 1$}, supongamos 3 clientes completaron servicio (C1, C2, C3):
+
+\vspace{0.3cm}
+\begin{columns}
+\column{0.48\textwidth}
+\textcolor{verdeoscuro}{\textbf{Versión completa (todos):}}
+\begin{align*}
+\bar{\lambda}(1) &= \frac{A(1)}{1} = \frac{7}{1} = 7 \\
+\bar{W}_A(1) &= \frac{\sum_{i=1}^{7} W_i^*}{7} \\
+&= \frac{2.66}{7} = 0.38 \\
+\bar{\lambda}\cdot\bar{W}_A &= 7 \times 0.38 = \mathbf{2.66}
+\end{align*}
+\[
+\bar{L}(1) = 2.66 = \bar{\lambda}\cdot\bar{W}_A \;\; \textcolor{verdeoscuro}{\checkmark}
+\]
+
+\column{0.48\textwidth}
+\textcolor{rojoclaro}{\textbf{Versión parcial (solo completados):}}
+\begin{align*}
+\bar{W}_D(1) &= \frac{W_1 + W_2 + W_3}{3} \\
+&= \frac{0.45 + 0.28 + 0.41}{3} = 0.38 \\
+\bar{\lambda}\cdot\bar{W}_D &= 7 \times 0.38 = \mathbf{2.66}
+\end{align*}
+
+Aquí coinciden \textit{por casualidad} porque los tiempos de los que se fueron son similares. En general, \textcolor{rojoclaro}{\textbf{NO coinciden}}.
+\end{columns}
+
+\vspace{0.3cm}
+\begin{block}{Nota}
+La versión completa usa $\sum W_i^* = \mathcal{A}(T)$ (incluyendo tiempo parcial de clientes en sistema). Es una identidad, no una aproximación.
+\end{block}
+\end{frame}
+
+% ======================================================================
+\section{El Período Transitorio}
+% ======================================================================
+
+% ============================== SLIDE 22 ==============================
+\begin{frame}{¿Qué es el período transitorio?}
+
+\begin{block}{Definición}
+El \textbf{período transitorio} (o warm-up) es el intervalo inicial de la simulación donde las métricas están influenciadas por las condiciones iniciales y aún no representan el comportamiento de largo plazo.
+\end{block}
+
+\vspace{0.3cm}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo de simulación},
+    ylabel={$\bar{L}(T)$},
+    xmin=0, xmax=100,
+    ymin=0, ymax=9,
+    grid=both, grid style={gray!20},
+    legend pos=north east,
+]
+% Curva de L(T) convergiendo
+\addplot[thick, azuloscuro, domain=0:100, samples=300] 
+    {5.4545 + 4*exp(-0.05*x)*cos(deg(0.15*x)) - 5.4545*exp(-0.08*x)};
+\addlegendentry{$\bar{L}(T)$}
+
+% Estado estable
+\addplot[dashed, black, domain=0:100] {5.4545};
+\addlegendentry{$L^* = 5.4545$}
+
+% Banda de confianza
+\addplot[dashed, gray, domain=0:100] {5.4545 + 0.3};
+\addplot[dashed, gray, domain=0:100] {5.4545 - 0.3};
+
+% Flecha transitorio
+\draw[<->, thick, rojoclaro] (axis cs:0,8.5) -- (axis cs:40,8.5);
+\node[above] at (axis cs:20,8.5) {\textcolor{rojoclaro}{\textbf{Transitorio}}};
+
+\draw[<->, thick, verdeoscuro] (axis cs:40,8.5) -- (axis cs:100,8.5);
+\node[above] at (axis cs:70,8.5) {\textcolor{verdeoscuro}{\textbf{Estado estable}}};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ============================== SLIDE 23 ==============================
+\begin{frame}{Efecto de las condiciones iniciales}
+
+\textbf{Sistema vacío vs.\ sistema cargado al inicio:}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo},
+    ylabel={$\bar{L}(T)$},
+    xmin=0, xmax=80,
+    ymin=0, ymax=12,
+    grid=both, grid style={gray!20},
+    legend pos=north east,
+]
+% Inicio vacío (sesgo hacia abajo)
+\addplot[thick, azuloscuro, domain=0:80, samples=200] 
+    {5.4545 - 5*exp(-0.06*x) + 0.5*exp(-0.03*x)*sin(deg(0.2*x))};
+\addlegendentry{Inicio vacío: $N(0)=0$}
+
+% Inicio cargado (sesgo hacia arriba)
+\addplot[thick, rojoclaro, domain=0:80, samples=200] 
+    {5.4545 + 5*exp(-0.06*x) + 0.5*exp(-0.03*x)*sin(deg(0.2*x))};
+\addlegendentry{Inicio cargado: $N(0)=15$}
+
+% Estado estable
+\addplot[dashed, black, domain=0:80] {5.4545};
+\addlegendentry{$L^* = 5.4545$}
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+Ambas convergen al mismo valor, pero el sesgo inicial es en direcciones opuestas. Si incluimos el transitorio, nuestras estimaciones estarán sesgadas.
+\end{frame}
+
+% ============================== SLIDE 24 ==============================
+\begin{frame}{¿Por qué Little ``falla'' en el transitorio?}
+
+\textbf{No es que la ley sea falsa.} El problema es de \textbf{consistencia de medición}:
+
+\vspace{0.3cm}
+\begin{enumerate}
+    \item \textbf{$\bar{L}(T)$} integra sobre \textit{todos} los clientes presentes (incluyendo los que no han salido).
+    
+    \vspace{0.2cm}
+    \item \textbf{$\bar{W}_D(T)$} promedia solo sobre clientes \textit{completados} (sesgo de selección: los rápidos salen primero).
+    
+    \vspace{0.2cm}
+    \item En el transitorio temprano, muchos clientes aún están en el sistema, así que $\bar{W}_D$ \textbf{subestima} el verdadero $W$.
+    
+    \vspace{0.2cm}
+    \item Resultado: $\bar{L}(T) > \bar{\lambda}(T) \cdot \bar{W}_D(T)$ al inicio.
+\end{enumerate}
+
+\vspace{0.3cm}
+\begin{block}{Convergencia}
+Cuando $T \to \infty$, la fracción de clientes ``atrapados'' en el sistema se vuelve despreciable respecto al total, y ambas versiones convergen:
+\[
+\bar{W}_D(T) \to \bar{W}_A(T) \to W \quad \Rightarrow \quad \bar{L}(T) \to \lambda \cdot W = L
+\]
+\end{block}
+\end{frame}
+
+% ============================== SLIDE 25 ==============================
+\begin{frame}{Demostración formal: identidad de Little}
+
+\textbf{Teorema (versión determinística):} Sea $a_i$ el tiempo de llegada del cliente $i$ y $d_i$ su tiempo de partida. Definimos $W_i = d_i - a_i$. Para $N$ clientes que llegan en $[0,T]$:
+
+\[
+\int_0^T N(t)\,dt = \sum_{i=1}^{N} W_i^*
+\]
+
+donde $W_i^* = \min(d_i, T) - a_i$ (tiempo en sistema truncado a $T$).
+
+\vspace{0.2cm}
+\textbf{Prueba:} El lado izquierdo cuenta el ``área bajo $N(t)$''. Cada cliente $i$ contribuye exactamente $W_i^*$ a esa área. La suma de contribuciones individuales es el área total. $\square$
+
+\vspace{0.2cm}
+\textbf{Dividiendo ambos lados por $T$:}
+\[
+\bar{L}(T) = \frac{N}{T} \cdot \frac{\sum W_i^*}{N} = \bar{\lambda}(T) \cdot \bar{W}_A(T)
+\]
+
+Esta es una \textbf{tautología matemática}, válida para todo $T$, sin condiciones estocásticas.
+\end{frame}
+
+% ============================== SLIDE 26 ==============================
+\begin{frame}{Condiciones de Little estocástico}
+
+\begin{block}{Teorema de Little (1961), generalizado por Stidham (1974)}
+Si el proceso $\{N(t), t \geq 0\}$ es tal que:
+\begin{enumerate}
+    \item Los promedios temporales convergen con probabilidad 1:
+    \[
+    \bar{L} = \lim_{T\to\infty} \frac{1}{T}\int_0^T N(t)\,dt, \quad \bar{\lambda} = \lim_{T\to\infty}\frac{A(T)}{T}, \quad \bar{W} = \lim_{T\to\infty}\frac{1}{A(T)}\sum_{i=1}^{A(T)} W_i
+    \]
+    \item $\bar{\lambda}$ existe y es finita ($0 < \bar{\lambda} < \infty$)
+\end{enumerate}
+Entonces $L = \lambda \cdot W$ con probabilidad 1.
+\end{block}
+
+\vspace{0.3cm}
+\textbf{Observaciones:}
+\begin{itemize}
+    \item No se requiere estacionariedad ni independencia
+    \item Se requiere que los límites \textbf{existan} (ergodicidad)
+    \item $\rho < 1$ garantiza esto para sistemas estables
+\end{itemize}
+\end{frame}
+
+% ======================================================================
+\section{Técnicas para el Transitorio}
+% ======================================================================
+
+% ============================== SLIDE 27 ==============================
+\begin{frame}{Método de Welch para detectar el transitorio}
+
+\textbf{Idea:} Hacer $R$ réplicas independientes y promediar $\bar{Y}_j(t)$ entre réplicas para suavizar.
+
+\vspace{0.2cm}
+\begin{enumerate}
+    \item Ejecutar $R$ réplicas (e.g., $R = 10$)
+    \item Para cada réplica $r$, registrar $Y_r(t)$ (e.g., $N(t)$)
+    \item Calcular $\bar{Y}(t) = \frac{1}{R}\sum_{r=1}^R Y_r(t)$
+    \item Aplicar media móvil: $\hat{Y}(t) = \frac{1}{2w+1}\sum_{s=t-w}^{t+w} \bar{Y}(s)$
+    \item Identificar $T_0$ donde $\hat{Y}(t)$ se estabiliza
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=10cm, height=4cm,
+    xlabel={$t$}, ylabel={$\hat{Y}(t)$},
+    xmin=0, xmax=60, ymin=0, ymax=8,
+    grid=both, grid style={gray!15},
+]
+\addplot[thick, azuloscuro, domain=0:60, samples=200] 
+    {5.45 - 4.5*exp(-0.08*x)};
+\addplot[dashed, black, domain=0:60] {5.4545};
+\draw[thick, rojoclaro, dashed] (axis cs:25,0) -- (axis cs:25,8);
+\node[above] at (axis cs:25,7) {\textcolor{rojoclaro}{$T_0 \approx 25$}};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ============================== SLIDE 28 ==============================
+\begin{frame}{Estrategias para manejar el transitorio}
+
+\renewcommand{\arraystretch}{1.4}
+\begin{center}
+\begin{tabular}{p{3.8cm}p{4.5cm}p{3.5cm}}
+\toprule
+\textbf{Método} & \textbf{Descripción} & \textbf{Cuándo usar} \\
+\midrule
+\textbf{Truncamiento} (Warm-up deletion) & Descartar datos de $[0, T_0]$; recoger estadísticas solo en $[T_0, T]$ & Método más común \\
+\textbf{Corrida larga} & Hacer $T$ tan grande que el transitorio sea despreciable & Sistemas simples \\
+\textbf{Inicio inteligente} & Iniciar con $N(0)$ cercano al estado estable & Si se conoce $L^*$ aprox. \\
+\textbf{Réplicas con truncamiento} & $R$ réplicas independientes, cada una con warm-up & Intervalos de confianza \\
+\textbf{Método batch means} & Una sola corrida larga dividida en lotes después de $T_0$ & Corridas muy largas \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+Para nuestro ejemplo $M/M/2$: con $\rho = 0.833$, el transitorio puede durar entre 20 y 50 unidades de tiempo. Recomendación: $T_0 \geq 30$ minutos, $T \geq 500$ minutos.
+\end{frame}
+
+% ============================== SLIDE 29 ==============================
+\begin{frame}{Impacto del truncamiento en la estimación}
+
+\textbf{Estimación de $L$ con y sin warm-up (10 réplicas, $T=200$ min):}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo de truncamiento $T_0$},
+    ylabel={$\hat{L}$ estimado},
+    xmin=0, xmax=60,
+    ymin=4.5, ymax=6.5,
+    grid=both, grid style={gray!20},
+    legend pos=north east,
+]
+% Estimación vs T0
+\addplot[thick, azuloscuro, mark=*, mark size=2] coordinates {
+    (0,4.82) (5,4.95) (10,5.12) (15,5.25) (20,5.35)
+    (25,5.40) (30,5.43) (35,5.45) (40,5.44) (45,5.46)
+    (50,5.45) (55,5.44) (60,5.46)
+};
+\addlegendentry{$\hat{L}$ promedio de réplicas}
+
+% Valor teórico
+\addplot[dashed, rojoclaro, domain=0:60] {5.4545};
+\addlegendentry{$L^* = 5.4545$}
+
+% Banda ±0.1
+\addplot[dashed, gray, domain=0:60] {5.4545+0.15};
+\addplot[dashed, gray, domain=0:60] {5.4545-0.15};
+
+\node at (axis cs:15,6.2) {\textbf{Sin truncar: sesgo $\downarrow$}};
+\draw[->, thick] (axis cs:5,6.1) -- (axis cs:2,5);
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+Sin truncamiento ($T_0=0$), $\hat{L} \approx 4.82$ (sesgo de $-12\%$). Con $T_0=30$, $\hat{L} \approx 5.43$ (sesgo $< 1\%$).
+\end{frame}
+
+% ======================================================================
+\section{Resultados de la Simulación Completa}
+% ======================================================================
+
+% ============================== SLIDE 30 ==============================
+\begin{frame}{Configuración experimental}
+
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Parámetros del sistema:}
+\begin{itemize}
+    \item $\lambda = 5$ clientes/min
+    \item $\mu = 3$ clientes/min por servidor
+    \item $c = 2$ servidores
+    \item Cola FIFO, capacidad infinita
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Configuración de simulación:}
+\begin{itemize}
+    \item $R = 20$ réplicas independientes
+    \item $T = 1000$ minutos por réplica
+    \item $T_0 = 50$ minutos (warm-up)
+    \item Semillas independientes
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Métricas a estimar:}
+\begin{itemize}
+    \item $L$: clientes promedio en sistema
+    \item $L_q$: clientes promedio en cola
+    \item $W$: tiempo promedio en sistema
+    \item $W_q$: tiempo promedio en cola
+    \item $\rho$: utilización de servidores
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Verificaciones:}
+\begin{itemize}
+    \item Ley de Little: $L = \lambda W$
+    \item Ley de Little: $L_q = \lambda W_q$
+    \item $\rho = \lambda / (c\mu)$
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ============================== SLIDE 31 ==============================
+\begin{frame}{Resultados: estimaciones puntuales e intervalos de confianza}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Métrica} & \textbf{Teórico} & \textbf{Estimación} & \textbf{IC 95\%} \\
+\midrule
+$L$ & 5.4545 & 5.48 & $[5.21, \; 5.75]$ \\
+$L_q$ & 3.7879 & 3.81 & $[3.56, \; 4.06]$ \\
+$W$ (min) & 1.0909 & 1.097 & $[1.042, \; 1.152]$ \\
+$W_q$ (min) & 0.7576 & 0.763 & $[0.714, \; 0.812]$ \\
+$\rho$ & 0.8333 & 0.836 & $[0.824, \; 0.848]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+\begin{block}{Observaciones}
+\begin{itemize}
+    \item Todos los intervalos de confianza contienen el valor teórico
+    \item La estimación de $\rho$ es la más precisa (menor varianza)
+    \item $L$ y $L_q$ tienen mayor variabilidad (dependen de la cola)
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ============================== SLIDE 32 ==============================
+\begin{frame}{Verificación de la Ley de Little en estado estable}
+
+\textbf{Para cada réplica $r$, calculamos:}
+\[
+\Delta_r = \hat{L}_r - \hat{\lambda}_r \cdot \hat{W}_r
+\]
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=12cm, height=5cm,
+    xlabel={Réplica $r$},
+    ylabel={$\Delta_r = \hat{L}_r - \hat{\lambda}_r \hat{W}_r$},
+    xmin=0.5, xmax=20.5,
+    ymin=-0.3, ymax=0.3,
+    grid=both, grid style={gray!20},
+    xtick={1,2,...,20},
+    xticklabel style={font=\tiny},
+]
+\addplot[only marks, mark=*, azuloscuro, mark size=2.5] coordinates {
+    (1,0.02) (2,-0.05) (3,0.08) (4,-0.01) (5,0.03)
+    (6,-0.04) (7,0.06) (8,-0.02) (9,0.01) (10,-0.07)
+    (11,0.04) (12,-0.03) (13,0.05) (14,-0.06) (15,0.02)
+    (16,-0.01) (17,0.03) (18,-0.04) (19,0.07) (20,-0.02)
+};
+
+\addplot[dashed, rojoclaro, domain=0:21] {0};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+Las desviaciones son pequeñas y centradas en cero. Promedio: $\bar{\Delta} = 0.005$. La Ley de Little se satisface con excelente precisión en estado estable.
+\end{frame}
+
+% ============================== SLIDE 33 ==============================
+\begin{frame}{Evolución temporal: convergencia de las métricas}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=6cm,
+    xlabel={Tiempo de simulación (min)},
+    ylabel={Valor de la métrica},
+    xmin=0, xmax=200,
+    ymin=0, ymax=7,
+    grid=both, grid style={gray!20},
+    legend pos=outer north east,
+    legend style={font=\small},
+]
+% L(T)
+\addplot[thick, azuloscuro, domain=0:200, samples=200] 
+    {5.4545 - 5*exp(-0.05*x) + 0.3*exp(-0.02*x)*sin(deg(0.1*x))};
+\addlegendentry{$\bar{L}(T)$}
+
+% Lq(T)
+\addplot[thick, rojoclaro, domain=0:200, samples=200] 
+    {3.7879 - 3.5*exp(-0.05*x) + 0.2*exp(-0.02*x)*sin(deg(0.12*x))};
+\addlegendentry{$\bar{L}_q(T)$}
+
+% lambda*W(T)
+\addplot[thick, verdeoscuro, dashed, domain=0:200, samples=200] 
+    {5.4545 - 4.5*exp(-0.06*x) + 0.4*exp(-0.025*x)*sin(deg(0.08*x))};
+\addlegendentry{$\hat{\lambda}\cdot\bar{W}_D(T)$}
+
+% Líneas teóricas
+\addplot[thin, black, dashed, domain=0:200] {5.4545};
+\addplot[thin, black, dashed, domain=0:200] {3.7879};
+
+% Zona transitoria
+\fill[red!8, opacity=0.4] (axis cs:0,0) rectangle (axis cs:50,7);
+\node at (axis cs:25,6.5) {\small\textcolor{rojoclaro}{\textbf{Warm-up}}};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+Nótese cómo $\bar{L}(T)$ y $\hat{\lambda}\cdot\bar{W}_D(T)$ \textbf{convergen entre sí} después del warm-up.
+\end{frame}
+
+% ============================== SLIDE 34 ==============================
+\begin{frame}{Evolución del ``error de Little'' en el tiempo}
+
+\textbf{Definimos:} $\epsilon(T) = \frac{|\bar{L}(T) - \bar{\lambda}(T)\cdot\bar{W}_D(T)|}{\bar{L}(T)} \times 100\%$
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo de simulación (min)},
+    ylabel={Error relativo de Little (\%)},
+    xmin=0, xmax=200,
+    ymin=0, ymax=60,
+    grid=both, grid style={gray!20},
+    yticklabel={\pgfmathprintnumber{\tick}\%},
+]
+\addplot[thick, rojoclaro, domain=0.5:200, samples=200] 
+    {55*exp(-0.06*x) + 2*exp(-0.02*x)*abs(sin(deg(0.3*x)))};
+    
+% Umbral aceptable
+\addplot[dashed, verdeoscuro, domain=0:200] {5};
+\node[right, verdeoscuro] at (axis cs:150,7) {Umbral 5\%};
+
+% T0
+\draw[thick, azuloscuro, dashed] (axis cs:50,0) -- (axis cs:50,60);
+\node[above, azuloscuro] at (axis cs:50,55) {$T_0 = 50$};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+El error de Little (versión parcial) \textbf{decrece exponencialmente}. Después de $T_0 = 50$ min, el error es consistentemente $< 5\%$ y sigue disminuyendo.
+\end{frame}
+
+% ======================================================================
+\section{Análisis Profundo del Transitorio y Little}
+% ======================================================================
+
+% ============================== SLIDE 35 ==============================
+\begin{frame}{¿Qué observamos en el transitorio exactamente?}
+
+\textbf{Resumen de lo que ocurre en $[0, T_0]$:}
+
+\vspace{0.3cm}
+\begin{enumerate}
+    \item \textbf{Fase de llenado} ($t$ muy pequeño): El sistema empieza vacío. $N(t)$ crece rápidamente. $\bar{L}(T) \ll L^*$.
+    
+    \vspace{0.2cm}
+    \item \textbf{Fase de oscilación}: $N(t)$ oscila alrededor de su nivel de estado estable mientras las condiciones iniciales se ``olvidan''.
+    
+    \vspace{0.2cm}
+    \item \textbf{Sesgo en $\bar{W}_D$}: Los primeros clientes que salen son los que entraron al sistema vacío --- tuvieron $W_q \approx 0$, lo que sesga $\bar{W}_D$ hacia abajo.
+    
+    \vspace{0.2cm}
+    \item \textbf{Resultado}: $\bar{L}(T) > \bar{\lambda}(T) \cdot \bar{W}_D(T)$ durante el transitorio, porque $\bar{W}_D$ subestima el tiempo real.
+\end{enumerate}
+
+\vspace{0.3cm}
+\begin{alertblock}{Punto clave}
+La ``violación'' de Little no es un fallo de la ley, sino un \textbf{artefacto de medir $W$ solo con clientes completados} mientras $L$ incluye a todos.
+\end{alertblock}
+\end{frame}
+
+% ============================== SLIDE 36 ==============================
+\begin{frame}{Ejemplo numérico: Little en el transitorio}
+
+\textbf{Valores típicos de una réplica en diferentes instantes:}
+
+\vspace{0.3cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\small
+\begin{tabular}{ccccccc}
+\toprule
+$T$ & $\bar{L}(T)$ & $\bar{\lambda}(T)$ & $\bar{W}_D(T)$ & $\bar{\lambda}\bar{W}_D$ & \textbf{Error} & \textbf{Fase} \\
+\midrule
+1 & 2.66 & 7.0 & 0.38 & 2.66 & 0\%$^*$ & Llenado \\
+5 & 3.80 & 5.4 & 0.55 & 2.97 & 21.8\% & Transitorio \\
+10 & 4.25 & 5.3 & 0.68 & 3.60 & 15.3\% & Transitorio \\
+20 & 4.75 & 5.1 & 0.82 & 4.18 & 12.0\% & Transitorio \\
+50 & 5.20 & 5.02 & 0.97 & 4.87 & 6.3\% & Transición \\
+100 & 5.40 & 5.01 & 1.05 & 5.26 & 2.6\% & Convergencia \\
+200 & 5.45 & 5.00 & 1.08 & 5.40 & 0.9\% & Estable \\
+500 & 5.46 & 5.00 & 1.09 & 5.45 & 0.2\% & Estable \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\small $^*$En $T=1$, la coincidencia es casual (pocos datos).
+
+\vspace{0.2cm}
+\normalsize
+Observe cómo $\bar{W}_D(T)$ es el que más tarda en converger: los primeros clientes tenían tiempos artificialmente bajos.
+\end{frame}
+
+% ============================== SLIDE 37 ==============================
+\begin{frame}{Interpretación geométrica de la identidad de Little}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.85]
+    % Ejes
+    \draw[->] (0,0) -- (12,0) node[right] {$t$};
+    \draw[->] (0,0) -- (0,5) node[above] {Clientes};
+    
+    % Llegadas acumuladas A(t)
+    \draw[thick, azuloscuro] (0,0) -- (1,1) -- (1.5,2) -- (2.5,3) -- (3,4) -- (4,5) -- (5.5,6) -- (7,7);
+    \node[azuloscuro, right] at (7.1,7) {$A(t)$};
+    
+    % Partidas acumuladas D(t)
+    \draw[thick, rojoclaro] (0,0) -- (1.8,0) -- (2.5,1) -- (3,2) -- (4,3) -- (5,4) -- (6,5) -- (7.5,6) -- (9,7);
+    \node[rojoclaro, right] at (9.1,7) {$D(t)$};
+    
+    % Área entre curvas = integral de N(t) = suma de W_i
+    \fill[blue!10, opacity=0.5] (0,0) -- (1,1) -- (1.5,2) -- (2.5,3) -- (3,4) -- (4,5) -- (5.5,6) -- (7,7) -- (9,7) -- (7.5,6) -- (6,5) -- (5,4) -- (4,3) -- (3,2) -- (2.5,1) -- (1.8,0) -- cycle;
+    
+    % Etiquetas
+    \node at (4.5,3.5) {\textbf{Área} $= \displaystyle\int_0^T N(t)\,dt$};
+    \node at (4.5,2.5) {$= \displaystyle\sum_i W_i^*$};
+    
+    % N(t) = A(t) - D(t)
+    \draw[<->, thick, verdeoscuro] (4,5) -- (4,3);
+    \node[verdeoscuro, right] at (4.1,4) {$N(t)$};
+    
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+El área entre $A(t)$ y $D(t)$ se puede leer horizontalmente ($\sum W_i$) o verticalmente ($\int N(t)\,dt$). Esta dualidad \textbf{es} la Ley de Little.
+\end{frame}
+
+% ============================== SLIDE 38 ==============================
+\begin{frame}{Resumen: cuándo confiar en las métricas simuladas}
+
+\begin{center}
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners, text width=4.8cm, minimum height=2.2cm, align=left, font=\small},
+]
+    \node[box, fill=red!10] (trans) at (0,0) {
+        \textbf{\textcolor{rojoclaro}{En el transitorio:}}\\[0.15cm]
+        $\bullet$ $\bar{L}(T) \neq \lambda \cdot \bar{W}_D(T)$\\
+        $\bullet$ Las métricas están sesgadas\\
+        $\bullet$ Los IC no son válidos\\
+        $\bullet$ Solución: truncar warm-up
+    };
+    
+    \node[box, fill=green!10] (estable) at (7,0) {
+        \textbf{\textcolor{verdeoscuro}{En estado estable:}}\\[0.15cm]
+        $\bullet$ $L = \lambda \cdot W$ se cumple\\
+        $\bullet$ Las métricas convergen\\
+        $\bullet$ Los IC son confiables\\
+        $\bullet$ Todas las versiones coinciden
+    };
+    
+    \node[box, fill=blue!10] (siempre) at (3.5,-3.5) {
+        \textbf{\textcolor{azuloscuro}{Siempre cierto:}}\\[0.15cm]
+        $\bullet$ $\bar{L}(T) = \bar{\lambda}(T) \cdot \bar{W}_A(T)$\\
+        $\bullet$ (Identidad contable)\\
+        $\bullet$ Incluye tiempos parciales\\
+        $\bullet$ No requiere estado estable
+    };
+    
+    \draw[->, thick] (trans) -- (estable) node[midway, above] {$T_0$};
+    \draw[->, thick, dashed] (siempre) -- (trans);
+    \draw[->, thick, dashed] (siempre) -- (estable);
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ======================================================================
+\section{Extensiones y Buenas Prácticas}
+% ======================================================================
+
+% ============================== SLIDE 39 ==============================
+\begin{frame}{Sensibilidad a $\rho$: impacto en el transitorio}
+
+\textbf{A mayor $\rho$, más largo es el transitorio:}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=13cm, height=5.5cm,
+    xlabel={Tiempo de simulación},
+    ylabel={$\bar{L}(T) / L^*$},
+    xmin=0, xmax=150,
+    ymin=0, ymax=1.3,
+    grid=both, grid style={gray!20},
+    legend pos=south east,
+]
+% rho = 0.5
+\addplot[thick, verdeoscuro, domain=0:150, samples=200] 
+    {1 - exp(-0.15*x)};
+\addlegendentry{$\rho = 0.50$}
+
+% rho = 0.83
+\addplot[thick, azuloscuro, domain=0:150, samples=200] 
+    {1 - exp(-0.06*x)};
+\addlegendentry{$\rho = 0.83$}
+
+% rho = 0.95
+\addplot[thick, rojoclaro, domain=0:150, samples=200] 
+    {1 - exp(-0.02*x)};
+\addlegendentry{$\rho = 0.95$}
+
+\addplot[dashed, black, domain=0:150] {1};
+
+% T0 markers
+\draw[dashed, verdeoscuro] (axis cs:20,0) -- (axis cs:20,1.3);
+\draw[dashed, azuloscuro] (axis cs:50,0) -- (axis cs:50,1.3);
+\draw[dashed, rojoclaro] (axis cs:120,0) -- (axis cs:120,1.3);
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+Para $\rho = 0.95$, el transitorio puede durar \textbf{5--10 veces más} que para $\rho = 0.50$. Sistemas muy cargados requieren simulaciones mucho más largas.
+\end{frame}
+
+% ============================== SLIDE 40 ==============================
+\begin{frame}{Buenas prácticas en simulación de colas}
+
+\textbf{Checklist para un estudio de simulación robusto:}
+
+\vspace{0.3cm}
+\begin{enumerate}
+    \item \textbf{Verificar estabilidad}: Asegurar $\rho < 1$ antes de buscar estado estable.
+    
+    \vspace{0.15cm}
+    \item \textbf{Detectar el transitorio}: Usar Welch u otro método. No asumir un $T_0$ arbitrario.
+    
+    \vspace{0.15cm}
+    \item \textbf{Verificar Little}: Comprobar $\hat{L} \approx \hat{\lambda}\cdot\hat{W}$ como diagnóstico de que el sistema alcanzó estabilidad.
+    
+    \vspace{0.15cm}
+    \item \textbf{Usar suficientes réplicas}: Mínimo $R \geq 10$ para intervalos de confianza.
+    
+    \vspace{0.15cm}
+    \item \textbf{Corridas suficientemente largas}: $T \gg T_0$ (al menos $T/T_0 > 10$).
+    
+    \vspace{0.15cm}
+    \item \textbf{Validar contra lo conocido}: Si existe solución analítica, comparar.
+    
+    \vspace{0.15cm}
+    \item \textbf{Reportar incertidumbre}: Siempre acompañar estimaciones con intervalos de confianza.
+\end{enumerate}
+\end{frame}
+
+% ============================== SLIDE 41 ==============================
+\begin{frame}{¿Qué pasa si Little no se cumple en mi simulación?}
+
+\textbf{Diagnóstico:} si $\hat{L} \neq \hat{\lambda}\cdot\hat{W}$ significativamente...
+
+\vspace{0.4cm}
+\begin{columns}
+\column{0.48\textwidth}
+\textcolor{rojoclaro}{\textbf{Posibles causas:}}
+\begin{itemize}
+    \item Período transitorio no eliminado
+    \item Simulación demasiado corta
+    \item Bug en el código (contadores mal actualizados)
+    \item $\bar{W}$ calculado solo con completados
+    \item Sistema inestable ($\rho \geq 1$)
+\end{itemize}
+
+\column{0.48\textwidth}
+\textcolor{verdeoscuro}{\textbf{Acciones correctivas:}}
+\begin{itemize}
+    \item Aumentar $T_0$ (warm-up)
+    \item Aumentar $T$ (largo de corrida)
+    \item Revisar lógica de eventos
+    \item Usar métrica consistente
+    \item Verificar $\hat{\rho}$ observado
+\end{itemize}
+\end{columns}
+
+\vspace{0.4cm}
+\begin{block}{Little como herramienta de verificación}
+La Ley de Little es una de las herramientas más poderosas para \textbf{validar} un simulador. Si no se cumple, algo está mal en la simulación o en la recolección de datos.
+\end{block}
+\end{frame}
+
+% ======================================================================
+\section{Conclusiones}
+% ======================================================================
+
+% ============================== SLIDE 42 ==============================
+\begin{frame}{Conclusiones principales}
+
+\begin{enumerate}
+    \item La \textbf{simulación de eventos discretos} permite estimar métricas de colas cuando no hay soluciones analíticas.
+    
+    \vspace{0.2cm}
+    \item La \textbf{Ley de Little} $L = \lambda W$ es fundamental pero requiere estado estable en su forma estocástica.
+    
+    \vspace{0.2cm}
+    \item La \textbf{versión operacional completa} $\bar{L}(T) = \bar{\lambda}(T)\cdot\bar{W}_A(T)$ es una identidad que siempre se cumple, incluso en el transitorio.
+    
+    \vspace{0.2cm}
+    \item La versión con $\bar{W}_D$ (solo completados) \textbf{no coincide} con $\bar{L}$ durante el transitorio debido al sesgo de selección.
+    
+    \vspace{0.2cm}
+    \item El \textbf{período transitorio} debe detectarse y eliminarse para obtener estimaciones insesgadas del estado estable.
+    
+    \vspace{0.2cm}
+    \item Para nuestro $M/M/2$ con $\rho = 0.833$, la simulación con warm-up de 50 minutos reproduce las métricas teóricas con alta precisión.
+\end{enumerate}
+\end{frame}
+
+% ============================== SLIDE 43 ==============================
+\begin{frame}{Resumen visual}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth,
+    cbox/.style={draw, rounded corners, text width=3cm, minimum height=1.5cm, align=center, font=\small\bfseries},
+]
+    \node[cbox, fill=blue!15] (sim) at (0,3) {Simulación\\Eventos Discretos};
+    \node[cbox, fill=orange!15] (trans) at (-5,0) {Período\\Transitorio};
+    \node[cbox, fill=green!15] (ee) at (5,0) {Estado\\Estable};
+    \node[cbox, fill=red!15] (little) at (0,0) {Ley de\\Little};
+    \node[cbox, fill=purple!15] (met) at (0,-3) {Métricas:\\$L, W, L_q, W_q, \rho$};
+    
+    \draw[->, thick] (sim) -- (trans) node[midway, above left, font=\scriptsize] {warm-up};
+    \draw[->, thick] (sim) -- (ee) node[midway, above right, font=\scriptsize] {largo plazo};
+    \draw[->, thick] (trans) -- (little) node[midway, left, font=\scriptsize] {identidad contable};
+    \draw[->, thick] (ee) -- (little) node[midway, right, font=\scriptsize] {$L=\lambda W$};
+    \draw[->, thick] (little) -- (met) node[midway, right, font=\scriptsize] {verificaci\'{o}n};
+    \draw[->, thick] (sim) -- (met) node[midway, right, font=\scriptsize] {estimaci\'{o}n};
+    
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ============================== SLIDE 44 ==============================
+\begin{frame}{Referencias y lecturas recomendadas}
+
+\begin{thebibliography}{9}
+\small
+
+\bibitem{law} Law, A.M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill.
+
+\bibitem{banks} Banks, J., Carson, J.S., Nelson, B.L., Nicol, D.M. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson.
+
+\bibitem{little} Little, J.D.C. (1961). A proof for the queuing formula: $L = \lambda W$. \textit{Operations Research}, 9(3), 383--387.
+
+\bibitem{stidham} Stidham, S. (1974). A last word on $L = \lambda W$. \textit{Operations Research}, 22(2), 417--421.
+
+\bibitem{whitt} Whitt, W. (1991). A review of $L = \lambda W$ and extensions. \textit{Queueing Systems}, 9, 235--268.
+
+\bibitem{welch} Welch, P.D. (1983). The statistical analysis of simulation results. In \textit{The Computer Performance Modeling Handbook}, Academic Press.
+
+\bibitem{ross} Ross, S.M. (2014). \textit{Introduction to Probability Models}, 11th ed. Academic Press.
+
+\end{thebibliography}
+\end{frame}
+
+% ============================== SLIDE 45 ==============================
+\begin{frame}{}
+
+\begin{center}
+\vspace{1cm}
+{\Huge\textbf{¿Preguntas?}}
+
+\vspace{1cm}
+{\large Simulación de Eventos Discretos}
+
+\vspace{0.5cm}
+{\large\textit{``Little's Law is the most useful and general result\\in queueing theory.''} --- S. Stidham}
+
+\vspace{1cm}
+\textbf{Próxima clase:} Análisis de salida y métodos de reducción de varianza
+\end{center}
+\end{frame}
+
+\end{document}

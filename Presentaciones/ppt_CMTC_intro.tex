@@ -1,0 +1,997 @@
+\documentclass[aspectratio=169, 9pt]{beamer}
+
+% ── Theme and colors ──
+\usetheme{Madrid}
+\usecolortheme{whale}
+\definecolor{uniblue}{RGB}{0,71,133}
+\definecolor{unigold}{RGB}{200,160,40}
+\definecolor{softgray}{RGB}{240,240,245}
+\setbeamercolor{structure}{fg=uniblue}
+\setbeamercolor{frametitle}{bg=uniblue, fg=white}
+\setbeamercolor{title}{bg=uniblue, fg=white}
+\setbeamercolor{block title}{bg=uniblue, fg=white}
+\setbeamercolor{block body}{bg=softgray}
+\setbeamercolor{block title example}{bg=unigold!80!black, fg=white}
+\setbeamercolor{block body example}{bg=unigold!10}
+\setbeamercolor{block title alerted}{bg=red!70!black, fg=white}
+\setbeamercolor{block body alerted}{bg=red!5}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{%
+  \leavevmode\hbox{%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,center]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.34\paperwidth,ht=2.5ex,dp=1ex,center]{title in head/foot}%
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,right]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}%
+}
+
+% ── Packages ──
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{tikz}
+\usetikzlibrary{automata, positioning, arrows.meta, calc, decorations.pathreplacing}
+\usepackage{array, booktabs}
+\usepackage{xcolor}
+
+% ── Macros ──
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\mat}[1]{\mathbf{#1}}
+\DeclareMathOperator{\diag}{diag}
+
+% ── Title info ──
+\title[CTMC -- Modelamiento]{Cadenas de Markov de Tiempo Continuo}
+\subtitle{Modelado de Sistemas bajo Incertidumbre}
+\author[Alejandra Tabares]{Departamento de Ingenier\'ia Industrial}
+\institute[Uniandes]{Universidad de los Andes}
+\date{2026-I}
+
+\begin{document}
+
+% ══════════════════════════════════════════════
+% PORTADA
+% ══════════════════════════════════════════════
+\begin{frame}[plain]
+\titlepage
+\end{frame}
+
+% ══════════════════════════════════════════════
+\begin{frame}{Contenido}
+\tableofcontents
+\end{frame}
+
+% ══════════════════════════════════════════════
+\section{Metodolog\'ia de modelamiento}
+% ══════════════════════════════════════════════
+
+\begin{frame}{Objetivo de la sesi\'on}
+\begin{block}{Meta}
+Dada una \textbf{descripci\'on textual} de un sistema estoc\'astico, construir sistem\'aticamente su modelo como \textbf{Cadena de Markov de Tiempo Continuo} (CTMC).
+\end{block}
+\vspace{6pt}
+
+Pasos del proceso:
+\begin{enumerate}
+    \item Identificar las \textbf{variables aleatorias} relevantes.
+    \item Definir el \textbf{espacio de estados} de cada variable.
+    \item Construir la \textbf{variable de estado conjunta} y su espacio.
+    \item Identificar las \textbf{transiciones posibles} y sus tasas.
+    \item Ensamblar la \textbf{matriz generadora} $\mat{Q}$.
+\end{enumerate}
+
+\vspace{6pt}
+\begin{alertblock}{Progresión}
+Avanzaremos de escenarios simples (una variable) a escenarios complejos (dos variables), y de matrices \textbf{expl\'icitas} a representaciones \textbf{impl\'icitas}.
+\end{alertblock}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Recordatorio: CTMC y matriz generadora}
+\begin{block}{Definición}
+Un proceso estocástico $\{X(t), t \ge 0\}$ con espacio de estados $\mathcal{S}$ finito o numerable es una CTMC si:
+\[
+\Prob\!\big(X(t+h)=j \mid X(t)=i,\; X(s),\; 0 \le s < t\big) = \Prob\!\big(X(t+h)=j \mid X(t)=i\big)
+\]
+\end{block}
+\vspace{4pt}
+
+La \textbf{matriz generadora} (o de tasas) $\mat{Q} = [q_{ij}]$ satisface:
+\[
+q_{ij} \ge 0 \quad (i \neq j), \qquad q_{ii} = -\sum_{j \neq i} q_{ij}
+\]
+
+\vspace{4pt}
+\textbf{Interpretaci\'on:}
+\begin{itemize}
+    \item $q_{ij}$ ($i\neq j$): tasa de transici\'on del estado $i$ al estado $j$.
+    \item $|q_{ii}|$: tasa total de salida del estado $i$.
+    \item Tiempo de permanencia en $i$: $\text{Exp}(|q_{ii}|)$.
+\end{itemize}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Proceso de modelamiento -- Diagrama}
+\centering
+\begin{tikzpicture}[
+    box/.style={rectangle, draw=uniblue, fill=uniblue!10, rounded corners, 
+                minimum width=3.2cm, minimum height=1cm, align=center,
+                font=\small\bfseries},
+    arr/.style={-{Stealth[length=3mm]}, thick, uniblue}
+]
+\node[box] (desc) at (0,0) {Descripci\'on\\textual};
+\node[box] (vars) at (4.2,0) {Variables\\aleatorias};
+\node[box] (esp)  at (8.4,0) {Espacio de\\estados};
+\node[box] (conj) at (12.6,0) {Estado\\conjunto};
+\node[box] (trans) at (4.2,-2.2) {Transiciones\\y tasas};
+\node[box] (Q)     at (8.4,-2.2) {Matriz\\generadora $\mat{Q}$};
+
+\draw[arr] (desc) -- (vars);
+\draw[arr] (vars) -- (esp);
+\draw[arr] (esp)  -- (conj);
+\draw[arr] (conj) |- (trans);
+\draw[arr] (trans) -- (Q);
+\end{tikzpicture}
+\end{frame}
+
+% ══════════════════════════════════════════════
+\section{Escenario 1: Cola M/M/1 (una variable)}
+% ══════════════════════════════════════════════
+
+\begin{frame}{Escenario 1 -- Enunciado}
+\begin{exampleblock}{Descripción del sistema}
+Un peque\~no restaurante tiene \textbf{un solo cajero}. Los clientes llegan de forma aleatoria con una tasa promedio de $\lambda = 3$ clientes por minuto. El cajero atiende a cada cliente en un tiempo aleatorio con tasa promedio de $\mu = 5$ clientes por minuto. Los clientes que llegan y encuentran al cajero ocupado esperan en una \textbf{fila sin l\'imite} de capacidad. Se desea modelar la din\'amica del n\'umero de clientes en el sistema.
+\end{exampleblock}
+
+\vspace{6pt}
+\textbf{Preguntas gu\'ia:}
+\begin{itemize}
+    \item ?`Qu\'e cantidad cambia aleatoriamente en el tiempo?
+    \item ?`Qu\'e valores puede tomar?
+    \item ?`Qu\'e eventos provocan cambios y con qu\'e tasas?
+\end{itemize}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 1 -- Paso 1: Variables aleatorias}
+\begin{block}{Identificaci\'on}
+La \'unica cantidad que evoluciona aleatoriamente es:
+\[
+N(t) = \text{n\'umero de clientes en el sistema en el instante } t
+\]
+\end{block}
+
+\vspace{6pt}
+\textbf{?`Por qu\'e una sola variable?}
+\begin{itemize}
+    \item Solo hay un servidor $\Rightarrow$ su estado (ocupado/libre) queda determinado por $N(t)$:
+    \begin{itemize}
+        \item $N(t)=0 \Rightarrow$ servidor libre.
+        \item $N(t)\ge 1 \Rightarrow$ servidor ocupado.
+    \end{itemize}
+    \item No necesitamos una variable adicional para el servidor.
+\end{itemize}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 1 -- Pasos 2 y 3: Espacio de estados}
+\begin{block}{Espacio de estados de $N(t)$}
+\[
+\mathcal{S}_N = \{0, 1, 2, 3, \ldots\} = \N_0
+\]
+No hay l\'imite superior (cola infinita).
+\end{block}
+
+\vspace{4pt}
+Como solo hay \textbf{una variable}, el estado conjunto coincide:
+\[
+\mathcal{S} = \mathcal{S}_N = \N_0
+\]
+
+\vspace{4pt}
+\centering
+\begin{tikzpicture}[
+    state/.style={circle, draw=uniblue, fill=uniblue!10, minimum size=9mm, 
+                  font=\footnotesize\bfseries},
+    >=Stealth
+]
+\node[state] (0) at (0,0) {0};
+\node[state] (1) at (2,0) {1};
+\node[state] (2) at (4,0) {2};
+\node[state] (3) at (6,0) {3};
+\node[state] (4) at (8,0) {4};
+\node[font=\large] at (9.5,0) {$\cdots$};
+
+\foreach \i/\j in {0/1,1/2,2/3,3/4}{
+    \draw[->, thick, uniblue] (\i) to[bend left=25] node[above, font=\scriptsize]{$\lambda$} (\j);
+    \draw[->, thick, red!70!black] (\j) to[bend left=25] node[below, font=\scriptsize]{$\mu$} (\i);
+}
+\end{tikzpicture}
+
+\vspace{4pt}
+\small Proceso de \textbf{nacimiento y muerte}: transiciones solo entre estados adyacentes.
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 1 -- Pasos 4 y 5: Transiciones y $\mat{Q}$}
+\textbf{Eventos posibles desde el estado $n$:}
+\begin{itemize}
+    \item \textbf{Llegada} (nacimiento): $n \to n+1$ con tasa $\lambda$.
+    \item \textbf{Servicio} (muerte): $n \to n-1$ con tasa $\mu$ (solo si $n \ge 1$).
+\end{itemize}
+
+\vspace{4pt}
+\textbf{Matriz generadora (forma expl\'icita):}
+\[
+\mat{Q} = \begin{pmatrix}
+-\lambda & \lambda & 0 & 0 & \cdots \\
+\mu & -(\lambda+\mu) & \lambda & 0 & \cdots \\
+0 & \mu & -(\lambda+\mu) & \lambda & \cdots \\
+0 & 0 & \mu & -(\lambda+\mu) & \cdots \\
+\vdots & \vdots & \vdots & \vdots & \ddots
+\end{pmatrix}
+\]
+
+\vspace{4pt}
+\textbf{Forma impl\'icita (como funci\'on de \'indices):}
+\[
+q_{n,n+1} = \lambda, \qquad q_{n,n-1} = \mu \;\mathbb{1}(n\ge1), \qquad q_{nn} = -\lambda - \mu\,\mathbb{1}(n\ge1)
+\]
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 1 -- Resumen del modelo}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{>{\bfseries}l l}
+\toprule
+Elemento & Resultado \\
+\midrule
+Variable aleatoria & $N(t)$: clientes en el sistema \\
+Espacio de estados & $\mathcal{S} = \{0,1,2,\ldots\}$ \\
+Par\'ametros & $\lambda=3$, $\mu=5$ \\
+Tipo & Proceso nacimiento--muerte (M/M/1) \\
+Transiciones & $q_{n,n+1}=\lambda$, \; $q_{n,n-1}=\mu\,\mathbb{1}(n\ge1)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{8pt}
+\begin{block}{Observación clave}
+En la cola M/M/1 las tasas de nacimiento y muerte son \textbf{constantes} e independientes del estado (salvo que no hay muertes en el estado 0). Esto la hace el caso m\'as simple de proceso nacimiento--muerte.
+\end{block}
+\end{frame}
+
+% ══════════════════════════════════════════════
+\section{Escenario 2: Cola M/M/1/K (capacidad finita)}
+% ══════════════════════════════════════════════
+
+\begin{frame}{Escenario 2 -- Enunciado}
+\begin{exampleblock}{Descripción del sistema}
+Una peque\~na cl\'inica dental tiene \textbf{un dentista} y una \textbf{sala de espera con 3 sillas} (capacidad total $K=4$, incluyendo el paciente en atenci\'on). Los pacientes llegan con tasa $\lambda = 2$ pacientes/hora. El dentista atiende con tasa $\mu = 3$ pacientes/hora. Si un paciente llega y el sistema est\'a lleno ($K$ pacientes), \textbf{se va y no regresa}.
+\end{exampleblock}
+
+\vspace{6pt}
+\textbf{?`Qu\'e cambia respecto al Escenario 1?}
+\begin{itemize}
+    \item El espacio de estados ahora es \textbf{finito}.
+    \item Las llegadas se ``bloquean'' cuando el sistema est\'a lleno.
+    \item La matriz $\mat{Q}$ es de dimensi\'on finita $(K+1)\times(K+1)$.
+\end{itemize}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 2 -- Modelo formal}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Variable y espacio:}
+\[
+N(t) \in \mathcal{S} = \{0,1,2,3,4\}
+\]
+
+\vspace{4pt}
+\textbf{Transiciones:}
+\begin{align*}
+q_{n,n+1} &= \lambda \cdot \mathbb{1}(n < K) \\
+q_{n,n-1} &= \mu \cdot \mathbb{1}(n \ge 1) \\
+q_{nn} &= -(q_{n,n+1} + q_{n,n-1})
+\end{align*}
+\end{column}
+\begin{column}{0.48\textwidth}
+\centering
+\begin{tikzpicture}[
+    state/.style={circle, draw=uniblue, fill=uniblue!10, minimum size=8mm, 
+                  font=\footnotesize\bfseries},
+    >=Stealth, scale=0.85, transform shape
+]
+\node[state] (0) at (0,0) {0};
+\node[state] (1) at (0,-1.8) {1};
+\node[state] (2) at (0,-3.6) {2};
+\node[state] (3) at (0,-5.4) {3};
+\node[state, fill=red!15] (4) at (0,-7.2) {4};
+
+\foreach \i/\j in {0/1,1/2,2/3,3/4}{
+    \draw[->, thick, uniblue] (\i) to[bend left=30] node[right, font=\scriptsize]{$\lambda$} (\j);
+    \draw[->, thick, red!70!black] (\j) to[bend left=30] node[left, font=\scriptsize]{$\mu$} (\i);
+}
+
+\node[right=5mm, font=\scriptsize, red!70!black] at (4.east) {lleno};
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 2 -- Matriz generadora expl\'icita}
+Con $K=4$, $\lambda=2$, $\mu=3$:
+
+\[
+\mat{Q} = \begin{pmatrix}
+-2 &  2 &  0 &  0 &  0 \\
+ 3 & -5 &  2 &  0 &  0 \\
+ 0 &  3 & -5 &  2 &  0 \\
+ 0 &  0 &  3 & -5 &  2 \\
+ 0 &  0 &  0 &  3 & -3
+\end{pmatrix}
+\]
+
+\vspace{6pt}
+\begin{alertblock}{Comparaci\'on con M/M/1}
+\begin{itemize}
+    \item La \'ultima fila refleja que en el estado $K=4$ \textbf{no hay llegadas} ($q_{4,5}$ no existe).
+    \item La primera fila refleja que en el estado 0 \textbf{no hay servicio}.
+    \item Las filas intermedias son id\'enticas a la M/M/1.
+\end{itemize}
+\end{alertblock}
+\end{frame}
+
+% ══════════════════════════════════════════════
+\section{Escenario 3: Cola M/M/c (m\'ultiples servidores)}
+% ══════════════════════════════════════════════
+
+\begin{frame}{Escenario 3 -- Enunciado}
+\begin{exampleblock}{Descripción del sistema}
+Un centro de llamadas tiene $c=3$ operadores id\'enticos. Las llamadas llegan con tasa $\lambda = 10$ llamadas/minuto. Cada operador resuelve una llamada con tasa $\mu = 4$ llamadas/minuto. Si todos los operadores est\'an ocupados, las llamadas esperan en una cola (sin l\'imite). Se quiere modelar el n\'umero total de llamadas en el sistema.
+\end{exampleblock}
+
+\vspace{6pt}
+\textbf{Novedad:} la tasa de servicio total \textbf{depende del estado}:
+\begin{itemize}
+    \item Si $n \le c$: hay $n$ operadores activos $\Rightarrow$ tasa de servicio $= n\mu$.
+    \item Si $n > c$: los $c$ operadores est\'an activos $\Rightarrow$ tasa de servicio $= c\mu$.
+\end{itemize}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 3 -- Modelo formal}
+\textbf{Variable:} $N(t)$ = llamadas en el sistema. \quad $\mathcal{S} = \{0,1,2,\ldots\}$.
+
+\vspace{4pt}
+\textbf{Tasas dependientes del estado:}
+\[
+\lambda_n = \lambda \quad \forall\, n, \qquad \mu_n = \min(n,c)\cdot\mu
+\]
+
+\textbf{Forma impl\'icita de $\mat{Q}$:}
+\[
+q_{n,n+1} = \lambda, \qquad q_{n,n-1} = \min(n,c)\cdot\mu, \qquad q_{nn} = -\lambda - \min(n,c)\cdot\mu
+\]
+
+\vspace{4pt}
+\textbf{Matriz expl\'icita} (primeras filas, $c=3$, $\mu=4$, $\lambda=10$):
+\[
+\mat{Q} = \begin{pmatrix}
+-10 & 10 & 0 & 0 & 0 & \cdots \\
+4 & -14 & 10 & 0 & 0 & \cdots \\
+0 & 8 & -18 & 10 & 0 & \cdots \\
+0 & 0 & 12 & -22 & 10 & \cdots \\
+0 & 0 & 0 & 12 & -22 & \cdots \\
+\vdots &&&& & \ddots
+\end{pmatrix}
+\]
+
+\small Nota: a partir de la fila $n=c=3$ la tasa de muerte se estabiliza en $c\mu = 12$.
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 3 -- Diagrama de transiciones}
+\centering
+\begin{tikzpicture}[
+    state/.style={circle, draw=uniblue, fill=uniblue!10, minimum size=9mm, 
+                  font=\footnotesize\bfseries},
+    >=Stealth
+]
+\node[state] (0) at (0,0) {0};
+\node[state] (1) at (2.5,0) {1};
+\node[state] (2) at (5,0) {2};
+\node[state, fill=unigold!25] (3) at (7.5,0) {3};
+\node[state] (4) at (10,0) {4};
+\node[font=\large] at (11.5,0) {$\cdots$};
+
+\draw[->, thick, uniblue] (0) to[bend left=25] node[above, font=\scriptsize]{$\lambda$} (1);
+\draw[->, thick, uniblue] (1) to[bend left=25] node[above, font=\scriptsize]{$\lambda$} (2);
+\draw[->, thick, uniblue] (2) to[bend left=25] node[above, font=\scriptsize]{$\lambda$} (3);
+\draw[->, thick, uniblue] (3) to[bend left=25] node[above, font=\scriptsize]{$\lambda$} (4);
+
+\draw[->, thick, red!70!black] (1) to[bend left=25] node[below, font=\scriptsize]{$\mu$} (0);
+\draw[->, thick, red!70!black] (2) to[bend left=25] node[below, font=\scriptsize]{$2\mu$} (1);
+\draw[->, thick, red!70!black] (3) to[bend left=25] node[below, font=\scriptsize]{$3\mu$} (2);
+\draw[->, thick, red!70!black] (4) to[bend left=25] node[below, font=\scriptsize]{$3\mu$} (3);
+
+% brace for c servers saturated
+\draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, unigold] 
+    (7,-0.9) -- (11,-0.9) node[midway, below=6pt, font=\scriptsize]{Tasa de muerte constante $c\mu$};
+\end{tikzpicture}
+
+\vspace{6pt}
+\begin{block}{Lectura clave}
+Es un proceso nacimiento--muerte con tasas de muerte \textbf{dependientes del estado}. La tasa de muerte crece linealmente hasta $n=c$ y luego se satura.
+\end{block}
+\end{frame}
+
+% ══════════════════════════════════════════════
+\section{Escenario 4: Modelo de reparaci\'on de m\'aquinas (dos variables)}
+% ══════════════════════════════════════════════
+
+\begin{frame}{Escenario 4 -- Enunciado}
+\begin{exampleblock}{Descripción del sistema}
+Una f\'abrica tiene $M=2$ m\'aquinas id\'enticas y $R=1$ t\'ecnico de reparaci\'on. Cada m\'aquina funciona independientemente hasta que falla; el tiempo hasta la falla es exponencial con tasa $\alpha = 0.5$ fallas/hora. Cuando una m\'aquina falla, el t\'ecnico la repara con tasa $\beta = 2$ reparaciones/hora. Si ambas m\'aquinas est\'an da\~nadas, el t\'ecnico repara \textbf{una a la vez}. Se quiere modelar la din\'amica del sistema.
+\end{exampleblock}
+
+\vspace{6pt}
+\begin{alertblock}{?`Una o dos variables?}
+Aqu\'i podr\'iamos usar \textbf{una sola variable} ($F(t)$ = n\'umero de m\'aquinas da\~nadas, $\mathcal{S}=\{0,1,2\}$) porque las m\'aquinas son id\'enticas. Pero primero lo modelaremos con \textbf{dos variables} para ilustrar el m\'etodo general, y luego mostraremos la reducci\'on.
+\end{alertblock}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 4 -- Paso 1: Dos variables aleatorias}
+Definimos el estado de cada m\'aquina individualmente:
+
+\[
+X_i(t) = \begin{cases} 0 & \text{m\'aquina } i \text{ funcionando} \\ 1 & \text{m\'aquina } i \text{ da\~nada} \end{cases}, \quad i = 1, 2
+\]
+
+\vspace{4pt}
+\textbf{Espacios individuales:}
+\[
+\mathcal{S}_{X_1} = \mathcal{S}_{X_2} = \{0, 1\}
+\]
+
+\vspace{4pt}
+\textbf{Variable de estado conjunta:}
+\[
+\vect{X}(t) = \big(X_1(t),\, X_2(t)\big)
+\]
+
+\textbf{Espacio de estados conjunto:}
+\[
+\mathcal{S} = \mathcal{S}_{X_1} \times \mathcal{S}_{X_2} = \{(0,0),\; (0,1),\; (1,0),\; (1,1)\}
+\]
+\quad $|\mathcal{S}| = 4$ estados.
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 4 -- Paso 2: Transiciones y tasas}
+\textbf{Desde cada estado, ?`qu\'e eventos pueden ocurrir?}
+
+\vspace{4pt}
+\renewcommand{\arraystretch}{1.35}
+\footnotesize
+\begin{tabular}{ccll}
+\toprule
+\textbf{Estado} & \textbf{Destino} & \textbf{Evento} & \textbf{Tasa} \\
+\midrule
+$(0,0)$ & $(1,0)$ & M\'aquina 1 falla & $\alpha$ \\
+$(0,0)$ & $(0,1)$ & M\'aquina 2 falla & $\alpha$ \\
+\midrule
+$(1,0)$ & $(0,0)$ & Reparan m\'aquina 1 & $\beta$ \\
+$(1,0)$ & $(1,1)$ & M\'aquina 2 falla & $\alpha$ \\
+\midrule
+$(0,1)$ & $(0,0)$ & Reparan m\'aquina 2 & $\beta$ \\
+$(0,1)$ & $(1,1)$ & M\'aquina 1 falla & $\alpha$ \\
+\midrule
+$(1,1)$ & $(0,1)$ & Reparan m\'aquina 1 & $\beta/1^{*}$ \\
+$(1,1)$ & $(1,0)$ & Reparan m\'aquina 2 & -- \\
+\bottomrule
+\end{tabular}
+
+\vspace{4pt}
+\normalsize
+$^{*}$Con un solo t\'ecnico y m\'aquinas id\'enticas, desde $(1,1)$ la reparaci\'on ocurre con tasa $\beta$ y puede ir a $(0,1)$ o $(1,0)$ con igual probabilidad: tasa $\beta/2$ a cada una.
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 4 -- Diagrama y matriz $\mat{Q}$ (dos variables)}
+\begin{columns}[T]
+\begin{column}{0.45\textwidth}
+\centering
+\begin{tikzpicture}[
+    state/.style={circle, draw=uniblue, fill=uniblue!10, minimum size=12mm, 
+                  font=\scriptsize\bfseries, inner sep=1pt},
+    >=Stealth, scale=0.9, transform shape
+]
+\node[state] (00) at (0,2.5) {0,0};
+\node[state] (10) at (-2,0) {1,0};
+\node[state] (01) at (2,0) {0,1};
+\node[state, fill=red!15] (11) at (0,-2.5) {1,1};
+
+\draw[->, thick, uniblue] (00) -- node[left, font=\scriptsize]{$\alpha$} (10);
+\draw[->, thick, uniblue] (00) -- node[right, font=\scriptsize]{$\alpha$} (01);
+\draw[->, thick, red!70!black] (10) -- node[left, font=\scriptsize]{$\beta$} (00);
+\draw[->, thick, red!70!black] (01) -- node[right, font=\scriptsize]{$\beta$} (00);
+\draw[->, thick, uniblue] (10) -- node[left, font=\scriptsize]{$\alpha$} (11);
+\draw[->, thick, uniblue] (01) -- node[right, font=\scriptsize]{$\alpha$} (11);
+\draw[->, thick, red!70!black] (11) -- node[right, font=\scriptsize]{$\frac{\beta}{2}$} (01);
+\draw[->, thick, red!70!black] (11) -- node[left, font=\scriptsize]{$\frac{\beta}{2}$} (10);
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.52\textwidth}
+Orden de estados: $(0,0), (0,1), (1,0), (1,1)$.
+
+\vspace{4pt}
+\[
+\mat{Q} = \begin{pmatrix}
+-2\alpha & \alpha & \alpha & 0 \\
+\beta & -(\alpha{+}\beta) & 0 & \alpha \\
+\beta & 0 & -(\alpha{+}\beta) & \alpha \\
+0 & \frac{\beta}{2} & \frac{\beta}{2} & -\beta
+\end{pmatrix}
+\]
+
+\vspace{6pt}
+\small
+Con $\alpha=0.5$, $\beta=2$:
+\[
+\mat{Q} = \begin{pmatrix}
+-1 & 0.5 & 0.5 & 0 \\
+2 & -2.5 & 0 & 0.5 \\
+2 & 0 & -2.5 & 0.5 \\
+0 & 1 & 1 & -2
+\end{pmatrix}
+\]
+\end{column}
+\end{columns}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 4 -- Reducci\'on a una variable}
+\begin{block}{Observaci\'on}
+Como las m\'aquinas son \textbf{id\'enticas e intercambiables}, los estados $(1,0)$ y $(0,1)$ son equivalentes. Podemos agregar:
+\[
+F(t) = X_1(t) + X_2(t) = \text{n\'umero de m\'aquinas da\~nadas}
+\]
+\end{block}
+
+$\mathcal{S}_F = \{0, 1, 2\}$ con tasas:
+
+\centering
+\begin{tikzpicture}[
+    state/.style={circle, draw=uniblue, fill=uniblue!10, minimum size=10mm, 
+                  font=\footnotesize\bfseries},
+    >=Stealth
+]
+\node[state] (0) at (0,0) {0};
+\node[state] (1) at (3.5,0) {1};
+\node[state] (2) at (7,0) {2};
+
+\draw[->, thick, uniblue] (0) to[bend left=25] node[above, font=\scriptsize]{$2\alpha$} (1);
+\draw[->, thick, uniblue] (1) to[bend left=25] node[above, font=\scriptsize]{$\alpha$} (2);
+\draw[->, thick, red!70!black] (1) to[bend left=25] node[below, font=\scriptsize]{$\beta$} (0);
+\draw[->, thick, red!70!black] (2) to[bend left=25] node[below, font=\scriptsize]{$\beta$} (1);
+\end{tikzpicture}
+
+\vspace{6pt}
+\[
+\mat{Q}_{\text{reducida}} = \begin{pmatrix}
+-2\alpha & 2\alpha & 0 \\
+\beta & -(\alpha+\beta) & \alpha \\
+0 & \beta & -\beta
+\end{pmatrix}
+= \begin{pmatrix}
+-1 & 1 & 0 \\
+2 & -2.5 & 0.5 \\
+0 & 2 & -2
+\end{pmatrix}
+\]
+
+\small Tasa de falla en estado $f$: $(M-f)\alpha$ (m\'aquinas funcionando). Tasa reparaci\'on: $\min(f,R)\beta$.
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 4 -- Forma impl\'icita general}
+\begin{block}{Modelo general: $M$ m\'aquinas, $R$ t\'ecnicos}
+Variable reducida: $F(t)$ = m\'aquinas da\~nadas, $\;\mathcal{S} = \{0,1,\ldots,M\}$.
+\end{block}
+
+\textbf{Tasas como funci\'on del estado $f$:}
+\begin{align*}
+\lambda_f &= (M - f)\,\alpha & &\text{(tasa de falla: m\'aquinas operativas)} \\
+\mu_f &= \min(f, R)\,\beta & &\text{(tasa de reparaci\'on: t\'ecnicos activos)}
+\end{align*}
+
+\textbf{Matriz generadora impl\'icita:}
+\[
+\boxed{
+q_{f,f+1} = (M-f)\alpha, \quad q_{f,f-1} = \min(f,R)\,\beta, \quad q_{ff} = -\big[(M-f)\alpha + \min(f,R)\beta\big]
+}
+\]
+
+\vspace{4pt}
+\begin{alertblock}{Ventaja del modelo implícito}
+Con una sola f\'ormula cubrimos cualquier combinaci\'on de $M$ y $R$ sin escribir la matriz elemento por elemento. Es f\'acilmente programable.
+\end{alertblock}
+\end{frame}
+
+% ══════════════════════════════════════════════
+\section{Escenario 5: Red de colas con dos estaciones (dos variables)}
+% ══════════════════════════════════════════════
+
+\begin{frame}{Escenario 5 -- Enunciado}
+\begin{exampleblock}{Descripción del sistema}
+Un taller de reparaci\'on de bicicletas tiene \textbf{dos estaciones} en serie:
+\begin{itemize}
+    \item \textbf{Estaci\'on A} (diagn\'ostico): 1 t\'ecnico, tasa de servicio $\mu_A = 4$/hora.
+    \item \textbf{Estaci\'on B} (reparaci\'on): 1 t\'ecnico, tasa de servicio $\mu_B = 3$/hora.
+\end{itemize}
+Las bicicletas llegan con tasa $\lambda = 2$/hora. Tras completar la estaci\'on A, pasan a la B. Cada estaci\'on tiene espacio para \textbf{m\'aximo 2 bicicletas} (incluyendo la que est\'a en servicio). Si la estaci\'on A est\'a llena, las bicicletas no entran. Si la estaci\'on B est\'a llena, la bicicleta terminada en A \textbf{espera bloqueando} la estaci\'on A.
+\end{exampleblock}
+
+\vspace{4pt}
+\textbf{Ahora necesitamos obligatoriamente dos variables:} el n\'umero de bicicletas en cada estaci\'on no se puede reducir a una sola variable porque las tasas de transici\'on dependen del estado de \textit{ambas} estaciones.
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 5 -- Variables y espacio de estados}
+\textbf{Variables aleatorias:}
+\[
+N_A(t) = \text{bicicletas en estaci\'on A}, \qquad N_B(t) = \text{bicicletas en estaci\'on B}
+\]
+
+\textbf{Espacios individuales:}
+\[
+\mathcal{S}_{N_A} = \{0, 1, 2\}, \qquad \mathcal{S}_{N_B} = \{0, 1, 2\}
+\]
+
+\textbf{Estado conjunto:}
+\[
+\vect{X}(t) = \big(N_A(t),\, N_B(t)\big), \qquad \mathcal{S} = \mathcal{S}_{N_A} \times \mathcal{S}_{N_B}
+\]
+
+\[
+\mathcal{S} = \{(0,0),\;(0,1),\;(0,2),\;(1,0),\;(1,1),\;(1,2),\;(2,0),\;(2,1),\;(2,2)\}
+\]
+
+$|\mathcal{S}| = 9$ estados.
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 5 -- Identificaci\'on de transiciones}
+Desde el estado $(a, b)$, tres tipos de eventos:
+
+\vspace{3pt}
+\renewcommand{\arraystretch}{1.3}
+\footnotesize
+\begin{tabular}{lccl}
+\toprule
+\textbf{Evento} & \textbf{Destino} & \textbf{Tasa} & \textbf{Condici\'on} \\
+\midrule
+Llegada externa & $(a{+}1, b)$ & $\lambda$ & $a < 2$ \\
+\midrule
+Servicio en A & $(a{-}1, b{+}1)$ & $\mu_A$ & $a \ge 1$ y $b < 2$ \\
+(pasa a B) &&& (B no est\'a llena) \\
+\midrule
+Servicio en B & $(a, b{-}1)$ & $\mu_B$ & $b \ge 1$ \\
+(sale del sistema) &&& \\
+\bottomrule
+\end{tabular}
+
+\normalsize
+\vspace{6pt}
+\begin{alertblock}{Bloqueo}
+Si $b = 2$ (estaci\'on B llena), la estaci\'on A \textbf{no puede despachar} bicicletas aunque tenga. Esto acopla las dos variables: la tasa de transici\'on depende de \textit{ambos} componentes del estado.
+\end{alertblock}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 5 -- Forma impl\'icita de $\mat{Q}$}
+\textbf{Tasas como funciones de los sub\'indices $(a,b)$:}
+
+\vspace{4pt}
+\[
+\boxed{
+\begin{aligned}
+q_{(a,b),\,(a+1,b)} &= \lambda \cdot \mathbb{1}(a < 2) \\[3pt]
+q_{(a,b),\,(a-1,b+1)} &= \mu_A \cdot \mathbb{1}(a \ge 1) \cdot \mathbb{1}(b < 2) \\[3pt]
+q_{(a,b),\,(a,b-1)} &= \mu_B \cdot \mathbb{1}(b \ge 1) \\[3pt]
+q_{(a,b),(a,b)} &= -\big[\lambda\,\mathbb{1}(a{<}2) + \mu_A\,\mathbb{1}(a{\ge}1)\,\mathbb{1}(b{<}2) + \mu_B\,\mathbb{1}(b{\ge}1)\big]
+\end{aligned}
+}
+\]
+
+\vspace{6pt}
+\begin{block}{Ventaja de la forma implícita}
+\begin{itemize}
+    \item Compacta: 4 f\'ormulas en vez de una matriz $9\times 9$.
+    \item General: si cambiamos capacidades, solo ajustamos los l\'imites.
+    \item Programable: se puede generar $\mat{Q}$ autom\'aticamente con un bucle.
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 5 -- Diagrama de transiciones}
+\centering
+\begin{tikzpicture}[
+    state/.style={circle, draw=uniblue, fill=uniblue!10, minimum size=8mm, 
+                  font=\tiny\bfseries, inner sep=0pt},
+    >=Stealth, scale=0.82, transform shape,
+    larr/.style={->, thick, uniblue},
+    sarr/.style={->, thick, red!70!black},
+    tarr/.style={->, thick, green!50!black}
+]
+% States in grid: x = a, y = -b
+\foreach \a in {0,1,2}{
+    \foreach \b in {0,1,2}{
+        \node[state] (\a\b) at (3.5*\a, -2.2*\b) {\a,\b};
+    }
+}
+
+% Arrivals (horizontal, right): (a,b) -> (a+1,b)
+\foreach \a/\anext in {0/1, 1/2}{
+    \foreach \b in {0,1,2}{
+        \draw[larr] (\a\b) -- node[above, font=\tiny]{$\lambda$} (\anext\b);
+    }
+}
+
+% Service A (diagonal): (a,b) -> (a-1,b+1) only if b<2
+\foreach \a/\aprev in {1/0, 2/1}{
+    \foreach \b/\bnext in {0/1, 1/2}{
+        \draw[tarr] (\a\b) -- node[above, sloped, font=\tiny]{$\mu_A$} (\aprev\bnext);
+    }
+}
+
+% Service B (vertical, up): (a,b) -> (a,b-1) for b>=1
+\foreach \a in {0,1,2}{
+    \foreach \b/\bprev in {1/0, 2/1}{
+        \draw[sarr] (\a\b) -- node[right, font=\tiny]{$\mu_B$} (\a\bprev);
+    }
+}
+
+% Labels
+\node[above=3mm, font=\small\bfseries, uniblue] at (00.north) {$N_A{=}0$};
+\node[above=3mm, font=\small\bfseries, uniblue] at (10.north) {$N_A{=}1$};
+\node[above=3mm, font=\small\bfseries, uniblue] at (20.north) {$N_A{=}2$};
+\node[left=3mm, font=\small\bfseries, red!70!black] at (00.west) {$N_B{=}0$};
+\node[left=3mm, font=\small\bfseries, red!70!black] at (01.west) {$N_B{=}1$};
+\node[left=3mm, font=\small\bfseries, red!70!black] at (02.west) {$N_B{=}2$};
+
+% Legend
+\node[font=\tiny, uniblue] at (8.5, 0) {$\rightarrow$ Llegada};
+\node[font=\tiny, green!50!black] at (8.5, -0.5) {$\searrow$ Serv.\ A};
+\node[font=\tiny, red!70!black] at (8.5, -1.0) {$\uparrow$ Serv.\ B};
+\end{tikzpicture}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Escenario 5 -- Matriz generadora expl\'icita $9\times 9$}
+Orden lexicogr\'afico: $(0,0),(0,1),(0,2),(1,0),(1,1),(1,2),(2,0),(2,1),(2,2)$.
+
+\vspace{2pt}
+Con $\lambda=2$, $\mu_A=4$, $\mu_B=3$:
+
+\[
+\mat{Q} = \left(\!\begin{smallmatrix}
+-2 & 0 & 0 & 2 & 0 & 0 & 0 & 0 & 0 \\
+3 & -5 & 0 & 0 & 2 & 0 & 0 & 0 & 0 \\
+0 & 3 & -3 & 0 & 0 & 2 & 0 & 0 & 0 \\
+4 & 0 & 0 & -6 & 0 & 0 & 2 & 0 & 0 \\
+0 & 4 & 0 & 3 & -9 & 0 & 0 & 2 & 0 \\
+0 & 0 & 0 & 0 & 3 & -5 & 0 & 0 & 2 \\
+0 & 0 & 0 & 4 & 0 & 0 & -4 & 0 & 0 \\
+0 & 0 & 0 & 0 & 4 & 0 & 3 & -7 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 3 & -3
+\end{smallmatrix}\right)
+\]
+
+\vspace{6pt}
+\small Observe: en $(1,2)$ no hay transici\'on por servicio A (B llena $\Rightarrow$ bloqueo), y en $(2,2)$ tampoco hay llegadas (A llena) ni servicio de A.
+\end{frame}
+
+% ══════════════════════════════════════════════
+\section{Del modelo expl\'icito al impl\'icito}
+% ══════════════════════════════════════════════
+
+\begin{frame}{Expl\'icito vs.\ Impl\'icito: ?`Cu\'ando usar cada uno?}
+
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{>{\bfseries}p{3cm} p{5.5cm} p{5.5cm}}
+\toprule
+& \textbf{Modelo expl\'icito} & \textbf{Modelo impl\'icito} \\
+\midrule
+Definici\'on & Matriz $\mat{Q}$ escrita elemento por elemento & Tasas como funciones de los sub\'indices \\
+\midrule
+Ventaja & Visual, verificable a mano & Compacto, generalizable, programable \\
+\midrule
+Desventaja & Crece r\'apidamente con $|\mathcal{S}|$ & Requiere cuidado con condiciones \\
+\midrule
+Uso t\'ipico & Espacios peque\~nos ($|\mathcal{S}| \le 10$) & Espacios grandes o parametrizados \\
+\midrule
+Ejemplo & Cola M/M/1/4: matriz $5\times 5$ & Cola M/M/c/K con $c,K$ generales \\
+\bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\begin{block}{En la pr\'actica}
+Se suele comenzar con el modelo impl\'icito (f\'ormulas) y luego generar la matriz expl\'icita num\'ericamente mediante c\'odigo (Python, MATLAB, etc.).
+\end{block}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Patr\'on general: modelo impl\'icito}
+\textbf{Receta para escribir $\mat{Q}$ en forma impl\'icita:}
+
+\begin{enumerate}
+    \item \textbf{Enumerar los tipos de eventos} que pueden ocurrir.
+    \item Para cada tipo de evento $k$:
+    \begin{enumerate}
+        \item[(a)] Definir el \textbf{vector de cambio} $\vect{\delta}_k$ (c\'omo cambia el estado).
+        \item[(b)] Definir la \textbf{tasa} $r_k(\vect{x})$ como funci\'on del estado actual.
+        \item[(c)] Definir la \textbf{condici\'on de activaci\'on} (cu\'ando es posible).
+    \end{enumerate}
+    \item Las entradas de $\mat{Q}$:
+    \[
+    q_{\vect{x},\,\vect{x}+\vect{\delta}_k} = r_k(\vect{x}) \cdot \mathbb{1}\!\big(\text{condici\'on}_k(\vect{x})\big)
+    \]
+    \[
+    q_{\vect{x},\vect{x}} = -\sum_{k} r_k(\vect{x}) \cdot \mathbb{1}\!\big(\text{condici\'on}_k(\vect{x})\big)
+    \]
+\end{enumerate}
+
+\vspace{4pt}
+\begin{exampleblock}{Ejemplo: Escenario 5 -- Red de colas}
+\footnotesize
+\begin{tabular}{cccc}
+\toprule
+Evento $k$ & $\vect{\delta}_k$ & $r_k(a,b)$ & Condici\'on \\
+\midrule
+Llegada   & $(+1, 0)$ & $\lambda$ & $a < 2$ \\
+Servicio A & $(-1, +1)$ & $\mu_A$ & $a \ge 1$ y $b < 2$ \\
+Servicio B & $(0, -1)$ & $\mu_B$ & $b \ge 1$ \\
+\bottomrule
+\end{tabular}
+\end{exampleblock}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}[fragile]{C\'odigo: generando $\mat{Q}$ desde el modelo impl\'icito}
+\begin{block}{Python -- Escenario 5}
+\footnotesize
+\begin{verbatim}
+import numpy as np
+
+lam, muA, muB = 2, 4, 3
+capA, capB = 2, 2
+states = [(a,b) for a in range(capA+1) for b in range(capB+1)]
+idx = {s: i for i, s in enumerate(states)}
+n = len(states)
+Q = np.zeros((n, n))
+
+events = [  # (delta, rate_fn, condition_fn)
+    ((1,0),  lambda a,b: lam, lambda a,b: a < capA),
+    ((-1,1), lambda a,b: muA, lambda a,b: a >= 1 and b < capB),
+    ((0,-1), lambda a,b: muB, lambda a,b: b >= 1),
+]
+
+for (a, b) in states:
+    for (da, db), rate, cond in events:
+        if cond(a, b):
+            dest = (a+da, b+db)
+            Q[idx[(a,b)], idx[dest]] = rate(a, b)
+    Q[idx[(a,b)], idx[(a,b)]] = -Q[idx[(a,b)]].sum()
+\end{verbatim}
+\end{block}
+\end{frame}
+
+% ══════════════════════════════════════════════
+\section{S\'intesis y ejercicio propuesto}
+% ══════════════════════════════════════════════
+
+\begin{frame}{Resumen comparativo de los escenarios}
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{>{\bfseries}p{2.2cm} c c c c c}
+\toprule
+ & \textbf{Esc.\ 1} & \textbf{Esc.\ 2} & \textbf{Esc.\ 3} & \textbf{Esc.\ 4} & \textbf{Esc.\ 5} \\
+\midrule
+Sistema & M/M/1 & M/M/1/K & M/M/c & Reparaci\'on & Red de colas \\
+Variables & 1 & 1 & 1 & 1 (2$\to$1) & 2 \\
+$|\mathcal{S}|$ & $\infty$ & $K{+}1$ & $\infty$ & $M{+}1$ & $(c_A{+}1)(c_B{+}1)$ \\
+Tasas & Ctes. & Ctes.\ + borde & Dep.\ estado & Dep.\ estado & Dep.\ estado \\
+Acople & -- & -- & -- & -- & S\'i (bloqueo) \\
+\bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\normalsize
+\textbf{Progresión de complejidad:}
+\begin{enumerate}
+    \item Tasas constantes $\to$ tasas dependientes del estado.
+    \item Espacio infinito $\to$ espacio finito (con bloqueo).
+    \item Una variable $\to$ dos variables con interacci\'on.
+    \item Modelo expl\'icito $\to$ modelo impl\'icito parametrizado.
+\end{enumerate}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Ejercicio propuesto}
+\begin{exampleblock}{Problema}
+Un hospital tiene una \textbf{sala de urgencias} con 2 camas y un \textbf{quir\'ofano} con 1 mesa de operaci\'on. Los pacientes llegan a urgencias con tasa $\lambda = 1$/hora. En urgencias, un paciente es atendido con tasa $\mu_1 = 0.5$/hora. Con probabilidad $p = 0.4$ el paciente requiere cirug\'ia y pasa al quir\'ofano (si hay espacio); con probabilidad $1-p$ es dado de alta. En el quir\'ofano, la cirug\'ia toma un tiempo exponencial con tasa $\mu_2 = 0.3$/hora. Si urgencias est\'a llena, los pacientes se derivan a otro hospital.
+\end{exampleblock}
+
+\vspace{4pt}
+\textbf{Tareas:}
+\begin{enumerate}
+    \item Identifique las variables aleatorias y sus espacios.
+    \item Construya el espacio de estados conjunto.
+    \item Escriba las transiciones en forma impl\'icita (tabla de eventos).
+    \item Construya la matriz generadora expl\'icita.
+\end{enumerate}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Ejercicio propuesto -- Gu\'ia de soluci\'on}
+\textbf{Variables:}
+\[
+U(t) = \text{pacientes en urgencias} \in \{0,1,2\}, \quad
+Q(t) = \text{pacientes en quir\'ofano} \in \{0,1\}
+\]
+
+\textbf{Estado conjunto:} $(u, q) \in \{0,1,2\}\times\{0,1\}$, \; $|\mathcal{S}|=6$.
+
+\vspace{4pt}
+\textbf{Tabla de eventos:}
+
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{cccl}
+\toprule
+\textbf{Evento} & $\vect{\delta}$ & \textbf{Tasa} & \textbf{Condici\'on} \\
+\midrule
+Llegada & $(+1,0)$ & $\lambda$ & $u < 2$ \\
+Alta directa & $(-1,0)$ & $(1{-}p)\,\mu_1\cdot\min(u,1)$ & $u \ge 1$ \\
+Pasa a quir\'ofano & $(-1,+1)$ & $p\,\mu_1\cdot\min(u,1)$ & $u \ge 1,\; q = 0$ \\
+Fin cirug\'ia & $(0,-1)$ & $\mu_2$ & $q = 1$ \\
+\bottomrule
+\end{tabular}
+
+\normalsize
+\vspace{6pt}
+\begin{alertblock}{Nota}
+La tasa de servicio en urgencias usa $\min(u,1)$ porque solo hay 1 m\'edico (modelo impl\'icito ampliable a m\'as m\'edicos). El factor $p$ divide el flujo de salida de urgencias en dos ramas.
+\end{alertblock}
+\end{frame}
+
+% ══════════════════════════════════════════════
+\begin{frame}{}
+\vfill
+\centering
+{\Huge\bfseries\color{uniblue} ?`Preguntas?}
+
+\vspace{12pt}
+{\large Modelado de Sistemas bajo Incertidumbre}
+
+\vspace{6pt}
+{\small AIA Lab -- Universidad de los Andes}
+\vfill
+\end{frame}
+
+\end{document}

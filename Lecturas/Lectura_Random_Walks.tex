@@ -1,0 +1,217 @@
+\documentclass[11pt, letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{hyperref}
+
+% Configuración de márgenes profesional
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+
+% Estilo de Código Python
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.96}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{\textbf{Caminatas Aleatorias (Random Walks): \\ Modelación de la Incertidumbre en Ingeniería}}
+\author{Modelado de Sistemas bajo Incertidumbre}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introducción: La Mecánica del Azar}
+
+En ingeniería, a menudo asumimos que los sistemas son estables a menos que una fuerza actúe sobre ellos. Sin embargo, muchos sistemas (precios de activos, partículas en un fluido, sensores ruidosos) están en constante movimiento debido a perturbaciones aleatorias sucesivas.
+
+Una **Caminata Aleatoria** es un modelo matemático que describe una trayectoria formada por una sucesión de pasos aleatorios. La idea fundamental es simple: la posición futura de un sistema es su posición actual más un choque aleatorio impredecible.
+
+\section{Definición y Propiedades Fundamentales}
+
+\subsection{El Modelo Discreto Unidimensional}
+Imagine una variable $X_t$ (que podría ser la posición de un robot, el nivel de inventario o la temperatura) en el tiempo $t$. El proceso se define recursivamente como:
+
+\begin{equation}
+    X_t = X_{t-1} + Z_t
+\end{equation}
+
+Donde $Z_t$ es el "paso" o perturbación en el tiempo $t$.
+En el caso más clásico, la **Caminata Aleatoria Simple**, el paso $Z_t$ se comporta como el lanzamiento de una moneda:
+\begin{itemize}
+    \item $Z_t = +1$ con probabilidad $p = 0.5$
+    \item $Z_t = -1$ con probabilidad $1-p = 0.5$
+\end{itemize}
+
+\subsection{La Regla de la Raíz Cuadrada del Tiempo}
+Si la caminata parte de cero ($X_0 = 0$), después de $N$ pasos, la posición es la suma de los $N$ choques: $X_N = \sum_{i=1}^{N} Z_i$.
+
+Aunque el promedio de la posición es 0 (porque los pasos +1 y -1 tienden a cancelarse), la **dispersión** aumenta con el tiempo. La distancia típica a la que se aleja el sistema del origen se mide con la desviación estándar ($\sigma$):
+
+\begin{equation} \label{eq:sqrt_law}
+    \sigma_{X_N} = \sqrt{N}
+\end{equation}
+
+\textbf{Implicación para Ingeniería:} La incertidumbre no crece linealmente. Para que un sistema se desvíe el doble de distancia por puro azar, debe pasar cuatro veces más tiempo. Este principio gobierna desde la difusión de calor hasta el riesgo de inversión.
+
+\section{Ejemplo 1: Control de Procesos (Nivel Introductorio)}
+
+Un brazo robótico intenta soldar un punto en la coordenada 0. Sin embargo, debido a vibraciones térmicas, en cada milisegundo su posición se desvía levemente.
+Suponga que en cada paso el brazo se mueve $+0.1$ mm o $-0.1$ mm con igual probabilidad.
+
+\subsection{Traza Numérica Manual}
+Analicemos una trayectoria de 5 pasos partiendo de $X_0 = 0$:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Tiempo ($t$)} & \textbf{Aleatorio ($R \in [0,1]$)} & \textbf{Paso ($Z_t$)} & \textbf{Posición ($X_t$)} \\ \hline
+0 & - & - & 0.0 \\ \hline
+1 & 0.82 ($>0.5$) & +0.1 & 0.1 \\ \hline
+2 & 0.15 ($<0.5$) & -0.1 & 0.0 \\ \hline
+3 & 0.90 ($>0.5$) & +0.1 & 0.1 \\ \hline
+4 & 0.88 ($>0.5$) & +0.1 & 0.2 \\ \hline
+5 & 0.45 ($<0.5$) & -0.1 & 0.1 \\ \hline
+\end{tabular}
+\caption{Simulación manual de vibración}
+\end{table}
+
+Observe cómo la posición fluctúa. Si repitiéramos esto mil veces, la posición final $X_5$ estaría distribuida alrededor de 0, pero la "mancha" de posibles posiciones se ensancharía con el tiempo.
+
+\subsection{Implementación en Python}
+Simularemos esta caminata simple para visualizar la trayectoria.
+
+\begin{lstlisting}[language=Python, caption=Caminata Aleatoria Simple]
+import numpy as np
+import matplotlib.pyplot as plt
+
+def random_walk_1d(n_pasos):
+    # Generar pasos aleatorios: -1 o +1
+    pasos = np.random.choice([-1, 1], size=n_pasos)
+    
+    # La trayectoria es la suma acumulada (cumsum)
+    trayectoria = np.cumsum(pasos)
+    
+    # Agregar el punto de inicio 0
+    return np.insert(trayectoria, 0, 0)
+
+# Parametros
+N = 100
+camino = random_walk_1d(N)
+
+# Visualizacion
+plt.figure(figsize=(8, 4))
+plt.plot(camino, marker='o', markersize=3, linestyle='-', alpha=0.8)
+plt.title(f'Trayectoria de una Caminata Aleatoria ({N} pasos)')
+plt.xlabel('Tiempo (Pasos)')
+plt.ylabel('Posición')
+plt.grid(True)
+plt.show()
+\end{lstlisting}
+
+\section{De la Suma al Producto: Caminatas en Finanzas}
+
+En ingeniería financiera, la caminata aleatoria simple ($X_t = X_{t-1} + Z_t$) tiene un defecto: puede volverse negativa. Los precios de acciones o materias primas no pueden ser negativos.
+
+Para solucionar esto, modificamos la caminata para que sea **multiplicativa** en lugar de aditiva. Esto se conoce como la **Caminata Aleatoria Geométrica**.
+\begin{itemize}
+    \item En lugar de sumar un valor fijo, el precio sube o baja un \textit{porcentaje}.
+    \item $P_t = P_{t-1} \times (1 + R_t)$, donde $R_t$ es el retorno aleatorio.
+\end{itemize}
+
+Si tomamos logaritmos, recuperamos nuestra caminata lineal:
+$$ \ln(P_t) = \ln(P_{t-1}) + \ln(1 + R_t) $$
+Esto significa que \textbf{el logaritmo del precio sigue una caminata aleatoria simple}. Esta es la base de casi toda la modelación financiera moderna.
+
+\section{Ejemplo 2: Simulación de Precios de Activos (Nivel Medio)}
+
+Supongamos que el precio de una acción $S_0 = 100$. Cada día, el precio tiene una tendencia a subir ligeramente (drift), pero está afectado por volatilidad aleatoria.
+
+Modelo discreto:
+$$ S_t = S_{t-1} \cdot e^{(\mu \Delta t + \sigma \sqrt{\Delta t} Z_t)} $$
+Donde $Z_t$ es un número aleatorio normal estándar (el "paso"), $\mu$ es el retorno esperado anual y $\sigma$ es la volatilidad anual.
+
+\subsection{Objetivo de la Simulación}
+Simularemos 10 posibles futuros para una acción durante un año (252 días de trading) para observar el "cono de incertidumbre".
+
+\begin{lstlisting}[language=Python, caption=Caminata Aleatoria Geométrica (Multiples Trayectorias)]
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Parametros del mercado
+S0 = 100       # Precio inicial
+T = 1.0        # Tiempo en años
+N = 252        # Pasos (dias de trading)
+dt = T / N     # Tamaño del paso de tiempo
+mu = 0.05      # Retorno esperado (5% anual)
+sigma = 0.20   # Volatilidad (20% anual)
+M = 10         # Numero de simulaciones (trayectorias)
+
+# Inicializar matriz de precios (N+1 dias x M simulaciones)
+S = np.zeros((N + 1, M))
+S[0] = S0
+
+# Generar todos los pasos aleatorios a la vez
+# Z ~ Normal(0, 1)
+Z = np.random.normal(0, 1, (N, M))
+
+# Ciclo de evolucion temporal (Caminata paso a paso)
+for t in range(1, N + 1):
+    # El precio de hoy es el de ayer multiplicado por el factor de cambio
+    # Factor = exp( (mu - 0.5*sigma^2)dt + sigma*sqrt(dt)*Z )
+    factor_cambio = np.exp((mu - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[t-1])
+    S[t] = S[t-1] * factor_cambio
+
+# Visualizacion
+plt.figure(figsize=(10, 6))
+plt.plot(S)
+plt.title('Simulación de 10 Caminatas Aleatorias Geométricas')
+plt.xlabel('Días de Trading')
+plt.ylabel('Precio del Activo ($)')
+plt.grid(True, alpha=0.3)
+plt.axhline(S0, color='black', linestyle='--', label='Precio Inicial')
+plt.legend(['Trayectorias', 'Precio Inicial'])
+plt.show()
+
+# Resultado final
+promedio_final = np.mean(S[-1])
+print(f"Precio promedio final esperado: ${promedio_final:.2f}")
+\end{lstlisting}
+
+\section{Conclusión}
+
+Las caminatas aleatorias nos enseñan que la complejidad puede surgir de reglas simples.
+\begin{enumerate}
+    \item La acumulación de simples pasos $+1/-1$ genera una dispersión que crece con la raíz del tiempo. 
+    \item En ingeniería, utilizamos estas caminatas para modelar errores acumulativos (tolerancias) o la evolución de precios (finanzas).
+    \item La simulación es la herramienta que nos permite "lanzar la moneda" miles de veces para predecir rangos de probabilidad, vital para la toma de decisiones bajo riesgo.
+\end{enumerate}
+
+\end{document}

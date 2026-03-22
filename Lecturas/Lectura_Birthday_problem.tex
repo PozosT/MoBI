@@ -1,0 +1,165 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+
+\title{Problema del cumpleaños: probabilidad de coincidencia en un grupo de $n$ personas}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Planteamiento y modelo (generalización a $d$ días equiprobables)}
+
+Sea $d\in\mathbb{N}$ el número de días posibles (por ejemplo, $d=365$ si ignoramos años bisiestos).
+Modelamos el cumpleaños de cada persona como una variable aleatoria discreta
+\[
+X_i \in \{1,2,\dots,d\}, \qquad i=1,\dots,n,
+\]
+bajo los supuestos estándar:
+\begin{itemize}
+\item \textbf{Equiprobabilidad:} $\mathbb{P}(X_i=j)=\frac{1}{d}$ para todo $j\in\{1,\dots,d\}$.
+\item \textbf{Independencia:} $X_1,\dots,X_n$ son independientes (i.i.d.).
+\end{itemize}
+
+El espacio muestral es $\Omega=\{1,\dots,d\}^n$, con distribución uniforme
+\[
+\mathbb{P}((x_1,\dots,x_n))=\frac{1}{d^n}.
+\]
+
+El evento de interés es
+\[
+A=\{\exists\, i\neq j:\ X_i=X_j\},
+\]
+es decir, \emph{al menos dos personas comparten la misma fecha de nacimiento}.
+La estrategia central es trabajar con el complemento
+\[
+A^c=\{X_1,\dots,X_n\ \text{son todos distintos}\}.
+\]
+
+\subsection*{Interpretación secuencial (clave para el conteo)}
+Piense en asignar cumpleaños de forma secuencial:
+\begin{itemize}
+\item La persona 1 puede caer en cualquiera de los $d$ días.
+\item Para que no haya repetición, la persona 2 debe caer en uno de los $d-1$ días restantes.
+\item La persona 3, en uno de los $d-2$ días restantes.
+\item En general, la persona $k$ (contando desde $k=1$) debe caer en uno de los $d-(k-1)$ días restantes.
+\end{itemize}
+Este razonamiento convierte un evento global (``todos distintos'') en una multiplicación de probabilidades condicionales.
+
+\section{Cálculo exacto por probabilidad complementaria (caso general $d$)}
+
+\subsection{Probabilidad de que todos sean distintos}
+Por la regla del producto:
+\begin{align}
+\mathbb{P}(A^c)
+&= \mathbb{P}(\text{persona 2 distinta de persona 1})\cdot
+\mathbb{P}(\text{persona 3 distinta de las anteriores}\mid \dots)\cdots \nonumber\\
+&= \frac{d-1}{d}\cdot \frac{d-2}{d}\cdots \frac{d-(n-1)}{d}
+= \prod_{k=0}^{n-1}\left(1-\frac{k}{d}\right).
+\end{align}
+En notación de factorial descendente, $(d)_n=d(d-1)\cdots(d-n+1)$,
+\[
+\mathbb{P}(A^c)=\frac{(d)_n}{d^n}.
+\]
+Equivalentemente, para $n\le d$,
+\[
+(d)_n=\frac{d!}{(d-n)!}
+\quad\Longrightarrow\quad
+\mathbb{P}(A^c)=\frac{d!}{(d-n)!\,d^n}.
+\]
+
+\subsection{Probabilidad de al menos una coincidencia}
+Finalmente,
+\begin{equation}
+\boxed{
+\mathbb{P}(A)=1-\mathbb{P}(A^c)
+=1-\prod_{k=0}^{n-1}\left(1-\frac{k}{d}\right)
+=1-\frac{(d)_n}{d^n}.
+}
+\end{equation}
+Si $n>d$, por el principio del palomar, necesariamente hay repetición y
+\[
+\mathbb{P}(A)=1.
+\]
+
+\section{Conteo explícito: por qué el problema ``explota''}
+
+La razón combinatoria detrás de las fórmulas anteriores es:
+\begin{itemize}
+\item Total de asignaciones posibles de cumpleaños (con repetición): $|\Omega| = d^n$.
+\item Asignaciones \emph{sin repetición} (todos distintos): primero elegir $n$ días distintos y asignarlos a $n$ personas,
+lo cual produce $d(d-1)\cdots(d-n+1)=(d)_n$ posibilidades.
+\item Asignaciones con \emph{al menos una repetición}: $d^n-(d)_n$.
+\end{itemize}
+Por tanto,
+\[
+\mathbb{P}(A)=\frac{d^n-(d)_n}{d^n}.
+\]
+
+\subsection{Ejemplo pequeño que muestra el conteo (y su diferencia)}
+Tome $d=5$ días y $n=3$ personas.
+\[
+d^n = 5^3 = 125.
+\]
+Las asignaciones sin repetición son
+\[
+(d)_n = 5\cdot 4\cdot 3 = 60.
+\]
+Entonces las asignaciones con al menos una repetición son
+\[
+d^n-(d)_n = 125-60 = 65,
+\]
+y por ende
+\[
+\mathbb{P}(A)=\frac{65}{125}=0.52,
+\qquad
+\mathbb{P}(A^c)=\frac{60}{125}=0.48.
+\]
+Este ejemplo deja ver el fenómeno: \emph{aunque $n$ es pequeño, el número de pares potenciales crece rápidamente y las colisiones aparecen pronto.}
+
+\subsection{Escala real: $d=365$ y $n=23$}
+Con $d=365$ y $n=23$:
+\[
+d^n = 365^{23} \approx 8.565\times 10^{58}
+\quad (\text{un entero de }59\text{ dígitos}).
+\]
+Mientras que
+\[
+(d)_n = 365\cdot 364\cdot \ldots \cdot 343 \approx 4.220\times 10^{58}
+\quad (\text{también }59\text{ dígitos}).
+\]
+La diferencia
+\[
+d^n-(d)_n \approx 4.345\times 10^{58}
+\]
+es del mismo orden de magnitud que los términos involucrados: esto ilustra por qué
+\emph{un conteo directo ``listando casos'' es imposible}, y por qué la fórmula del producto es la vía correcta.
+
+Numéricamente (usando la fórmula exacta),
+\[
+\mathbb{P}(A)=1-\prod_{k=0}^{22}\left(1-\frac{k}{365}\right)\approx 0.5073.
+\]
+Es decir, con $23$ personas ya es ligeramente mayor al $50\%$.
+
+\section{Aproximación útil para $d$ grande (opcional pero muy informativa)}
+Partimos de
+\[
+\ln\mathbb{P}(A^c)=\sum_{k=0}^{n-1}\ln\left(1-\frac{k}{d}\right).
+\]
+Para $k/d$ pequeño, $\ln(1-x)\approx -x$, entonces
+\[
+\ln\mathbb{P}(A^c)\approx -\sum_{k=0}^{n-1}\frac{k}{d}
+= -\frac{n(n-1)}{2d}.
+\]
+Así,
+\[
+\boxed{
+\mathbb{P}(A)\approx 1-\exp\!\left(-\frac{n(n-1)}{2d}\right).
+}
+\]
+Esta aproximación sugiere el umbral de ``sorpresa'': cuando $\frac{n(n-1)}{2d}\approx 1$,
+la probabilidad de colisión deja de ser pequeña.
+
+\end{document}

@@ -1,0 +1,1131 @@
+% =============================================================================
+% SIMULACIÓN MANUAL DE COLAS — VERSIÓN MEJORADA CON ILUSTRACIONES
+% Métricas, Ley de Little, Utilización, Costos
+% =============================================================================
+\documentclass[aspectratio=1610, 9pt]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, calc, decorations.pathreplacing,
+                 patterns, shapes.geometric, babel}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\sisetup{round-mode=places, round-precision=1}
+
+% --- Tema ---
+\usetheme{Madrid}
+\usecolortheme{whale}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{
+  \leavevmode\hbox{%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,center]{author in head/foot}
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.34\paperwidth,ht=2.5ex,dp=1ex,center]{title in head/foot}
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,right]{date in head/foot}
+      \usebeamerfont{date in head/foot}\insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}%
+}
+
+% Colores
+\definecolor{azul}{RGB}{0,51,102}
+\definecolor{rojo}{RGB}{204,51,51}
+\definecolor{verde}{RGB}{0,120,60}
+\definecolor{naranja}{RGB}{230,126,34}
+\definecolor{gris}{RGB}{236,240,241}
+\definecolor{morado}{RGB}{120,40,140}
+\definecolor{busy}{RGB}{70,130,180}  % servidor ocupado
+\definecolor{idle}{RGB}{200,220,200} % servidor libre
+
+\title[Simulacion Manual de Colas]{Simulaci\'on Manual de Sistemas de Colas}
+\subtitle{M\'etricas, Ley de Little, Utilizaci\'on y Costos}
+\author[Ing.\ Industrial]{Departamento de Ingenier\'\i a Industrial}
+\institute[Universidad]{Curso de Simulaci\'on de Eventos Discretos}
+\date{Semestre 2026-I}
+
+\begin{document}
+
+% ============================== SLIDE 1 ==============================
+\begin{frame}
+\titlepage
+\end{frame}
+
+% ============================== SLIDE 2 ==============================
+\begin{frame}{Contenido}
+\tableofcontents
+\end{frame}
+
+% ======================================================================
+\section{La idea central: dos maneras de medir lo mismo}
+% ======================================================================
+
+% ============================== SLIDE 3 ==============================
+\begin{frame}{Dos lentes para mirar una cola}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, scale=0.9]
+  % --- Sistema físico ---
+  \draw[fill=gris, rounded corners] (0,0) rectangle (3,1.6);
+  \node[font=\small\bfseries] at (1.5,1.3) {COLA};
+  \node[font=\tiny] at (1.5,0.8) {(FIFO)};
+  % personas en cola
+  \foreach \i in {0.4,0.9,1.4,1.9,2.4}{
+    \fill[azul!70] (\i,0.3) circle (4pt);
+  }
+  \draw[fill=busy!40, rounded corners] (4,0) rectangle (6.2,1.6);
+  \node[font=\small\bfseries] at (5.1,1.3) {SERVIDOR};
+  \fill[rojo!70] (5.1,0.5) circle (6pt);
+  \draw[->, thick] (-1.2,0.8) -- (0,0.8) node[midway,above,font=\tiny]{llegan};
+  \draw[->, thick] (3,0.8) -- (4,0.8);
+  \draw[->, thick] (6.2,0.8) -- (7.4,0.8) node[midway,above,font=\tiny]{salen};
+
+  % --- Lente 1 ---
+  \draw[thick, azul, rounded corners] (-1.5,-1) rectangle (3.2,-3.5);
+  \node[font=\bfseries, azul] at (0.85,-1.35) {Lente ``por tiempo''};
+  \node[font=\small, text width=4.5cm, align=left] at (0.85,-2.5) {
+    ?`Cu\'{a}ntos clientes hay\\en promedio?\\[4pt]
+    $\widehat{L}$, $\widehat{L_Q}$, $\widehat{\rho}$
+  };
+
+  % --- Lente 2 ---
+  \draw[thick, rojo, rounded corners] (3.8,-1) rectangle (8.2,-3.5);
+  \node[font=\bfseries, rojo] at (6.0,-1.35) {Lente ``por cliente''};
+  \node[font=\small, text width=4cm, align=left] at (6.8,-2.5) {
+    ?`Cu\'{a}nto espera cada\\cliente en promedio?\\[4pt]
+    $\widehat{w}$, $\widehat{w_Q}$
+  };
+
+  % Flecha Little
+  \draw[<->, line width=2pt, verde] (3.2,-2.2) -- (3.8,-2.2)
+    node[midway, above, font=\small\bfseries, verde] {Little};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+La \textbf{Ley de Little} conecta ambas perspectivas: $\widehat{L} = \widehat{\lambda}\cdot\widehat{w}$. Hoy aprenderemos a \textbf{calcular todo esto a mano} y verificar que cuadra.
+\end{frame}
+
+% ============================== SLIDE 4 ==============================
+\begin{frame}{?`Por qu\'{e} la misma cantidad tiene dos formas?}
+
+\textbf{Piense en un estacionamiento} que observamos durante 8 horas:
+
+\begin{center}
+\begin{tikzpicture}[scale=0.85]
+  % Eje horizontal
+  \draw[->, thick] (0,0) -- (12.5,0) node[right]{$t$ (horas)};
+  \draw[->, thick] (0,0) -- (0,4.5) node[above]{autos adentro};
+  \foreach \h in {0,...,8}{
+    \draw (1.5*\h, 0.1) -- (1.5*\h,-0.1) node[below,font=\tiny]{\h};
+  }
+
+  % Función escalonada N(t)
+  \draw[thick, azul, const plot mark right] plot coordinates {
+    (0,0)(0.75,1)(1.5,2)(2.25,3)(3.0,2)(4.5,3)(5.25,2)(6.0,1)(7.5,2)(9.0,1)
+    (10.5,0)(12,0)
+  };
+
+
+
+  % Anotación de área
+  \node[azul, font=\small\bfseries] at (5,3.8)
+    {\'{A}rea $= \displaystyle\int_0^T\! L(t)\,dt$};
+
+  % Auto 1
+  \draw[<->, thick, rojo] (0.75,-0.8) -- (3.0,-0.8);
+  \node[below, rojo, font=\tiny] at (1.875,-0.8) {$W_1 = 1.5$ h};
+
+  % Auto 2
+  \draw[<->, thick, naranja] (1.5,-1.5) -- (5.25,-1.5);
+  \node[below, naranja, font=\tiny] at (3.375,-1.5) {$W_2 = 2.5$ h};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+\begin{columns}
+\column{0.48\textwidth}
+\textbf{Leer verticalmente} (foto en cada instante):
+
+\'{A}rea bajo $L(t)$ $=$ total de ``auto-horas''
+\[
+\widehat{L} = \frac{\text{\'{a}rea}}{T}
+\]
+
+\column{0.48\textwidth}
+\textbf{Leer horizontalmente} (seguir a cada auto):
+
+Suma de $W_j$ $=$ el mismo total de ``auto-horas''
+\[
+\widehat{w} = \frac{\sum W_j}{N}
+\]
+\end{columns}
+\end{frame}
+
+% ============================== SLIDE 5 ==============================
+\begin{frame}{La identidad que siempre se cumple}
+
+\begin{block}{Identidad contable (Little operacional)}
+\[
+\underbrace{\frac{1}{T}\int_0^T L(t)\,dt}_{\widehat{L}}
+\;=\;
+\underbrace{\frac{N}{T}}_{\widehat{\lambda}}
+\;\times\;
+\underbrace{\frac{1}{N}\sum_{j=1}^N W_j}_{\widehat{w}}
+\]
+\end{block}
+
+\vspace{0.3cm}
+\begin{center}
+\begin{tikzpicture}
+  \node[draw, rounded corners, fill=azul!10, minimum width=3cm,
+        minimum height=1.2cm, font=\bfseries] (L) {$\widehat{L} = 0.77$};
+  \node[draw, rounded corners, fill=rojo!10, minimum width=3cm,
+        minimum height=1.2cm, font=\bfseries, right=3cm of L] (w) {$\widehat{w} = 1.92$};
+  \draw[<->, line width=2pt, verde] (L) -- (w)
+    node[midway, above, font=\bfseries\small, verde]{$\times\;\widehat{\lambda}=0.4$}
+    node[midway, below, font=\small, verde]{Ley de Little};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3cm}
+No es una aproximaci\'{o}n, no requiere estado estable, no depende de la distribuci\'{o}n: es una \textbf{tautolog\'{i}a matem\'{a}tica}. Funciona siempre que las definiciones sean consistentes.
+\end{frame}
+
+% ======================================================================
+\section{Utilizacion y su impacto}
+% ======================================================================
+
+% ============================== SLIDE 6 ==============================
+\begin{frame}{Utilizaci\'on $\rho$: qu\'e fracci\'on del tiempo trabaja el servidor}
+
+\begin{block}{Definici\'{o}n}
+\[
+\widehat{\rho} = \frac{\text{tiempo total que el servidor estuvo ocupado}}{T}
+\]
+\end{block}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+  % Eje
+  \draw[->, thick] (0,0) -- (16,0) node[right]{$t$};
+  \node[left, font=\small] at (0,0.7) {Servidor};
+  \foreach \t in {0,1,...,15}{
+    \draw (\t,0.08) -- (\t,-0.08);
+    \node[below, font=\tiny] at (\t,-0.1) {\t};
+  }
+
+  % Periodos ocupados (del ejemplo: 0-1.5, 2-4, 4.5-5.5, 5.5-8.5, 9-10, 12-14.5)
+  \fill[busy!60] (0,0) rectangle (1.5,0.7);
+  \node[font=\tiny, white] at (0.75,0.35) {C1};
+
+  \fill[busy!60] (2,0) rectangle (4,0.7);
+  \node[font=\tiny, white] at (3,0.35) {C2};
+
+  \fill[busy!60] (4.5,0) rectangle (5.5,0.7);
+  \node[font=\tiny, white] at (5,0.35) {C3};
+
+  \fill[busy!60] (5.5,0) rectangle (8.5,0.7);
+  \node[font=\tiny, white] at (7,0.35) {C4};
+
+  \fill[busy!60] (9,0) rectangle (10,0.7);
+  \node[font=\tiny, white] at (9.5,0.35) {C5};
+
+  \fill[busy!60] (12,0) rectangle (14.5,0.7);
+  \node[font=\tiny, white] at (13.25,0.35) {C6};
+
+  % Periodos libres
+  \fill[idle] (1.5,0) rectangle (2,0.7);
+  \fill[idle] (4,0) rectangle (4.5,0.7);
+  \fill[idle] (8.5,0) rectangle (9,0.7);
+  \fill[idle] (10,0) rectangle (12,0.7);
+  \fill[idle] (14.5,0) rectangle (15,0.7);
+
+  % Llaves
+  \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, busy]
+    (0,-0.5) -- (14.5,-0.5) node[midway, below=6pt, font=\small]
+    {Ocupado: $1.5+2+1+3+1+2.5 = 11.0$};
+
+  % Resultado
+  \node[draw, rounded corners, fill=busy!15, font=\bfseries] at (8,-2)
+    {$\widehat{\rho} = 11.0 \,/\, 15 = 0.733$};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+El servidor estuvo libre solo $15 - 11 = 4$ unidades de tiempo (27\% del horizonte).
+\end{frame}
+
+% ============================== SLIDE 7 ==============================
+\begin{frame}{?`Por qu\'{e} importa $\rho$?}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=11cm, height=5.5cm,
+    xlabel={Utilizaci\'{o}n $\rho$},
+    ylabel={Clientes promedio en cola $L_Q$},
+    xmin=0, xmax=1, ymin=0, ymax=15,
+    grid=both, grid style={gray!15},
+    xtick={0,0.2,0.4,0.6,0.8,1.0},
+    extra x ticks={0.733},
+    extra x tick labels={$0.733$},
+    extra x tick style={grid=major, grid style={rojo, dashed}},
+]
+% Curva M/M/1
+\addplot[thick, azul, domain=0.01:0.97, samples=100]
+  {x^2/(1-x)};
+\addlegendentry{$M/M/1$: $L_Q = \rho^2/(1-\rho)$}
+
+% Punto del ejemplo
+\addplot[only marks, mark=*, mark size=3pt, rojo] coordinates {(0.733, 2.012)};
+\node[rojo, right, font=\small] at (axis cs:0.74,2.8) {Nuestro ejemplo};
+
+% Zona de peligro
+\fill[rojo!15, opacity=0.4] (axis cs:0.85,0) rectangle (axis cs:1,15);
+\node[rojo, font=\tiny\bfseries, rotate=90] at (axis cs:0.93,7) {Zona cr\'{i}tica};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+La relaci\'{o}n entre $\rho$ y $L_Q$ es \textbf{no lineal}: pasar de $\rho=0.7$ a $\rho=0.9$ triplica la cola. Peque\~{n}os aumentos de carga cerca de $\rho=1$ disparan las esperas.
+\end{frame}
+
+% ======================================================================
+\section{Costos: convertir metricas en decisiones}
+% ======================================================================
+
+% ============================== SLIDE 8 ==============================
+\begin{frame}{De m\'{e}tricas a dinero: el modelo de costos}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, scale=0.85,
+    caja/.style={draw, rounded corners, minimum width=3.5cm,
+                 minimum height=1.2cm, align=center, font=\small}]
+
+  % Costo espera
+  \node[caja, fill=rojo!15] (cq) at (0,2.5)
+    {\textbf{Costo de espera}\\$c_Q \times L_Q$};
+  \node[below, font=\tiny, text width=4cm, align=center] at (0,1.7)
+    {Cada cliente en cola\\``quema'' \$10/hora};
+
+  % Costo servidor
+  \node[caja, fill=azul!15] (cs) at (0,0)
+    {\textbf{Costo de servidor}\\$c_S \times c \times \rho$};
+  \node[below, font=\tiny, text width=4cm, align=center] at (0,-0.8)
+    {Cada servidor ocupado\\cuesta \$5/hora};
+
+  % Suma
+  \node[caja, fill=verde!15, line width=2pt] (ct) at (7,1.25)
+    {\textbf{Costo total}\\$C = c_Q L_Q + c_S c\rho$};
+
+  \draw[->, thick] (cq.east) -- ++(1.5,0) |- (ct.west);
+  \draw[->, thick] (cs.east) -- ++(1.5,0) |- (ct.west);
+
+  % Trade-off
+  \draw[<->, thick, morado, line width=1.5pt] (3,-2) -- (11,-2);
+  \node[left, morado, font=\small\bfseries] at (3,-2) {M\'{a}s espera};
+  \node[right, morado, font=\small\bfseries] at (11,-2) {M\'{a}s servidores};
+  \node[morado, font=\small, above] at (7,-2) {?`D\'{o}nde est\'{a} el \'{o}ptimo?};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3cm}
+Agregar un servidor \textbf{sube} $c_S c\rho$ pero \textbf{baja} $c_Q L_Q$. El \'{o}ptimo est\'{a} donde la curva total tiene su m\'{i}nimo.
+\end{frame}
+
+% ============================== SLIDE 9 ==============================
+\begin{frame}{Ejemplo visual: trade-off de costos}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=12cm, height=6cm,
+    xlabel={N\'{u}mero de servidores $c$},
+    ylabel={Costo promedio por hora (\$)},
+    xmin=0.5, xmax=5.5, ymin=0, ymax=35,
+    xtick={1,2,3,4,5},
+    grid=both, grid style={gray!15},
+    legend pos=north east,
+    legend style={font=\small},
+]
+% Costo espera (decrece con c)
+\addplot[thick, rojo, mark=square*, mark size=3pt] coordinates {
+  (1,30) (2,8) (3,2.5) (4,0.8) (5,0.3)
+};
+\addlegendentry{Costo espera $c_Q L_Q$}
+
+% Costo servidores (crece con c)
+\addplot[thick, azul, mark=triangle*, mark size=3pt] coordinates {
+  (1,4.2) (2,7.0) (3,8.5) (4,9.2) (5,9.5)
+};
+\addlegendentry{Costo servidor $c_S c \rho$}
+
+% Total
+\addplot[thick, verde, mark=*, mark size=4pt, line width=2pt] coordinates {
+  (1,34.2) (2,15.0) (3,11.0) (4,10.0) (5,9.8)
+};
+\addlegendentry{Costo total $C$}
+
+% Óptimo
+\draw[->, thick, naranja] (axis cs:4,14) -- (axis cs:4,10.5);
+\node[naranja, font=\small\bfseries, above] at (axis cs:4,14) {\'{O}ptimo: $c^*=4$};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+En este ejemplo, $c^*=4$ servidores minimiza el costo total. Con menos, la espera domina; con m\'{a}s, se paga por capacidad ociosa.
+\end{frame}
+
+% ======================================================================
+\section{Simulacion manual completa: el ejemplo paso a paso}
+% ======================================================================
+
+% ============================== SLIDE 10 ==============================
+\begin{frame}{El sistema que simularemos}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, scale=0.9]
+  % Cola
+  \draw[fill=gris, rounded corners] (0,0) rectangle (4,1.5);
+  \node[font=\bfseries] at (2,1.15) {Cola FIFO};
+  \node[font=\small] at (2,0.55) {Capacidad: $\infty$};
+  % Servidor
+  \draw[fill=busy!30, rounded corners] (5.5,0) rectangle (8,1.5);
+  \node[font=\bfseries] at (6.75,1.15) {1 Servidor};
+  \node[font=\small] at (6.75,0.55) {$G/G/1$};
+  % Flechas
+  \draw[->, line width=2pt, azul] (-2,0.75) -- (0,0.75)
+    node[midway, above, font=\small]{Llegadas};
+  \draw[->, line width=1.5pt] (4,0.75) -- (5.5,0.75);
+  \draw[->, line width=2pt, verde] (8,0.75) -- (10,0.75)
+    node[midway, above, font=\small]{Salidas};
+  % Horizonte
+  \node[draw, thick, rounded corners, fill=naranja!15,
+        font=\small\bfseries] at (4,-1.2) {Horizonte: $T = 15$ u.t.};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{Datos de entrada} (lo \'{u}nico que nos ``dan''):
+
+\vspace{0.1cm}
+\begin{center}
+\small
+\begin{tabular}{ccc}
+\toprule
+\textbf{Cliente $j$} & \textbf{Llegada $A_j$} & \textbf{Servicio $S_j$} \\
+\midrule
+1 & 0.0 & 1.5 \\
+2 & 2.0 & 2.0 \\
+3 & 4.5 & 1.0 \\
+4 & 5.0 & 3.0 \\
+5 & 9.0 & 1.0 \\
+6 & 12.0 & 2.5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+% ============================== SLIDE 11 ==============================
+\begin{frame}{Paso 1: ?`Cu\'{a}ndo empieza cada servicio? ($B_j$)}
+
+\begin{block}{Regla operacional}
+\[
+B_1 = A_1, \qquad B_j = \max\{A_j,\; D_{j-1}\} \quad \text{para } j \geq 2
+\]
+\end{block}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, scale=0.85]
+  % Caso 1: servidor libre
+  \draw[fill=idle, rounded corners] (0,2) rectangle (3,3);
+  \node[font=\small] at (1.5,2.5) {LIBRE};
+  \fill[azul!70] (-0.5,2.5) circle (5pt);
+  \draw[->, thick, azul] (-0.3,2.5) -- (0,2.5);
+  \node[font=\small, below] at (1.5,1.8) {$B_j = A_j$ (empieza al llegar)};
+  \node[verde, font=\bfseries] at (4.5,2.5) {\checkmark};
+  \node[font=\small\bfseries] at (1.5,3.4) {Caso A: llega y est\'{a} libre};
+
+  % Caso 2: servidor ocupado
+  \draw[fill=busy!40, rounded corners] (7,2) rectangle (10,3);
+  \node[font=\small, white] at (8.5,2.5) {OCUPADO};
+  \fill[azul!70] (6.5,2.5) circle (5pt);
+  \draw[->, thick, azul] (6.7,2.5) -- (7,2.5);
+  \node[font=\small, text width=4cm, align=center, below] at (8.5,1.6)
+    {$B_j = D_{j-1}$ (espera a que\\termine el anterior)};
+  \node[rojo, font=\bfseries] at (11.5,2.5) {$\rightarrow$ cola};
+  \node[font=\small\bfseries] at (8.5,3.4) {Caso B: llega y est\'{a} ocupado};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Ejemplo --- Cliente 4:} Llega en $A_4 = 5.0$, pero C3 termina en $D_3 = 5.5$.
+
+$B_4 = \max\{5.0,\; 5.5\} = 5.5$ $\Rightarrow$ Debe esperar 0.5 u.t.\ en cola.
+\end{frame}
+
+% ============================== SLIDE 12 ==============================
+\begin{frame}{Paso 2: ?`Cu\'{a}ndo sale cada cliente? ($D_j$)}
+
+\begin{block}{F\'{o}rmula trivial pero fundamental}
+\[
+D_j = B_j + S_j
+\]
+\end{block}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}[>=Stealth, scale=0.82]
+  % Línea de tiempo para C4
+  \draw[->, thick] (0,0) -- (13,0) node[right, font=\small]{$t$};
+  \foreach \t/\lab in {0/0, 2/2, 4/4, 5/5, 5.5/{5.5}, 7/7, 8.5/{8.5}, 10/10}{
+    \draw (2*\t/1.5,0.1) -- (2*\t/1.5,-0.1);
+    \pgfmathsetmacro{\xpos}{2*\t/1.5}
+  }
+  % Escala: 1 u.t. = 2/1.5 cm aprox.
+
+  \node[below, font=\tiny] at (0,-0.1) {0};
+  \node[below, font=\tiny] at (6.67,-0.1) {5};
+  \node[below, font=\tiny] at (7.33,-0.1) {5.5};
+  \node[below, font=\tiny] at (11.33,-0.1) {8.5};
+
+  % C4: llegada
+  \draw[thick, azul] (6.67,0) -- (6.67,1.8);
+  \fill[azul] (6.67,1.8) circle (3pt);
+  \node[above, azul, font=\small\bfseries] at (6.67,1.8) {$A_4=5.0$};
+
+  % C4: espera en cola
+  \fill[rojo!20] (6.67,0) rectangle (7.33,0.6);
+  \draw[<->, thick, rojo] (6.67,0.3) -- (7.33,0.3);
+  \node[above, rojo, font=\tiny\bfseries] at (7,0.65) {$W_{Q,4}=0.5$};
+
+  % C4: servicio
+  \fill[busy!40] (7.33,0) rectangle (11.33,0.6);
+  \draw[<->, thick, busy] (7.33,-0.5) -- (11.33,-0.5);
+  \node[below, busy, font=\tiny\bfseries] at (9.33,-0.5) {$S_4=3.0$};
+
+  % C4: inicio servicio
+  \draw[thick, verde] (7.33,0) -- (7.33,1.3);
+  \node[above, verde, font=\small\bfseries] at (7.33,1.3) {$B_4=5.5$};
+
+  % C4: salida
+  \draw[thick, naranja] (11.33,0) -- (11.33,1.8);
+  \fill[naranja] (11.33,1.8) circle (3pt);
+  \node[above, naranja, font=\small\bfseries] at (11.33,1.8) {$D_4=8.5$};
+
+  % W total
+  \draw[<->, thick, morado, line width=1.5pt] (6.67,-1.2) -- (11.33,-1.2);
+  \node[below, morado, font=\small\bfseries] at (9,-1.2) {$W_4 = D_4 - A_4 = 3.5$};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Verificaci\'{o}n:} $W_4 = W_{Q,4} + S_4 = 0.5 + 3.0 = 3.5$ \;\checkmark
+
+Siempre debe cumplirse $W_j = W_{Q,j} + S_j$.
+\end{frame}
+
+% ============================== SLIDE 13 ==============================
+\begin{frame}{Paso 3: esperas y tiempos de cada cliente}
+
+\begin{block}{F\'{o}rmulas}
+\[
+W_{Q,j} = B_j - A_j \quad \text{(espera en cola)}, \qquad
+W_j = D_j - A_j \quad \text{(tiempo total en sistema)}
+\]
+\end{block}
+
+\vspace{0.1cm}
+\begin{center}
+\small
+\begin{tabular}{c c c c c c c}
+\toprule
+$j$ & $A_j$ & $S_j$ & $B_j$ & $D_j$ & $W_{Q,j}$ & $W_j$ \\
+\midrule
+1 & 0.0 & 1.5 & 0.0 & 1.5 & \cellcolor{idle}0.0 & 1.5 \\
+2 & 2.0 & 2.0 & 2.0 & 4.0 & \cellcolor{idle}0.0 & 2.0 \\
+3 & 4.5 & 1.0 & 4.5 & 5.5 & \cellcolor{idle}0.0 & 1.0 \\
+4 & 5.0 & 3.0 & \textbf{5.5} & \textbf{8.5} & \cellcolor{rojo!20}\textbf{0.5} & \textbf{3.5} \\
+5 & 9.0 & 1.0 & 9.0 & 10.0 & \cellcolor{idle}0.0 & 1.0 \\
+6 & 12.0 & 2.5 & 12.0 & 14.5 & \cellcolor{idle}0.0 & 2.5 \\
+\midrule
+\multicolumn{5}{r}{\textbf{Suma:}} & 0.5 & 11.5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+Solo el \textbf{cliente 4} tuvo que esperar: lleg\'{o} en $t=5.0$ pero C3 a\'{u}n estaba en servicio hasta $t=5.5$.
+\end{frame}
+
+% ============================== SLIDE 14 ==============================
+\begin{frame}{Calendario de eventos y diagrama temporal}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.72]
+  % Eje temporal
+  \draw[->, thick] (0,0) -- (15.5,0) node[right, font=\small]{$t$};
+  \foreach \t in {0,1,...,15}{
+    \draw (\t,0.08) -- (\t,-0.08);
+    \node[below, font=\tiny] at (\t,-0.1) {\t};
+  }
+
+  % Servidor (Gantt)
+  \node[left, font=\small\bfseries] at (0,1) {Servidor};
+  \fill[busy!50] (0,0.5) rectangle (1.5,1.5);
+  \node[font=\tiny, white] at (0.75,1) {C1};
+  \fill[busy!50] (2,0.5) rectangle (4,1.5);
+  \node[font=\tiny, white] at (3,1) {C2};
+  \fill[busy!50] (4.5,0.5) rectangle (5.5,1.5);
+  \node[font=\tiny, white] at (5,1) {C3};
+  \fill[busy!50] (5.5,0.5) rectangle (8.5,1.5);
+  \node[font=\tiny, white] at (7,1) {C4};
+  \fill[busy!50] (9,0.5) rectangle (10,1.5);
+  \node[font=\tiny, white] at (9.5,1) {C5};
+  \fill[busy!50] (12,0.5) rectangle (14.5,1.5);
+  \node[font=\tiny, white] at (13.25,1) {C6};
+
+  % Periodos libres marcados
+  \fill[idle] (1.5,0.5) rectangle (2,1.5);
+  \fill[idle] (4,0.5) rectangle (4.5,1.5);
+  \fill[idle] (8.5,0.5) rectangle (9,1.5);
+  \fill[idle] (10,0.5) rectangle (12,1.5);
+  \fill[idle] (14.5,0.5) rectangle (15,1.5);
+
+  % Cola
+  \node[left, font=\small\bfseries] at (0,2.5) {Cola};
+  \fill[rojo!30] (5,2) rectangle (5.5,3);
+  \node[font=\tiny] at (5.25,2.5) {C4};
+
+  % Llegadas (flechas hacia abajo)
+  \foreach \a/\c in {0/1, 2/2, 4.5/3, 5/4, 9/5, 12/6}{
+    \draw[->, thick, azul] (\a,3.5) -- (\a,3.1);
+    \node[above, azul, font=\tiny\bfseries] at (\a,3.5) {C\c};
+  }
+  \node[azul, font=\small\bfseries] at (7.5,3.8) {$\downarrow$ Llegadas};
+
+  % Salidas (flechas hacia arriba desde servidor)
+  \foreach \d in {1.5, 4, 5.5, 8.5, 10, 14.5}{
+    \draw[->, thick, verde] (\d,1.5) -- (\d,1.9);
+  }
+
+  % Espera de C4
+  \draw[<->, thick, rojo, line width=1.5pt] (5,-0.5) -- (5.5,-0.5);
+  \node[below, rojo, font=\tiny\bfseries] at (5.25,-0.5) {C4 espera};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+Este diagrama de Gantt muestra \textbf{toda la historia} del sistema. Note c\'{o}mo C4 llega en $t=5$ pero C3 ocupa el servidor hasta $t=5.5$: la \'{u}nica cola del ejemplo.
+\end{frame}
+
+% ============================== SLIDE 15 ==============================
+\begin{frame}{La funci\'{o}n $L(t)$: clientes en el sistema a cada instante}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=14cm, height=6cm,
+    xlabel={Tiempo $t$},
+    ylabel={$L(t)$: clientes en sistema},
+    xmin=0, xmax=15.5,
+    ymin=-0.3, ymax=3,
+    grid=both, grid style={gray!15},
+    ytick={0,1,2,3},
+    xtick={0,1,...,15},
+    const plot mark right,
+    axis lines=left,
+    area style,
+]
+% Área sombreada (dibujada manualmente para exactitud)
+\fill[azul!15]
+  (axis cs:0,0) -- (axis cs:0,1) -- (axis cs:1.5,1) -- (axis cs:1.5,0)
+  -- (axis cs:2,0) -- (axis cs:2,1) -- (axis cs:4,1) -- (axis cs:4,0)
+  -- (axis cs:4.5,0) -- (axis cs:4.5,1) -- (axis cs:5,1) -- (axis cs:5,2)
+  -- (axis cs:5.5,2) -- (axis cs:5.5,1) -- (axis cs:8.5,1) -- (axis cs:8.5,0)
+  -- (axis cs:9,0) -- (axis cs:9,1) -- (axis cs:10,1) -- (axis cs:10,0)
+  -- (axis cs:12,0) -- (axis cs:12,1) -- (axis cs:14.5,1) -- (axis cs:14.5,0)
+  -- (axis cs:15,0) -- cycle;
+
+% Función escalonada L(t)
+\draw[thick, azul, line width=1.5pt]
+  (axis cs:0,1) -- (axis cs:1.5,1) -- (axis cs:1.5,0)
+  -- (axis cs:2,0) -- (axis cs:2,1) -- (axis cs:4,1) -- (axis cs:4,0)
+  -- (axis cs:4.5,0) -- (axis cs:4.5,1) -- (axis cs:5,1) -- (axis cs:5,2)
+  -- (axis cs:5.5,2) -- (axis cs:5.5,1) -- (axis cs:8.5,1) -- (axis cs:8.5,0)
+  -- (axis cs:9,0) -- (axis cs:9,1) -- (axis cs:10,1) -- (axis cs:10,0)
+  -- (axis cs:12,0) -- (axis cs:12,1) -- (axis cs:14.5,1) -- (axis cs:14.5,0)
+  -- (axis cs:15,0);
+
+% Anotación del pico
+\draw[->, thick, rojo] (axis cs:5.3,2.7) -- (axis cs:5.15,2.1);
+\node[rojo, font=\small\bfseries] at (axis cs:5.3,2.85) {C3 + C4};
+
+% Área
+\node[azul, font=\small, fill=white, rounded corners, inner sep=3pt]
+  at (axis cs:7.5,2.5) {\'{A}rea $= 11.5$ cliente-tiempo};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+$\widehat{L} = \frac{\text{\'{a}rea}}{T} = \frac{11.5}{15} = 0.7667$
+\end{frame}
+
+% ============================== SLIDE 16 ==============================
+\begin{frame}{C\'{a}lculo detallado del \'{a}rea bajo $L(t)$}
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{cccccc}
+\toprule
+\textbf{Intervalo} & \textbf{Desde} & \textbf{Hasta} & $\Delta t$ & $L(t)$ & \textbf{\'{A}rea} $= L \times \Delta t$ \\
+\midrule
+1 & 0.0 & 1.5 & 1.5 & 1 & \cellcolor{azul!10}1.5 \\
+2 & 1.5 & 2.0 & 0.5 & 0 & 0.0 \\
+3 & 2.0 & 4.0 & 2.0 & 1 & \cellcolor{azul!10}2.0 \\
+4 & 4.0 & 4.5 & 0.5 & 0 & 0.0 \\
+5 & 4.5 & 5.0 & 0.5 & 1 & \cellcolor{azul!10}0.5 \\
+6 & 5.0 & 5.5 & 0.5 & \cellcolor{rojo!15}2 & \cellcolor{rojo!15}1.0 \\
+7 & 5.5 & 8.5 & 3.0 & 1 & \cellcolor{azul!10}3.0 \\
+8 & 8.5 & 9.0 & 0.5 & 0 & 0.0 \\
+9 & 9.0 & 10.0 & 1.0 & 1 & \cellcolor{azul!10}1.0 \\
+10 & 10.0 & 12.0 & 2.0 & 0 & 0.0 \\
+11 & 12.0 & 14.5 & 2.5 & 1 & \cellcolor{azul!10}2.5 \\
+12 & 14.5 & 15.0 & 0.5 & 0 & 0.0 \\
+\midrule
+& & & 15.0 & & \textbf{11.5} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+El intervalo 6 ($t \in [5, 5.5]$) es el \'{u}nico con $L=2$: C3 en servicio + C4 en cola.
+\end{frame}
+
+% ============================== SLIDE 17 ==============================
+\begin{frame}{La funci\'{o}n $L_Q(t)$: clientes \textbf{solo en cola}}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=14cm, height=5cm,
+    xlabel={Tiempo $t$},
+    ylabel={$L_Q(t)$},
+    xmin=0, xmax=15.5,
+    ymin=-0.3, ymax=2,
+    grid=both, grid style={gray!15},
+    ytick={0,1,2},
+    xtick={0,1,...,15},
+    const plot mark right,
+    axis lines=left,
+]
+% Área sombreada (pulso de 0.5 u.t.)
+\fill[rojo!15]
+  (axis cs:5,0) -- (axis cs:5,1) -- (axis cs:5.5,1) -- (axis cs:5.5,0) -- cycle;
+
+% Función escalonada LQ(t)
+\draw[thick, rojo, line width=1.5pt]
+  (axis cs:0,0) -- (axis cs:5,0) -- (axis cs:5,1)
+  -- (axis cs:5.5,1) -- (axis cs:5.5,0) -- (axis cs:15,0);
+
+% Anotación
+\draw[->, thick, rojo] (axis cs:5.25,1.5) -- (axis cs:5.25,1.1);
+\node[rojo, font=\small\bfseries] at (axis cs:5.25,1.65) {C4 espera};
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\'{A}rea bajo $L_Q(t) = 1 \times 0.5 = 0.5$
+
+\[
+\widehat{L_Q} = \frac{0.5}{15} = 0.0333
+\]
+
+Solo hubo cola durante medio unidad de tiempo en todo el horizonte.
+\end{frame}
+
+% ============================== SLIDE 18 ==============================
+\begin{frame}{Promedios por cliente: $\widehat{w}$ y $\widehat{w_Q}$}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+  % Barras horizontales para cada cliente
+  \foreach \j/\a/\wq/\s/\col in {
+    1/0.0/0.0/1.5/azul,
+    2/2.0/0.0/2.0/azul,
+    3/4.5/0.0/1.0/azul,
+    4/5.0/0.5/3.0/rojo,
+    5/9.0/0.0/1.0/azul,
+    6/12.0/0.0/2.5/azul%
+  }{
+    \pgfmathsetmacro{\ypos}{6-\j}
+    % Espera
+    \ifnum\j=4
+      \fill[rojo!30] (\a, \ypos) rectangle (\a+\wq, \ypos+0.6);
+      \node[font=\tiny, above] at (\a+\wq/2, \ypos+0.6) {espera};
+    \fi
+    % Servicio
+    \pgfmathsetmacro{\bj}{\a+\wq}
+    \fill[\col!30] (\bj, \ypos) rectangle (\bj+\s, \ypos+0.6);
+    \node[left, font=\small\bfseries] at (\a-0.2, \ypos+0.3) {C\j};
+    % W total
+    \pgfmathsetmacro{\wj}{\wq+\s}
+    \node[right, font=\tiny] at (\bj+\s+0.1, \ypos+0.3) {$W_\j = \wj$};
+  }
+  % Eje
+  \draw[->, thick] (0,-0.5) -- (15.5,-0.5) node[right, font=\small]{$t$};
+  \foreach \t in {0,2,...,14}{
+    \draw (\t,-0.4) -- (\t,-0.6);
+    \node[below, font=\tiny] at (\t,-0.6) {\t};
+  }
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\[
+\widehat{w} = \frac{\sum W_j}{N} = \frac{1.5+2.0+1.0+3.5+1.0+2.5}{6} = \frac{11.5}{6} = 1.9167
+\]
+\[
+\widehat{w_Q} = \frac{\sum W_{Q,j}}{N} = \frac{0+0+0+0.5+0+0}{6} = \frac{0.5}{6} = 0.0833
+\]
+\end{frame}
+
+% ======================================================================
+\section{Verificacion: Ley de Little}
+% ======================================================================
+
+% ============================== SLIDE 19 ==============================
+\begin{frame}{Verificaci\'{o}n con la Ley de Little}
+
+\textbf{Tasa de llegada observada:}
+\[
+\widehat{\lambda} = \frac{N}{T} = \frac{6}{15} = 0.4 \text{ clientes/u.t.}
+\]
+
+\vspace{0.3cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Relaci\'{o}n} & $\widehat{\lambda} \times \widehat{w}$ & $=$ & $\widehat{L}$ \\
+\midrule
+Sistema & $0.4 \times 1.9167$ & $=$ & $\mathbf{0.7667}$ \;\textcolor{verde}{\checkmark} \\
+Cola & $0.4 \times 0.0833$ & $=$ & $\mathbf{0.0333}$ \;\textcolor{verde}{\checkmark} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+\begin{alertblock}{Usar Little como detector de errores}
+Si al hacer la tabla manual $\widehat{\lambda}\cdot\widehat{w} \neq \widehat{L}$, hay un error de c\'{a}lculo. Las causas m\'{a}s comunes: (1)~horizonte $T$ inconsistente, (2)~clientes contados de m\'{a}s o de menos, (3)~\'{a}rea mal calculada.
+\end{alertblock}
+\end{frame}
+
+% ============================== SLIDE 20 ==============================
+\begin{frame}{Resumen visual de todas las m\'{e}tricas}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth,
+    caja/.style={draw, rounded corners, minimum width=3cm,
+                 minimum height=1.4cm, align=center, font=\small}]
+
+  \node[caja, fill=azul!12] (L) at (0,2.5) {$\widehat{L} = 0.7667$\\cl.\ en sistema};
+  \node[caja, fill=rojo!12] (Lq) at (5,2.5) {$\widehat{L_Q} = 0.0333$\\cl.\ en cola};
+  \node[caja, fill=azul!12] (w) at (0,0) {$\widehat{w} = 1.9167$\\tiempo en sist.};
+  \node[caja, fill=rojo!12] (wq) at (5,0) {$\widehat{w_Q} = 0.0833$\\espera en cola};
+  \node[caja, fill=busy!20] (rho) at (10,2.5) {$\widehat{\rho} = 0.7333$\\utilizaci\'{o}n};
+  \node[caja, fill=verde!12] (lam) at (10,0) {$\widehat{\lambda} = 0.4$\\tasa llegada};
+
+  \draw[<->, thick, verde, line width=1.5pt] (L) -- (w)
+    node[midway, left, font=\tiny\bfseries, verde]{Little: $\times\lambda$};
+  \draw[<->, thick, verde, line width=1.5pt] (Lq) -- (wq)
+    node[midway, left, font=\tiny\bfseries, verde]{Little: $\times\lambda$};
+  \draw[->, thick, dashed] (lam) -- (L);
+  \draw[->, thick, dashed] (lam) -- (Lq);
+
+  % Relación L = Lq + rho
+  \draw[<->, thick, morado] (L.east) -- (Lq.west)
+    node[midway, above, font=\tiny\bfseries, morado]{$L = L_Q + \rho$};
+  \node[morado, font=\tiny] at (2.5,1.9)
+    {$0.7667 = 0.0333 + 0.7333$ \checkmark};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+Note la relaci\'{o}n adicional: $\widehat{L} = \widehat{L_Q} + \widehat{\rho}$ (los clientes est\'{a}n en cola \textbf{o} en servicio). Esto da \textbf{otra} verificaci\'{o}n independiente.
+\end{frame}
+
+% ======================================================================
+\section{Costos: aplicaci\'{o}n del ejemplo}
+% ======================================================================
+
+% ============================== SLIDE 21 ==============================
+\begin{frame}{Costos concretos de nuestro ejemplo}
+
+\textbf{Supuestos:} $c_Q = 10$ \$/u.t.\ por cliente en cola, $c_S = 5$ \$/u.t.\ por servidor ocupado.
+
+\vspace{0.3cm}
+\begin{center}
+\begin{tikzpicture}[scale=0.85]
+  % Barra de costos
+  \fill[rojo!40] (0,0) rectangle (0.67,3);
+  \node[font=\small, rotate=90] at (0.33,1.5) {Espera: \$0.33};
+
+  \fill[busy!40] (1.5,0) rectangle (8.83,3);
+  \node[font=\small] at (5.17,1.5) {Servidor: \$3.67};
+
+  \fill[verde!30] (10,0) rectangle (14.0,3);
+  \node[font=\small] at (12,1.5) {\textbf{Total: \$4.00}};
+
+  % Etiquetas
+  \node[below, font=\small\bfseries] at (0.33,-0.3) {$c_Q L_Q$};
+  \node[below, font=\small\bfseries] at (5.17,-0.3) {$c_S \rho$};
+  \node[below, font=\small\bfseries] at (12,-0.3) {$C$};
+
+  % Cálculos
+  \node[below, font=\tiny] at (0.33,-0.8) {$10 \times 0.033$};
+  \node[below, font=\tiny] at (5.17,-0.8) {$5 \times 0.733$};
+
+  % Signo +
+  \node[font=\Large\bfseries] at (9.5,1.5) {$=$};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Lectura:}
+\begin{itemize}
+    \item El 92\% del costo viene del servidor
+    \item Solo 8\% de la espera de clientes
+    \item En este caso, el sistema es eficiente
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{?`Qu\'{e} pasar\'{i}a si $\rho \to 0.95$?}
+\begin{itemize}
+    \item $L_Q$ se dispara (no linealmente)
+    \item El costo de espera dominar\'{i}a
+    \item Se justificar\'{i}a agregar servidores
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ======================================================================
+\section{Checklist y ejercicios}
+% ======================================================================
+
+% ============================== SLIDE 22 ==============================
+\begin{frame}{Checklist: antes de simular en computador}
+
+\begin{columns}
+\column{0.48\textwidth}
+\textbf{Modelado:}
+\begin{itemize}
+    \item ?`Poblaci\'{o}n finita o infinita?
+    \item ?`Capacidad de cola limitada?
+    \item ?`Llegadas: Poisson, programadas, por lotes?
+    \item ?`Disciplina: FIFO, prioridad, otra?
+    \item ?`Cu\'{a}ntos servidores? ?`Id\'{e}nticos?
+    \item ?`Distribuciones con datos reales?
+\end{itemize}
+
+\column{0.48\textwidth}
+\textbf{M\'{e}tricas (definir antes):}
+\begin{itemize}
+    \item ?`$\widehat{w_Q}$ (experiencia del cliente)?
+    \item ?`$\widehat{L_Q}$ (espacio f\'{i}sico)?
+    \item ?`Costos y trade-offs?
+    \item ?`Promedios o percentiles?
+    \item ?`Verificar Little al final?
+\end{itemize}
+\end{columns}
+
+\vspace{0.4cm}
+\begin{alertblock}{Regla de oro}
+Si no puedes hacer la simulaci\'{o}n \textbf{a mano} para 5--10 clientes, no est\'{a}s listo para programarla en computador. La tabla manual es el mejor debugger.
+\end{alertblock}
+\end{frame}
+
+% ============================== SLIDE 23 ==============================
+\begin{frame}{Ejercicio 1: ?`Qu\'{e} pasa si C4 tarda m\'{a}s?}
+
+\textbf{Cambio:} $S_4$ pasa de 3.0 a \textbf{5.0} (todo lo dem\'{a}s igual).
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}[scale=0.65]
+  % Gantt original
+  \node[font=\small\bfseries, azul] at (-1,1) {Original:};
+  \fill[busy!50] (0,0.5) rectangle (1.5,1.5);
+  \fill[busy!50] (2,0.5) rectangle (4,1.5);
+  \fill[busy!50] (4.5,0.5) rectangle (5.5,1.5);
+  \fill[busy!50] (5.5,0.5) rectangle (8.5,1.5);
+  \fill[busy!50] (9,0.5) rectangle (10,1.5);
+  \fill[busy!50] (12,0.5) rectangle (14.5,1.5);
+  \draw[->, thick] (0,0.3) -- (15.5,0.3);
+  \foreach \t in {0,5,10,15}{\node[below,font=\tiny] at (\t,0.3){\t};}
+  \node[font=\tiny] at (7,0) {$D_4 = 8.5$};
+
+  % Gantt modificado
+  \node[font=\small\bfseries, rojo] at (-1,-2) {Modificado:};
+  \fill[busy!50] (0,-2.5) rectangle (1.5,-1.5);
+  \fill[busy!50] (2,-2.5) rectangle (4,-1.5);
+  \fill[busy!50] (4.5,-2.5) rectangle (5.5,-1.5);
+  \fill[rojo!40] (5.5,-2.5) rectangle (10.5,-1.5);
+  \node[font=\tiny, white] at (8,-2) {C4: $S=5.0$};
+  \fill[busy!50] (10.5,-2.5) rectangle (11.5,-1.5);
+  \node[font=\tiny, white] at (11,-2) {C5};
+  \fill[busy!50] (12,-2.5) rectangle (14.5,-1.5);
+  \draw[->, thick] (0,-2.7) -- (15.5,-2.7);
+  \foreach \t in {0,5,10,15}{\node[below,font=\tiny] at (\t,-2.7){\t};}
+  \node[font=\tiny, rojo] at (8,-3.2) {$D_4 = 10.5$, C5 ahora espera!};
+
+  % Cola de C5
+  \fill[rojo!30] (9,-1) rectangle (10.5,-0.5);
+  \node[font=\tiny] at (9.75,-0.75) {C5 en cola};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Tarea:} Completen la tabla, calculen $\widehat{w_Q}$, $\widehat{L_Q}$ y verifiquen Little. ?`Qu\'{e} m\'{e}trica cambia m\'{a}s?
+\end{frame}
+
+% ============================== SLIDE 24 ==============================
+\begin{frame}{Ejercicio 2: C4 tiene prioridad }
+
+\textbf{Cambio de disciplina:} C4 es \textbf{prioritario}. Si llega y hay cola, pasa al frente (pero no interrumpe un servicio en curso).
+
+\vspace{0.3cm}
+\begin{center}
+\begin{tikzpicture}[>=Stealth, scale=0.8]
+  % Escenario FIFO
+  \node[font=\small\bfseries] at (2,3.5) {FIFO (original)};
+  \draw[thick] (0,2.5) -- (4,2.5);
+  \fill[azul!70] (0.5,2.7) circle (5pt) node[above, font=\tiny]{C3};
+  \fill[rojo!70] (1.5,2.7) circle (5pt) node[above, font=\tiny]{C4};
+  \draw[->, thick] (4,2.7) -- (5,2.7) node[right, font=\tiny]{servidor};
+
+  % Escenario prioridad
+  \node[font=\small\bfseries] at (9,3.5) {Prioridad (C4 primero)};
+  \draw[thick] (7,2.5) -- (11,2.5);
+  \fill[rojo!70] (7.5,2.7) circle (5pt) node[above, font=\tiny]{C4};
+  \fill[azul!70] (8.5,2.7) circle (5pt) node[above, font=\tiny]{C3};
+  \draw[->, thick] (11,2.7) -- (12,2.7) node[right, font=\tiny]{servidor};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Preguntas:}
+\begin{enumerate}
+    \item En nuestro ejemplo, ?`cambia algo? (Pista: ?`C3 y C4 est\'{a}n alguna vez \textit{juntos} en cola?)
+    \item Inventen un escenario con 4 clientes donde la prioridad s\'{i} cambie los resultados.
+    \item En ese nuevo escenario, ?`Little sigue cumpli\'{e}ndose? ?`Por qu\'{e}?
+\end{enumerate}
+\end{frame}
+
+% ============================== SLIDE 25 ==============================
+\begin{frame}{Ejercicio 3: dise\~{n}o \'{o}ptimo de servidores}
+
+\textbf{Problema:} Una cl\'{i}nica tiene $c_Q = 50$ \$/hora por paciente esperando y $c_S = 20$ \$/hora por m\'{e}dico trabajando. Llegadas Poisson($\lambda = 10$/h).
+
+\vspace{0.3cm}
+\textbf{Tarea en grupo (15 min):}
+
+\vspace{0.2cm}
+\begin{enumerate}
+    \item Completen la tabla para $c = 2, 3, 4$ m\'{e}dicos ($\mu = 4$/h cada uno):
+\end{enumerate}
+
+\vspace{0.1cm}
+\begin{center}
+\small
+\begin{tabular}{cccccc}
+\toprule
+$c$ & $\rho$ & $L_Q$ (aprox.) & Costo espera & Costo m\'{e}dicos & \textbf{Total} \\
+\midrule
+2 & $10/8 > 1$ & $\infty$ & $\infty$ & --- & Inestable \\
+3 & ? & ? & ? & ? & ? \\
+4 & ? & ? & ? & ? & ? \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\begin{enumerate}
+    \setcounter{enumi}{1}
+    \item ?`Cu\'{a}l es el $c^*$ \'{o}ptimo?
+    \item Si $c_Q$ sube a \$200/hora (urgencias), ?`cambia la respuesta?
+\end{enumerate}
+\end{frame}
+
+% ======================================================================
+\section{Conclusiones}
+% ======================================================================
+
+% ============================== SLIDE 26 ==============================
+\begin{frame}{Lo m\'{a}s importante de hoy}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth,
+    cbox/.style={draw, rounded corners, text width=4.5cm,
+                 minimum height=1.5cm, align=center, font=\small}]
+
+  \node[cbox, fill=azul!12] (lente) at (0,3)
+    {\textbf{Dos lentes}\\por tiempo ($L$, $L_Q$)\\por cliente ($w$, $w_Q$)};
+
+  \node[cbox, fill=verde!12] (little) at (7,3)
+    {\textbf{Little las conecta}\\$L = \lambda w$ (siempre)\\Detector de errores};
+
+  \node[cbox, fill=rojo!12] (manual) at (0,0)
+    {\textbf{Tabla manual}\\$B_j, D_j, W_{Q,j}, W_j$\\+ \'{a}rea bajo $L(t)$};
+
+  \node[cbox, fill=naranja!15] (costo) at (7,0)
+    {\textbf{Costos}\\$C = c_Q L_Q + c_S c\rho$\\Decisiones reales};
+
+  \draw[->, thick] (lente) -- (little);
+  \draw[->, thick] (manual) -- (lente);
+  \draw[->, thick] (little) -- (costo);
+  \draw[->, thick] (manual) -- (costo);
+
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3cm}
+La simulaci\'{o}n manual es el \textbf{ant\'{i}doto} contra ``aplicar f\'{o}rmulas sin entender''. Si sabe hacer la tabla a mano, sabe exactamente qu\'{e} hace el computador.
+\end{frame}
+
+% ============================== SLIDE 27 ==============================
+\begin{frame}{}
+
+\begin{center}
+\vspace{1cm}
+{\Huge\textbf{?`Preguntas?}}
+
+\vspace{1cm}
+{\large Simulaci\'{o}n de Eventos Discretos}
+
+\vspace{0.5cm}
+\textit{``Si no puedes simularlo a mano para 5 clientes,\\no est\'{a}s listo para programarlo.''}
+
+
+\end{center}
+\end{frame}
+
+\end{document}

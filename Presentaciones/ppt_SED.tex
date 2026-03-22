@@ -1,0 +1,1982 @@
+% !TEX program = pdflatex
+\documentclass[aspectratio=1610, 9pt]{beamer}
+
+% =========================
+%  Simulación de Eventos Discretos (SED)
+%  Basado en: Banks et al. (Discrete-Event System Simulation), cap. "General Principles"
+% =========================
+
+\usetheme{Madrid}
+\usecolortheme{dolphin}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+% --- Idioma y tipografía
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+
+% --- Matemáticas y tablas
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage{booktabs}
+
+% --- Figuras
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric}
+
+% =========================
+%  Macros
+% =========================
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\1}{\mathbf{1}}
+
+\title{Simulación de Eventos Discretos (SED)}
+\subtitle{Principios generales, fundamentos estocásticos y ejemplos manuales de colas}
+\author{Alejandra Tabares Pozos}
+\date{}
+
+% =========================
+\begin{document}
+
+% -------------------------
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% -------------------------
+\begin{frame}{Mapa de la sesión}
+\small
+\begin{enumerate}
+\item ¿Qué es SED y cuándo usarla?
+\item Relación con procesos estocásticos (trayectorias, eventos, cadenas embebidas).
+\item Elementos constitutivos del modelado SED (entidades, recursos, eventos, estado, calendario).
+\item Ejemplo manual paso a paso: cola con \textbf{un servidor}.
+\item Ejemplo manual: cola con \textbf{dos servidores}.
+\item \textbf{Worldviews} (event-scheduling, activity-scanning, process-interaction).
+\end{enumerate}
+\end{frame}
+
+% =========================================================
+\section{¿Qué es SED y cuándo usarla?}
+
+% -------------------------
+\begin{frame}{Definición operativa (SED)}
+\small
+Un modelo de \textbf{simulación de eventos discretos} describe un sistema dinámico cuyo \textbf{estado} cambia en un conjunto \emph{discreto} de instantes de tiempo llamados \textbf{eventos}. Entre eventos, el estado permanece constante (o evoluciona de forma determinista y controlada por reglas del modelo).
+
+\vspace{6pt}
+\begin{block}{Idea clave}
+SED genera \textbf{trayectorias muestrales} (sample paths) de un proceso de estado $X(t)$ y aproxima medidas de desempeño típicamente expresadas como esperanzas:
+\[
+\theta \;=\; \E[g(X)] \quad \text{(p.\,ej. espera promedio, utilización, nivel de inventario).}
+\]
+\end{block}
+
+\vspace{4pt}
+\begin{itemize}
+\item Cambios \emph{instantáneos} en el estado: llegadas, salidas, fallas, reparaciones, decisiones, etc.
+\item El tiempo avanza por \textbf{saltos} de un evento al siguiente (no necesariamente en pasos $\Delta t$ fijos).
+\end{itemize}
+\end{frame}
+
+% -------------------------
+\begin{frame}{SED vs. simulación en tiempo discreto vs. dinámica continua}
+\small
+\begin{itemize}
+\item \textbf{SED}: $X(t)$ es típicamente \emph{càdlàg} (continua por la derecha con límites por la izquierda), con saltos en tiempos $T_1<T_2<\cdots$.
+\item \textbf{Tiempo discreto}: se observa/actualiza en $t=0,\Delta t,2\Delta t,\dots$ (p.\,ej. modelos epidemiológicos discretizados, cadenas de Markov en tiempo discreto).
+\item \textbf{Continua}: dinámica descrita por EDO/SDE (p.\,ej. $dX_t = a(X_t)\,dt + b(X_t)\,dW_t$).
+\end{itemize}
+
+\vspace{6pt}
+\begin{block}{Qué diferencia a SED}
+La granularidad temporal está inducida por la \textbf{lógica del sistema} (eventos) y no por una malla temporal impuesta.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{¿Cuándo usar SED? (criterios de decisión)}
+\small
+Use SED cuando:
+\begin{itemize}
+\item Existe \textbf{interacción compleja} entre componentes (colas, recursos compartidos, prioridades, bloqueos).
+\item Hay \textbf{aleatoriedad estructural} (llegadas/servicios/fallas) y el análisis exacto es intratable.
+\item Importan \textbf{métricas no lineales} o condicionales (p.\,ej. percentiles, niveles de servicio, costo con penalizaciones).
+\item Se requieren \textbf{políticas operacionales} (reglas de despacho, asignación dinámica, control) difíciles de analizar en cerrado.
+\end{itemize}
+
+\vspace{6pt}
+\begin{alertblock}{No usar SED si...}
+\begin{itemize}
+\item Un modelo analítico confiable existe y responde la pregunta (cola M/M/1 clásica, inventario simple, etc.).
+\item La pregunta es determinista/estática (optimización sin incertidumbre ni dinámica real).
+\item No hay datos/hipótesis mínimas para parametrizar la incertidumbre: simular no reemplaza modelar.
+\end{itemize}
+\end{alertblock}
+\end{frame}
+
+% =========================================================
+\section{Relación con procesos estocásticos}
+
+% -------------------------
+\begin{frame}{SED como proceso estocástico: formalismo mínimo}
+\small
+Considere un \textbf{estado} $X(t)\in\mathcal{X}$ que resume toda la información necesaria para predecir el futuro (posiblemente ampliando el estado con \emph{tiempos residuales}).
+
+\begin{block}{Estructura típica}
+Existen tiempos de evento $0=T_0<T_1<T_2<\dots$ tales que:
+\[
+X(t)=X(T_k)\quad \text{para } t\in[T_k,T_{k+1}),
+\]
+y el salto $X(T_{k+1})$ se obtiene por una regla
+\[
+X_{k+1}=\Phi(X_k,\,e_{k+1},\,U_{k+1}),
+\]
+donde $X_k:=X(T_k)$, $e_{k+1}$ denota el tipo de evento, y $U_{k+1}$ representa variables aleatorias generadas (p.\,ej. tiempos de servicio).
+\end{block}
+
+\vspace{2pt}
+\textbf{Interpretación}: SED es una manera algorítmica de construir una trayectoria muestral de $X(t)$.
+\end{frame}
+
+% -------------------------
+\begin{frame}{Procesos puntuales y cadena embebida}
+\small
+\begin{itemize}
+\item Los \textbf{tiempos de evento} $\{T_k\}$ inducen un \textbf{proceso puntual} (point process) y su \textbf{proceso contador}:
+\[
+N(t)=\max\{k:\;T_k\le t\}.
+\]
+\item La dinámica puede estudiarse en dos escalas:
+\begin{enumerate}
+\item \textbf{En tiempo real} $t$: $X(t)$ (continuo en tiempo, con saltos).
+\item \textbf{En épocas de evento} $k$: $X_k=X(T_k)$ (tiempo discreto).
+\end{enumerate}
+\end{itemize}
+
+\vspace{6pt}
+\begin{block}{Idea potente (cadena embebida)}
+En muchos sistemas, $\{X_k\}$ es (o puede hacerse) una \textbf{cadena de Markov en tiempo discreto} al definir un estado suficientemente rico. Esto conecta SED con teoría de colas, cadenas de Markov y procesos de renovación.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Colas como procesos: $N(t)$, $Q(t)$ y métricas}
+\small
+En una cola, son procesos naturales:
+\[
+N(t)=\text{número en el sistema},\qquad
+Q(t)=\text{número en cola (esperando)}.
+\]
+
+Para horizonte $[0,T]$, métricas típicas (promedios en el tiempo):
+\[
+\bar{N}_T=\frac{1}{T}\int_0^T N(t)\,dt,\qquad
+\bar{Q}_T=\frac{1}{T}\int_0^T Q(t)\,dt.
+\]
+
+Métricas por clientes (promedios sobre observaciones):
+\[
+\bar{W}_n=\frac{1}{n}\sum_{i=1}^n W_i,\qquad
+\bar{T}_n=\frac{1}{n}\sum_{i=1}^n (D_i-A_i),
+\]
+donde $A_i$ = llegada, $D_i$ = salida, $W_i$ = espera antes de servicio.
+
+\vspace{6pt}
+\begin{alertblock}{Diferencia conceptual}
+Promedios en el tiempo integran \emph{áreas bajo trayectorias} ($N(t),Q(t)$). Promedios por cliente agregan \emph{muestras por entidad}.
+\end{alertblock}
+\end{frame}
+
+% =========================================================
+\section{Elementos constitutivos (Banks: General Principles)}
+
+% -------------------------
+\begin{frame}{Bloques de construcción de un modelo SED}
+\small
+(terminología estándar)
+\begin{itemize}
+\item \textbf{Entidades}: objetos que se mueven por el sistema (clientes, piezas, llamadas).
+\item \textbf{Atributos}: propiedades de entidades (clase, prioridad, tamaño, hora de llegada).
+\item \textbf{Recursos}: capacidad limitada que presta servicio (servidores, máquinas, operadores).
+\item \textbf{Colas}: buffers de espera asociados a recursos/políticas.
+\item \textbf{Estado}: variables mínimas para describir el sistema en $t$ (ocupación, longitudes, eventos programados).
+\item \textbf{Eventos}: ocurrencias instantáneas que cambian el estado (llegada, fin de servicio).
+\item \textbf{Actividades y demoras}:
+  \begin{itemize}
+  \item Actividad: duración conocida/aleatoria que \emph{se programa} (p.\,ej. servicio).
+  \item Demora: espera condicionada por estado (p.\,ej. espera en cola hasta que haya servidor).
+  \end{itemize}
+\end{itemize}
+
+\vspace{4pt}
+\begin{block}{Corazón computacional}
+\textbf{Calendario de eventos (FEL)}: estructura que mantiene los próximos eventos con sus tiempos; típicamente una cola de prioridad por tiempo.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Mecanismo de avance del tiempo: \emph{next-event}}
+\small
+El esquema dominante en SED  es el \textbf{avance al siguiente evento}:
+
+\begin{enumerate}
+\item Mantener una lista de eventos futuros con tiempos $\{t_e\}$.
+\item Seleccionar $t^\star=\min_e t_e$ (evento más próximo).
+\item Avanzar el reloj: $t\leftarrow t^\star$.
+\item Ejecutar la rutina del evento: actualizar estado, recolectar estadísticas, programar nuevos eventos.
+\end{enumerate}
+
+\vspace{6pt}
+\begin{center}
+\begin{tikzpicture}[scale=0.95, every node/.style={font=\scriptsize}]
+  \draw[-{Stealth[length=2mm]}] (0,0) -- (10,0) node[right]{tiempo $t$};
+  \foreach \x/\lab in {1/T_1,3/T_2,4.5/T_3,7/T_4,9/T_5}{
+    \draw (\x,0) -- (\x,0.25);
+    \node[above] at (\x,0.25) {$\lab$};
+    \fill (\x,0) circle (1.2pt);
+  }
+  \node[align=center] at (5,-0.6) {El reloj \textbf{salta} entre eventos\\ (no hay necesidad de iterar en pasos $\Delta t$).};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% -------------------------
+\begin{frame}{De la pregunta al experimento: ciclo de estudio de simulación}
+\small
+En Banks, el \textbf{estudio} de simulación (no solo el código) incluye:
+\begin{itemize}
+\item Formulación del problema y objetivos medibles.
+\item Conceptualización del modelo (supuestos, límites del sistema, métricas).
+\item Datos de entrada y modelado estocástico (distribuciones, dependencia, validación).
+\item Traducción a modelo computacional (worldview, estructura de eventos, recursos).
+\item Verificación (¿está bien implementado?) y validación (¿representa la realidad útilmente?).
+\item Diseño experimental: escenarios, políticas, sensibilidad, número de réplicas.
+\item Análisis de salida: estimación, intervalos de confianza, comparaciones.
+\item Documentación y comunicación de resultados.
+\end{itemize}
+
+\vspace{4pt}
+\begin{alertblock}{Mensaje}
+El riesgo típico no es “programar mal”, sino \textbf{preguntar mal}, \textbf{modelar mal la incertidumbre} o \textbf{interpretar mal la salida}.
+\end{alertblock}
+\end{frame}
+
+% =========================================================
+% REEMPLAZO PEDAGÓGICO (solo estas dos secciones)
+%   1) Ejemplo manual: 1 servidor (event-scheduling + FEL)
+%   2) Ejemplo manual: 2 servidores (event-scheduling + FEL)
+%
+% Diseñado al estilo "Banks": variables de estado, FEL (time_next_event),
+% rutinas (initialization, timing, arrival, departure), y bitácora paso a paso.
+% =========================================================
+
+% =========================================================
+\section{Ejemplo manual guiado: cola con un servidor (FEL explícita)}
+
+% -------------------------
+\begin{frame}{Ejemplo 1 (muy guiado): cola FCFS con 1 servidor}
+\small
+\textbf{Objetivo pedagógico:} ver \emph{exactamente} cómo opera el enfoque \textbf{event-scheduling} de SED:
+\begin{itemize}
+\item Definir \textbf{estado} y \textbf{eventos}.
+\item Mantener una \textbf{FEL} (\emph{future event list}) con los próximos tiempos de evento.
+\item Ejecutar el ciclo: \textbf{Initialization} $\to$ \textbf{Timing} $\to$ \textbf{Event routine} $\to$ \textbf{Update statistics}.
+\end{itemize}
+
+\vspace{4pt}
+\begin{block}{Sistema}
+Una cola única FCFS, un servidor, llegadas y servicios \emph{dados} (muestra fija) para poder simular “a mano”.
+\end{block}
+\end{frame}
+
+
+\begin{frame}{Diccionario de métricas: por cliente vs por tiempo}
+\small
+\begin{block}{Tiempos por cliente (promedios sobre entidades)}
+Para cliente $i$: llegada $A_i$, inicio de servicio $B_i$, salida $D_i$.
+\[
+W_i=B_i-A_i \;\;(\text{espera en cola}),\qquad
+T_i=D_i-A_i \;\;(\text{tiempo en sistema}).
+\]
+Estimadores:
+\[
+\bar W_n=\frac{1}{n}\sum_{i=1}^n W_i=\frac{\texttt{total\_of\_delays}}{\texttt{num\_custs\_delayed}}.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{block}{Promedios en el tiempo (áreas bajo trayectorias)}
+\[
+\bar Q_T=\frac{1}{T}\int_0^T Q(t)\,dt=\frac{\texttt{area\_num\_in\_q}}{T},
+\qquad
+\hat\rho=\frac{1}{T}\int_0^T \1\{\text{BUSY}\}\,dt=\frac{\texttt{area\_server\_status}}{T}.
+\]
+Con $c$ servidores: $\hat\rho=\frac{1}{c}\cdot\frac{\texttt{area\_server\_status}}{T}$ (donde \texttt{area\_server\_status} acumula $B(t)\in\{0,\dots,c\}$).
+\end{block}
+\end{frame}
+
+
+
+% -------------------------
+\begin{frame}{(Variables de estado, eventos y FEL}
+\small
+\textbf{Reloj:} $t$.
+
+\vspace{3pt}
+\textbf{Estado mínimo (en cada instante de evento):}
+\begin{itemize}
+\item $S \in \{\text{IDLE},\text{BUSY}\}$: estado del servidor.
+\item $N_Q \in \mathbb{Z}_{\ge 0}$: número de clientes esperando en cola.
+\item \texttt{QUEUE}: lista FCFS (guardamos \emph{tiempos de llegada} para calcular esperas).
+\end{itemize}
+
+\vspace{4pt}
+\textbf{Eventos del modelo:}
+\begin{itemize}
+\item \textbf{ARRIVAL}: llega un cliente.
+\item \textbf{DEPARTURE}: termina un servicio (sale un cliente).
+\end{itemize}
+
+\vspace{6pt}
+\begin{block}{FEL (Future Event List) como arreglo de tiempos}
+Para 1 servidor basta con mantener:
+\[
+\texttt{time\_next\_event[1]}=\text{tiempo de próxima llegada},\qquad
+\texttt{time\_next\_event[2]}=\text{tiempo de próxima salida}.
+\]
+Si un evento no está programado, su tiempo es $\infty$.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Datos de entrada (muestra fija) y qué “se genera” en ARRIVAL}
+\small
+Usaremos 6 clientes con tiempos entre llegadas $X_i$ y tiempos de servicio $S_i$:
+
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+Cliente $i$ & 1 & 2 & 3 & 4 & 5 & 6\\
+\midrule
+$X_i$ (entre llegadas) & 0.0 & 1.2 & 0.7 & 1.3 & 0.4 & 1.0\\
+$S_i$ (servicio)       & 1.1 & 0.9 & 2.0 & 1.2 & 0.8 & 1.5\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{2pt}
+\begin{block}{Interpretación (para simular a mano)}
+En una simulación real, cada ARRIVAL haría:
+\begin{itemize}
+\item \emph{Generar} el siguiente $X_{i+1}$ y programar la próxima llegada.
+\item \emph{Generar} el servicio $S_i$ cuando el cliente \textbf{entra a servicio}.
+\end{itemize}
+Aquí, esos valores ya están listos en la tabla para poder calcular todo manualmente.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Estructura: 4 rutinas (Initialization, Timing, ARRIVAL, DEPARTURE)}
+\footnotesize
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Routine 1: Initialization}
+\begin{itemize}
+\item $t \leftarrow 0$
+\item $S \leftarrow$ IDLE,\; $N_Q \leftarrow 0$, \texttt{QUEUE} vacía
+\item Programar 1ra llegada: \texttt{time\_next\_event[1]} $\leftarrow X_1$
+\item No hay salida programada: \texttt{time\_next\_event[2]} $\leftarrow \infty$
+\end{itemize}
+\end{block}
+
+\begin{block}{Routine 2: Timing}
+\begin{itemize}
+\item Elegir $e^\star=\arg\min_e \texttt{time\_next\_event[e]}$
+\item $t \leftarrow \min_e \texttt{time\_next\_event[e]}$
+\end{itemize}
+\end{block}
+\end{column}
+
+\begin{column}{0.48\textwidth}
+\begin{block}{Routine 3: ARRIVAL}
+Al llegar cliente $i$ en tiempo $t$:
+\begin{enumerate}
+\item Programar próxima llegada (si existe):
+\[
+\texttt{time\_next\_event[1]}\leftarrow t+X_{i+1}.
+\]
+\item Si $S=\text{IDLE}$: iniciar servicio \textbf{de inmediato}
+\[
+S\leftarrow \text{BUSY},\quad
+\texttt{time\_next\_event[2]}\leftarrow t+S_i.
+\]
+\item Si $S=\text{BUSY}$: encolar
+\[
+N_Q\leftarrow N_Q+1,\;\; \texttt{enqueue}(t).
+\]
+\end{enumerate}
+\end{block}
+
+\begin{block}{Routine 4: DEPARTURE}
+En tiempo $t$:
+\begin{enumerate}
+\item Si $N_Q=0$: $S\leftarrow$ IDLE,\;\; \texttt{time\_next\_event[2]}\leftarrow \infty$
+\item Si $N_Q\gt0$: tomar siguiente (FCFS), calcular demora
+\[
+\text{delay}=t-\texttt{dequeue}(),\;\;
+N_Q\leftarrow N_Q-1,
+\]
+iniciar nuevo servicio:
+\[
+\texttt{time\_next\_event[2]}\leftarrow t+S_{\text{(siguiente)}}.
+\]
+\end{enumerate}
+\end{block}
+\endlinebreak
+\end{column}
+\end{columns}
+\end{frame}
+
+% -------------------------
+\begin{frame}{ Cómo se actualizan estadísticas por tiempo (áreas)}
+\small
+En SED, métricas promediadas en el tiempo se calculan con \textbf{áreas} entre eventos.
+
+\vspace{4pt}
+Defina:
+\[
+\texttt{time\_last\_event},\quad
+\texttt{area\_num\_in\_q},\quad
+\texttt{area\_server\_status},\quad
+\texttt{total\_delay}.
+\]
+
+\begin{block}{Update-Time-Avg-Stats (en cada evento, antes de cambiar el estado)}
+Sea $\Delta = t-\texttt{time\_last\_event}$. Entonces:
+\[
+\texttt{area\_num\_in\_q}\;{+}{=}\; N_Q \cdot \Delta,\qquad
+\texttt{area\_server\_status}\;{+}{=}\; \1\{S=\text{BUSY}\}\cdot \Delta,
+\]
+\[
+\texttt{time\_last\_event}\leftarrow t.
+\]
+\end{block}
+
+\begin{block}{Interpretación}
+\texttt{area\_num\_in\_q} acumula el área bajo $N_Q(t)$ (cola), y
+\texttt{area\_server\_status} el área bajo el indicador “servidor ocupado”.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Bitácora (1/3): inicialización y primeros 4 eventos con FEL}
+\small
+Convención: FEL = (\textbf{NA} = next arrival, \textbf{ND} = next departure).  
+Si no hay evento: tiempo = $\infty$.
+
+\vspace{2pt}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{@{}c c c c c c c@{}}
+\toprule
+Evento \# & $t$ & Evento & Estado servidor $S$ & $N_Q$ & FEL: NA & FEL: ND\\
+\midrule
+Init & 0.0 & -- & IDLE & 0 & 0.0 & $\infty$\\
+1 & 0.0 & ARRIVAL(1) & BUSY & 0 & 1.2 & 1.1\\
+2 & 1.1 & DEPARTURE(1) & IDLE & 0 & 1.2 & $\infty$\\
+3 & 1.2 & ARRIVAL(2) & BUSY & 0 & 1.9 & 2.1\\
+4 & 1.9 & ARRIVAL(3) & BUSY & 1 & 3.2 & 2.1\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{4pt}
+\begin{block}{Qué observar}
+En el Evento 4, el servidor está BUSY, así que el cliente 3 se \textbf{encola} ($N_Q$ sube a 1) y la ND no cambia.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Bitácora (2/3): eventos 5 a 8 (cola creciendo y atención FCFS)}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{@{}c c c c c c c@{}}
+\toprule
+Evento \# & $t$ & Evento & $S$ & $N_Q$ & NA & ND\\
+\midrule
+5 & 2.1 & DEPARTURE(2) & BUSY & 0 & 3.2 & 4.1\\
+6 & 3.2 & ARRIVAL(4) & BUSY & 1 & 3.6 & 4.1\\
+7 & 3.6 & ARRIVAL(5) & BUSY & 2 & 4.6 & 4.1\\
+8 & 4.1 & DEPARTURE(3) & BUSY & 1 & 4.6 & 5.3\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{4pt}
+\begin{block}{Detalles “Banks” dentro del DEPARTURE}
+En Evento 5 ($t{=}2.1$), $N_Q{=}1$ antes de atender: se hace \texttt{dequeue} y se calcula
+\[
+\text{delay}_{3}=2.1-1.9=0.2,
+\]
+luego se programa la nueva salida con el servicio del cliente 3: $2.1+2.0=4.1$.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Bitácora (3/3): eventos 9 a 12 y condición de terminación}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{@{}c c c c c c c@{}}
+\toprule
+Evento \# & $t$ & Evento & $S$ & $N_Q$ & NA & ND\\
+\midrule
+9  & 4.6 & ARRIVAL(6)   & BUSY & 2 & $\infty$ & 5.3\\
+10 & 5.3 & DEPARTURE(4) & BUSY & 1 & $\infty$ & 6.1\\
+11 & 6.1 & DEPARTURE(5) & BUSY & 0 & $\infty$ & 7.6\\
+12 & 7.6 & DEPARTURE(6) & IDLE & 0 & $\infty$ & $\infty$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{4pt}
+\begin{alertblock}{Criterio de parada}
+Se termina cuando la FEL no tiene eventos finitos: NA=$\infty$ y ND=$\infty$.
+\end{alertblock}
+\end{frame}
+
+
+% =========================================================
+% NUEVAS DIAPOSITIVAS: MÉTRICAS (Ejemplo 1) AL ESTILO EJEMPLO 2
+% Insertar después de "Bitácora (3/3)" y antes del "Resumen..."
+% =========================================================
+
+\begin{frame}{Ejemplo 1: tiempos por cliente (métricas por entidad)}
+\small
+A partir de la bitácora se reconstruyen, para cada cliente $i$:
+\[
+A_i=\text{llegada},\quad B_i=\text{inicio de servicio},\quad D_i=\text{salida},\qquad
+W_i=B_i-A_i,\;\; T_i=D_i-A_i.
+\]
+
+\tiny
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{table}
+\centering
+\begin{tabular}{@{}c c c c c c@{}}
+\toprule
+$i$ & $A_i$ & $B_i$ & $D_i$ & $W_i$ & $T_i$ \\
+\midrule
+1 & 0.0 & 0.0 & 1.1 & 0.0 & 1.1 \\
+2 & 1.2 & 1.2 & 2.1 & 0.0 & 0.9 \\
+3 & 1.9 & 2.1 & 4.1 & 0.2 & 2.2 \\
+4 & 3.2 & 4.1 & 5.3 & 0.9 & 2.1 \\
+5 & 3.6 & 5.3 & 6.1 & 1.7 & 2.5 \\
+6 & 4.6 & 6.1 & 7.6 & 1.5 & 3.0 \\
+\midrule
+\textbf{Suma} &  &  &  & \textbf{4.3} & \textbf{11.8}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\scriptsize
+\begin{block}{Promedios por cliente (una corrida)}
+\[
+\bar W=\frac{1}{6}\sum_{i=1}^6 W_i=\frac{4.3}{6}\approx 0.717,
+\qquad
+\bar T=\frac{1}{6}\sum_{i=1}^6 T_i=\frac{11.8}{6}\approx 1.967.
+\]
+\end{block}
+\end{frame}
+
+
+\begin{frame}{Ejemplo 1: cálculo explícito de áreas y utilización (1 servidor)}
+\small
+Entre eventos, el estado es constante, así que las integrales de Banks se vuelven sumas:
+\[
+\texttt{area\_num\_in\_q}=\int_0^T N_Q(t)\,dt=\sum_k N_Q^{(k)}\,\Delta_k,\qquad
+\texttt{area\_server\_status}=\int_0^T B(t)\,dt=\sum_k B^{(k)}\,\Delta_k,
+\]
+donde para 1 servidor $B(t)=\1\{S(t)=\text{BUSY}\}\in\{0,1\}$ y $\Delta_k=t_{k+1}-t_k$.
+
+\tiny
+\setlength{\tabcolsep}{2.6pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{table}
+\centering
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Intervalo $[t_k,t_{k+1})$ & $\Delta_k$ & $N_Q^{(k)}$ & $B^{(k)}$ &
+$N_Q^{(k)}\Delta_k$ & $B^{(k)}\Delta_k$\\
+\midrule
+$[0.0,1.1)$ & 1.1 & 0 & 1 & 0.0 & 1.1\\
+$[1.1,1.2)$ & 0.1 & 0 & 0 & 0.0 & 0.0\\
+$[1.2,1.9)$ & 0.7 & 0 & 1 & 0.0 & 0.7\\
+$[1.9,2.1)$ & 0.2 & 1 & 1 & 0.2 & 0.2\\
+$[2.1,3.2)$ & 1.1 & 0 & 1 & 0.0 & 1.1\\
+$[3.2,3.6)$ & 0.4 & 1 & 1 & 0.4 & 0.4\\
+$[3.6,4.1)$ & 0.5 & 2 & 1 & 1.0 & 0.5\\
+$[4.1,4.6)$ & 0.5 & 1 & 1 & 0.5 & 0.5\\
+$[4.6,5.3)$ & 0.7 & 2 & 1 & 1.4 & 0.7\\
+$[5.3,6.1)$ & 0.8 & 1 & 1 & 0.8 & 0.8\\
+$[6.1,7.6)$ & 1.5 & 0 & 1 & 0.0 & 1.5\\
+\midrule
+\textbf{Suma} & \textbf{$T=7.6$} &  &  & \textbf{4.3} & \textbf{7.5}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\scriptsize
+\begin{block}{Métricas (Banks: promedios en el tiempo)}
+\[
+\bar Q_T=\frac{\texttt{area\_num\_in\_q}}{T}=\frac{4.3}{7.6}\approx 0.566,
+\qquad
+\hat\rho=\frac{\texttt{area\_server\_status}}{T}=\frac{7.5}{7.6}\approx 0.987.
+\]
+Además, como $N(t)=N_Q(t)+B(t)$ en 1 servidor:
+\[
+\bar N_T=\frac{1}{T}\int_0^T N(t)\,dt=\frac{4.3+7.5}{7.6}=\frac{11.8}{7.6}\approx 1.553.
+\]
+\end{block}
+
+
+\end{frame}
+
+
+% =========================================================
+\section{Ejemplo manual guiado: cola con dos servidores (FEL explícita)}
+
+% -------------------------
+\begin{frame}{Ejemplo 2 (muy guiado): cola FCFS con 2 servidores y FEL}
+\small
+\textbf{Cambio estructural clave:} ahora hay \textbf{dos posibles eventos DEPARTURE}, uno por servidor.
+
+\vspace{4pt}
+\begin{block}{Estado mínimo}
+\begin{itemize}
+\item $t$ (reloj), $N_Q$ (clientes esperando), \texttt{QUEUE} (tiempos de llegada).
+\item $S_1,S_2\in\{\text{IDLE},\text{BUSY}\}$ (estado de cada servidor).
+\end{itemize}
+\end{block}
+
+\vspace{4pt}
+\begin{block}{FEL como arreglo }
+\[
+\texttt{time\_next\_event[1]}=\text{próxima llegada (NA)},
+\]
+\[
+\texttt{time\_next\_event[2]}=\text{próxima salida servidor 1 (ND1)},\quad
+\texttt{time\_next\_event[3]}=\text{próxima salida servidor 2 (ND2)}.
+\]
+Eventos no programados $\Rightarrow \infty$.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Rutinas ARRIVAL y DEPARTURE con 2 servidores (regla exacta)}
+\small
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{ARRIVAL en tiempo $t$}
+\begin{enumerate}
+\item Programar próxima llegada (si existe):
+\[
+\texttt{NA} \leftarrow t + X_{i+1}.
+\]
+\item Si hay servidor libre:
+\begin{itemize}
+\item Si $S_1=\text{IDLE}$: asignar a 1 y programar ND1 $=t+S_i$.
+\item else si $S_2=\text{IDLE}$: asignar a 2 y programar ND2 $=t+S_i$.
+\end{itemize}
+\item Si ambos BUSY: encolar
+\[
+N_Q\leftarrow N_Q+1,\;\; \texttt{enqueue}(t).
+\]
+\end{enumerate}
+\end{block}
+\end{column}
+
+\begin{column}{0.48\textwidth}
+\begin{block}{DEPARTURE del servidor $j\in\{1,2\}$ en tiempo $t$}
+\begin{enumerate}
+\item Si $N_Q=0$:
+\[
+S_j\leftarrow \text{IDLE},\quad \texttt{ND}j \leftarrow \infty.
+\]
+\item Si $N_Q>0$:
+\[
+\text{delay}=t-\texttt{dequeue}(),\;\; N_Q\leftarrow N_Q-1,
+\]
+asignar ese cliente al servidor $j$ y programar:
+\[
+\texttt{ND}j \leftarrow t + S_{\text{(siguiente)}}.
+\]
+\end{enumerate}
+\end{block}
+
+
+\begin{block}{Timing}
+Elegir el menor entre NA, ND1 y ND2; avanzar $t$ y ejecutar la rutina asociada.
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Datos de entrada (muestra fija) para 2 servidores}
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{@{}cccccccc@{}}
+\toprule
+Cliente $i$ & 1 & 2 & 3 & 4 & 5 & 6 & 7\\
+\midrule
+$X_i$ & 0.0 & 0.6 & 0.9 & 0.4 & 1.1 & 0.5 & 0.7\\
+$S_i$ & 1.4 & 1.0 & 2.2 & 0.8 & 1.6 & 1.3 & 0.9\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{2pt}
+\begin{block}{Inicialización (igual idea, más eventos)}
+$t\leftarrow 0,\; S_1=S_2=\text{IDLE},\; N_Q=0$;  
+NA $\leftarrow X_1=0.0$; ND1 $\leftarrow\infty$; ND2 $\leftarrow\infty$.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Bitácora con FEL (1/2): eventos 1 a 7 (hasta que aparece cola)}
+\small
+FEL = (NA, ND1, ND2).
+
+\vspace{2pt}
+\setlength{\tabcolsep}{3.6pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{@{}c c c c c c c c@{}}
+\toprule
+\# & $t$ & Evento & $(S_1,S_2)$ & $N_Q$ & NA & ND1 & ND2\\
+\midrule
+Init & 0.0 & -- & (IDLE,IDLE) & 0 & 0.0 & $\infty$ & $\infty$\\
+1 & 0.0 & ARR(1) & (BUSY,IDLE) & 0 & 0.6 & 1.4 & $\infty$\\
+2 & 0.6 & ARR(2) & (BUSY,BUSY) & 0 & 1.5 & 1.4 & 1.6\\
+3 & 1.4 & DEP(s1) & (IDLE,BUSY) & 0 & 1.5 & $\infty$ & 1.6\\
+4 & 1.5 & ARR(3) & (BUSY,BUSY) & 0 & 1.9 & 3.7 & 1.6\\
+5 & 1.6 & DEP(s2) & (BUSY,IDLE) & 0 & 1.9 & 3.7 & $\infty$\\
+6 & 1.9 & ARR(4) & (BUSY,BUSY) & 0 & 3.0 & 3.7 & 2.7\\
+7 & 2.7 & DEP(s2) & (BUSY,IDLE) & 0 & 3.0 & 3.7 & $\infty$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{4pt}
+\begin{block}{Interpretación}
+Hasta aquí, nunca hubo cola ($N_Q=0$): siempre había al menos un servidor libre cuando llegaba alguien.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Bitácora con FEL (2/2): eventos 8 a 14 (cola, demoras y asignación)}
+\small
+\setlength{\tabcolsep}{3.6pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{@{}c c c c c c c c@{}}
+\toprule
+\# & $t$ & Evento & $(S_1,S_2)$ & $N_Q$ & NA & ND1 & ND2\\
+\midrule
+8  & 3.0 & ARR(5)    & (BUSY,BUSY) & 0 & 3.5 & 3.7 & 4.6\\
+9  & 3.5 & ARR(6)    & (BUSY,BUSY) & 1 & 4.2 & 3.7 & 4.6\\
+10 & 3.7 & DEP(s1)   & (BUSY,BUSY) & 0 & 4.2 & 5.0 & 4.6\\
+11 & 4.2 & ARR(7)    & (BUSY,BUSY) & 1 & $\infty$ & 5.0 & 4.6\\
+12 & 4.6 & DEP(s2)   & (BUSY,BUSY) & 0 & $\infty$ & 5.0 & 5.5\\
+13 & 5.0 & DEP(s1)   & (IDLE,BUSY) & 0 & $\infty$ & $\infty$ & 5.5\\
+14 & 5.5 & DEP(s2)   & (IDLE,IDLE) & 0 & $\infty$ & $\infty$ & $\infty$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{4pt}
+\begin{block}{Dónde aparecen demoras (lo importante)}
+\begin{itemize}
+\item Evento 9 (ARR(6)): ambos BUSY $\Rightarrow$ encola ($N_Q=1$).
+\item Evento 10 (DEP(s1) en $t=3.7$): toma al cliente 6 y su demora es $3.7-3.5=0.2$.
+\item Evento 11 (ARR(7)): ambos BUSY $\Rightarrow$ encola ($N_Q=1$).
+\item Evento 12 (DEP(s2) en $t=4.6$): toma al cliente 7 y su demora es $4.6-4.2=0.4$.
+\end{itemize}
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Estadísticas con 2 servidores: áreas y utilización}
+\small
+La actualización por áreas es igual, pero ahora el “servidor ocupado” se mide como \textbf{número de servidores ocupados}.
+
+\vspace{4pt}
+Defina:
+\[
+B(t)=\1\{S_1=\text{BUSY}\}+\1\{S_2=\text{BUSY}\}\in\{0,1,2\}.
+\]
+
+\begin{block}{Update-Time-Avg-Stats (2 servidores)}
+Con $\Delta=t-\texttt{time\_last\_event}$:
+\[
+\texttt{area\_num\_in\_q}\;{+}{=}\;N_Q\cdot \Delta,\qquad
+\texttt{area\_server\_status}\;{+}{=}\;B(t)\cdot \Delta.
+\]
+\end{block}
+
+\vspace{4pt}
+Entonces, en horizonte $T$:
+\[
+\bar Q_T=\frac{\texttt{area\_num\_in\_q}}{T},\qquad
+\text{Utilización promedio por servidor}=
+\frac{1}{2}\cdot \frac{\texttt{area\_server\_status}}{T}.
+\]
+\end{frame}
+
+% --- REEMPLAZA la diapositiva genérica por esta (Ejemplo 2 con cálculos numéricos) ---
+
+\begin{frame}{Ejemplo 2: cálculo explícito de áreas y utilización (2 servidores)}
+\small
+Entre eventos, el estado \emph{no cambia}. Por tanto, las integrales de Banks se vuelven sumas por intervalos
+\[
+\texttt{area\_num\_in\_q}=\int_0^T N_Q(t)\,dt=\sum_k N_Q^{(k)}\,\Delta_k,
+\qquad
+\texttt{area\_server\_status}=\int_0^T B(t)\,dt=\sum_k B^{(k)}\,\Delta_k,
+\]
+donde $B(t)=\1\{S_1=\text{BUSY}\}+\1\{S_2=\text{BUSY}\}$ y $\Delta_k=t_{k+1}-t_k$.
+
+\vspace{2pt}
+\tiny
+\setlength{\tabcolsep}{2.6pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{table}
+\centering
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Intervalo $[t_k,t_{k+1})$ & $\Delta_k$ & $N_Q^{(k)}$ & $B^{(k)}$ & $N_Q^{(k)}\Delta_k$ & $B^{(k)}\Delta_k$\\
+\midrule
+$[0.0,0.6)$ & 0.6 & 0 & 1 & 0.0 & 0.6\\
+$[0.6,1.4)$ & 0.8 & 0 & 2 & 0.0 & 1.6\\
+$[1.4,1.5)$ & 0.1 & 0 & 1 & 0.0 & 0.1\\
+$[1.5,1.6)$ & 0.1 & 0 & 2 & 0.0 & 0.2\\
+$[1.6,1.9)$ & 0.3 & 0 & 1 & 0.0 & 0.3\\
+$[1.9,2.7)$ & 0.8 & 0 & 2 & 0.0 & 1.6\\
+$[2.7,3.0)$ & 0.3 & 0 & 1 & 0.0 & 0.3\\
+$[3.0,3.5)$ & 0.5 & 0 & 2 & 0.0 & 1.0\\
+$[3.5,3.7)$ & 0.2 & 1 & 2 & 0.2 & 0.4\\
+$[3.7,4.2)$ & 0.5 & 0 & 2 & 0.0 & 1.0\\
+$[4.2,4.6)$ & 0.4 & 1 & 2 & 0.4 & 0.8\\
+$[4.6,5.0)$ & 0.4 & 0 & 2 & 0.0 & 0.8\\
+$[5.0,5.5)$ & 0.5 & 0 & 1 & 0.0 & 0.5\\
+\midrule
+\textbf{Suma} & \textbf{$T=5.5$} &  &  & \textbf{0.6} & \textbf{9.2}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\scriptsize
+\vspace{-2pt}
+\begin{block}{Métricas (Banks: promedios en el tiempo)}
+\[
+\bar Q_T=\frac{\texttt{area\_num\_in\_q}}{T}=\frac{0.6}{5.5}\approx 0.109,
+\qquad
+\overline{B}=\frac{\texttt{area\_server\_status}}{T}=\frac{9.2}{5.5}\approx 1.673,
+\]
+\[
+\text{Utilización promedio por servidor}=\frac{\overline{B}}{2}
+=\frac{1}{2}\cdot\frac{9.2}{5.5}=\frac{4.6}{5.5}\approx 0.836.
+\]
+\end{block}
+\end{frame}
+
+
+
+
+
+
+% =========================================================
+\section{Worldviews y relación con herramientas}
+
+% =========================================================
+% REEMPLAZO COMPLETO DE LA SECCIÓN: WORLDVIEWS (solo diapositivas de esta sección)
+%   - Empata explícitamente con los ejemplos manuales anteriores (FEL + rutinas).
+%   - Incluye un ejemplo COMPLETO del worldview 1 (Event-Scheduling) al estilo Banks:
+%       Main program + Initialization + Timing + Arrival + Departure + Report
+%       + Update-time-average-stats + estructuras/estadísticas.
+% =========================================================
+
+\section{Worldviews y relación con herramientas}
+
+% -------------------------
+\begin{frame}{Puente con lo anterior: ya usamos \textit{Event-Scheduling} }
+\small
+En los ejemplos manuales (1 servidor y 2 servidores) \textbf{ya implementamos} el worldview más clásico de Banks:
+
+\vspace{4pt}
+\begin{block}{Qué hicimos exactamente (mismo lenguaje de Banks)}
+\begin{itemize}
+\item \textbf{Estado}: $N_Q$, estados de servidor(es), cola FCFS con tiempos de llegada.
+\item \textbf{FEL} (\emph{Future Event List}) como arreglo \texttt{time\_next\_event[\,]}:
+  \begin{itemize}
+  \item Ejemplo 1: NA (next arrival), ND (next departure).
+  \item Ejemplo 2: NA, ND1, ND2.
+  \end{itemize}
+\item \textbf{Reloj por mínimo}: rutina \textbf{Timing} $\Rightarrow$ $t\leftarrow\min$ tiempos en FEL.
+\item \textbf{Rutinas de evento}: \textbf{Arrival} y \textbf{Departure} actualizan estado \emph{y reprograman} tiempos en FEL.
+\item \textbf{Estadísticas por áreas}: \textbf{Update-time-average-stats} entre eventos.
+\end{itemize}
+\end{block}
+
+\vspace{2pt}
+\begin{alertblock}{Idea clave}
+Un \textit{worldview} no cambia el sistema que modelas: cambia \textbf{cómo organizas la lógica} para construir la misma trayectoria muestral.
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{¿Qué significa \textit{worldview}?}
+\small
+
+\textbf{formas estándar de representar y programar} modelos SED.
+
+\vspace{4pt}
+\begin{block}{Un mismo sistema, tres formas de “contarlo”}
+\begin{itemize}
+\item \textbf{Event-Scheduling}: “cuándo ocurre el próximo evento” (agenda explícita: FEL).
+\item \textbf{Activity-Scanning}: “qué actividades están habilitadas ahora” (condiciones que se vuelven verdaderas).
+\item \textbf{Process-Interaction}: “qué hace cada entidad” (procesos con esperas por recursos).
+\end{itemize}
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Criterio para elegir}
+\textbf{Legibilidad vs. control}:  
+\begin{itemize}
+\item Event-scheduling: máximo control del reloj y la agenda (muy cercano a la teoría).
+\item Process-interaction: máxima legibilidad (el motor traduce esperas a eventos).
+\end{itemize}
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Los tres \textit{worldviews} }
+\small
+\begin{block}{1) Event-Scheduling (visión de eventos)}
+Se escribe un \textbf{programa por rutinas}: \textbf{Initialization}, \textbf{Timing}, y rutinas de evento (\textbf{Arrival}, \textbf{Departure}, \dots).  
+La \textbf{FEL} guarda los tiempos de los próximos eventos (p.\,ej. NA, ND1, ND2).
+\end{block}
+
+\begin{block}{2) Activity-Scanning (visión de actividades/condiciones)}
+Se escribe un conjunto de \textbf{actividades} y sus \textbf{condiciones de inicio}.  
+El motor \emph{escanea} condiciones y activa actividades cuando son verdaderas. (Útil cuando dominan reglas lógicas.)
+\end{block}
+
+\begin{block}{3) Process-Interaction (visión de procesos)}
+Se escribe el \textbf{flujo de una entidad} (llega $\to$ espera $\to$ toma recurso $\to$ sirve $\to$ sale).  
+Las “esperas” generan eventos internamente. (Ej.: SimPy.)
+\end{block}
+\end{frame}
+
+% -------------------------
+
+% =========================================================
+% NUEVAS DIAPOSITIVAS: WORLDVIEWS con el MISMO sistema (cola 1 servidor)
+% Objetivo: que el estudiante "vea" la diferencia en qué se escribe,
+%           manteniendo fijo el sistema y las métricas.
+% Basado en Banks (General Principles): Event-Scheduling, Activity-Scanning, Process-Interaction.
+% =========================================================
+
+\section{Worldviews con el mismo sistema: una cola y un servidor}
+
+% -------------------------
+\begin{frame}{Sistema común a los 3 worldviews: cola FCFS con 1 servidor}
+\small
+\begin{block}{Sistema (fijamos el mismo modelo para comparar)}
+\begin{itemize}
+\item Una cola FCFS, un servidor con capacidad 1.
+\item Llegadas en tiempos $A_1<A_2<\cdots$ (p.ej. renovación / Poisson).
+\item Servicios $S_1,S_2,\dots$ (p.ej. i.i.d.), no preemptivo.
+\end{itemize}
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Estado mínimo (equivalente en cualquier worldview)}
+\[
+X(t)=\big(N_Q(t),\, S(t)\big),\quad
+S(t)\in\{\text{IDLE},\text{BUSY}\},\;\; N_Q(t)\in\mathbb{Z}_{\ge 0}.
+\]
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Métricas (mismas para los 3)}
+\[
+\bar W_n=\frac{1}{n}\sum_{i=1}^n W_i,\qquad
+\bar Q_T=\frac{1}{T}\int_0^T N_Q(t)\,dt,\qquad
+\hat\rho=\frac{1}{T}\int_0^T \1\{S(t)=\text{BUSY}\}\,dt.
+\]
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Idea central: mismo sistema $\Rightarrow$ misma trayectoria, distinta “forma de escribirla”}
+\small
+Los tres worldviews son \textbf{representaciones computacionales} diferentes de la misma dinámica.
+
+\vspace{4pt}
+\begin{center}
+\begin{tikzpicture}[scale=0.95, every node/.style={font=\scriptsize}]
+  \node[draw, rounded corners, align=center, minimum width=36mm, minimum height=8mm] (sys) {Sistema real\\(cola 1 servidor)};
+  \node[draw, rounded corners, align=center, below left=10mm and 10mm of sys, minimum width=40mm, minimum height=10mm] (es) {Event-Scheduling\\\textbf{yo manejo FEL}};
+  \node[draw, rounded corners, align=center, below=10mm of sys, minimum width=40mm, minimum height=10mm] (as) {Activity-Scanning\\\textbf{yo evalúo condiciones}};
+  \node[draw, rounded corners, align=center, below right=10mm and 10mm of sys, minimum width=40mm, minimum height=10mm] (pi) {Process-Interaction\\\textbf{yo escribo procesos}};
+  \node[draw, rounded corners, align=center, below=15mm of as, minimum width=80mm, minimum height=10mm] (out) {Salida: \textbf{misma} trayectoria muestral $X(t)$ y mismas métricas};
+
+  \draw[-{Stealth[length=2mm]}] (sys) -- (es);
+  \draw[-{Stealth[length=2mm]}] (sys) -- (as);
+  \draw[-{Stealth[length=2mm]}] (sys) -- (pi);
+  \draw[-{Stealth[length=2mm]}] (es) -- (out);
+  \draw[-{Stealth[length=2mm]}] (as) -- (out);
+  \draw[-{Stealth[length=2mm]}] (pi) -- (out);
+\end{tikzpicture}
+\end{center}
+
+\vspace{4pt}
+\begin{alertblock}{Mensaje didáctico}
+No es “tres teorías”: es \textbf{tres interfaces} para programar el mismo motor lógico (eventos + estado + tiempo).
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}[fragile]{Worldview 1: Event-Scheduling (lo que ya hicimos a mano)}
+\small
+\textbf{¿Qué escribes?} Rutinas de evento + una \textbf{FEL} explícita.
+
+\vspace{2pt}
+\begin{block}{FEL mínima (1 servidor)}
+\[
+\texttt{time\_next\_event[1]}=\text{NA (próxima llegada)},\quad
+\texttt{time\_next\_event[2]}=\text{ND (próxima salida)}.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{block}{Ciclo (Banks): Timing + rutinas}
+\end{block}
+\begin{verbatim}
+Initialization();
+while (not stop) {
+  Timing();                 // clock <- min(NA, ND)
+  Update_time_avg_stats();  // áreas: N_Q y BUSY
+  if (next_event == ARRIVAL)   Arrival();
+  else                         Departure();
+}
+Report();
+\end{verbatim}
+
+\vspace{2pt}
+\begin{block}{Intuición}
+Tú decides “\textbf{qué evento ocurre después}” porque tú mantienes la agenda (FEL).
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}[fragile]{Worldview 2: Activity-Scanning (misma cola, pero pensando en “actividades habilitadas”)}
+\small
+\textbf{¿Qué escribes?} Una lista de \textbf{actividades} y sus \textbf{condiciones de inicio}.  
+En vez de “rutinas de evento”, la lógica central es: \emph{¿qué puede empezar ahora?}
+
+\vspace{4pt}
+\begin{block}{Actividades para la cola 1 servidor}
+\begin{itemize}
+\item \textbf{A1: Iniciar servicio} (StartService)
+\[
+\text{Condición: } (S=\text{IDLE})\;\wedge\;(N_Q>0).
+\]
+Efecto: sacar 1 de cola, poner $S=\text{BUSY}$ y fijar un tiempo de fin de servicio.
+\item \textbf{A2: Llegada} (Arrival) puede tratarse como “actividad exógena” que incrementa $N_Q$ en su tiempo de ocurrencia.
+\end{itemize}
+\end{block}
+
+\begin{block}{Idea de algoritmo (esqueleto)}
+\end{block}
+\begin{verbatim}
+Initialization();
+while (not stop) {
+
+  Advance_time();     // versión simple: reloj avanza y se revisa
+  Execute_exogenous(); // llegadas que ocurren en este instante
+
+  while (StartService condition is true) {
+     StartService();  // escaneo + ejecución mientras haya actividades habilitadas
+  }
+
+  Update_statistics();
+}
+\end{verbatim}
+
+\begin{alertblock}{Por qué confunde a estudiantes}
+Si \texttt{Advance\_time} es por incrementos (time-slicing), es menos eficiente y menos “limpio” que next-event.
+La esencia es: \textbf{la lógica está centrada en condiciones}, no en una FEL explícita.
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Activity-Scanning: cómo “se ve” en la cola 1 servidor (mini-ejemplo lógico)}
+\small
+Imagina que estás justo después de una salida (fin de servicio) en tiempo $t$:
+
+\vspace{4pt}
+\begin{block}{Estado al inicio del instante $t$}
+\[
+S(t^-)=\text{BUSY}\to S(t)=\text{IDLE},\qquad N_Q(t)=2.
+\]
+\end{block}
+
+\vspace{4pt}
+En \textbf{Event-Scheduling}, la rutina \textbf{Departure} inmediatamente hace:
+\[
+\text{si }N_Q>0\Rightarrow \text{toma siguiente y programa ND}=t+S_{\text{siguiente}}.
+\]
+
+\vspace{4pt}
+En \textbf{Activity-Scanning}, el motor haría conceptualmente:
+\[
+\underbrace{(S=\text{IDLE})\wedge(N_Q>0)}_{\text{condición StartService}}=\text{TRUE}
+\Rightarrow \text{ejecutar StartService}.
+\]
+Tras ejecutar StartService una vez:
+\[
+S=\text{BUSY},\; N_Q=1\quad\Rightarrow\quad
+\text{condición StartService ahora es FALSE (porque }S\neq\text{IDLE}).
+\]
+
+\vspace{4pt}
+\begin{alertblock}{Lo esencial}
+El “\textbf{if}” está invertido:
+\begin{itemize}
+\item Event-scheduling: \textbf{evento} dispara lógica.
+\item Activity-scanning: \textbf{estado} habilita lógica.
+\end{itemize}
+\end{alertblock}
+\end{frame}
+
+
+
+
+% -------------------------
+\begin{frame}[fragile]{Worldview 3: Process-Interaction (misma cola, pero escribiendo la “vida del cliente”) }
+\small
+\textbf{¿Qué escribes?} Un \textbf{proceso por entidad} (cliente) que hace: llegar $\to$ esperar recurso $\to$ servir $\to$ salir.
+
+\vspace{3pt}
+\begin{block}{Pseudocódigo estilo SimPy (conceptual)}
+\end{block}
+\begin{verbatim}
+process Customer(i):
+   arrive at time A_i
+   enqueue (implicitly by requesting the server)
+
+   request server (capacity=1)      // waits until available
+   start service immediately when granted
+   hold for service time S_i        // a timeout activity
+   release server and depart
+\end{verbatim}
+
+\vspace{2pt}
+\begin{block}{Qué pasa “debajo del capó”}
+Aunque tú no veas una FEL, el motor:
+\begin{itemize}
+\item agenda internamente los eventos de “timeout” (fin de servicio),
+\item maneja la cola del recurso (FCFS),
+\item avanza el reloj al próximo evento (next-event).
+\end{itemize}
+\end{block}
+\end{frame}
+
+
+% =========================================================
+% PROCESS VIEW / PROCESS-INTERACTION APLICADO AL EJEMPLO 1
+% (1 servidor + cola FCFS) — mismo sistema, distinta forma de escribirlo
+% =========================================================
+
+\section{Process-Interaction aplicado: Ejemplo 1 (1 servidor, 1 cola)}
+
+% -------------------------
+\begin{frame}{Process-Interaction aplicado al Ejemplo 1: qué cambia y qué no}
+\small
+\begin{block}{Qué NO cambia (mismo modelo)}
+\begin{itemize}
+\item Sistema: una cola FCFS, un servidor (capacidad 1).
+\item Datos (muestra fija para correr a mano): llegadas $A_i$ y servicios $S_i$ del Ejemplo 1.
+\item Métricas: $\bar W$, $\bar T$, $\bar Q_T$, utilización $\hat\rho$.
+\end{itemize}
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Qué SÍ cambia (forma de programar la lógica)}
+En lugar de escribir rutinas \textbf{Arrival/Departure} y mantener una FEL explícita, se escribe:
+\begin{itemize}
+\item un \textbf{proceso por cliente} (su “ciclo de vida”),
+\item un \textbf{recurso} (servidor) con cola FCFS interna,
+\item y \textbf{esperas} expresadas como “pedir recurso” y “timeout”.
+\end{itemize}
+\end{block}
+
+\vspace{4pt}
+\begin{alertblock}{Mensaje didáctico}
+Process-interaction \emph{no elimina} los eventos; los \textbf{genera internamente} a partir de \texttt{request}, \texttt{release} y \texttt{timeout}.
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Estado del sistema en process-interaction: estado implícito y equivalente}
+\small
+En process-interaction, el estado que antes escribías como $(S(t),N_Q(t))$ se reconstruye desde el recurso:
+
+\vspace{4pt}
+\begin{block}{Recurso servidor (capacidad 1)}
+\begin{itemize}
+\item \textbf{Ocupación}: $\texttt{server.count}\in\{0,1\}$ (número en servicio).
+\item \textbf{Cola interna}: $\texttt{len(server.queue)} = N_Q(t)$ (número esperando).
+\end{itemize}
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Equivalencias exactas (para 1 servidor)}
+\[
+B(t)=\1\{S(t)=\text{BUSY}\} \equiv \texttt{server.count},
+\qquad
+N_Q(t)\equiv \texttt{len(server.queue)}.
+\]
+y por tanto
+\[
+N(t)=N_Q(t)+B(t)\equiv \texttt{len(server.queue)}+\texttt{server.count}.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{alertblock}{Lo importante}
+El estudiante debe ver que “estado implícito” no significa “estado inexistente”: está en la estructura del recurso.
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Ciclo de vida del cliente $i$: tiempos $A_i,B_i,D_i$ sin rutina Departure}
+\small
+En process-interaction, cada cliente es un proceso que “vive” esta secuencia:
+
+\vspace{2pt}
+\begin{center}
+\begin{tikzpicture}[scale=0.95, every node/.style={font=\scriptsize}]
+  \draw[-{Stealth[length=2mm]}] (0,0) -- (10,0) node[right]{tiempo};
+  \node[align=center] at (1.0,0.6) {$A_i$\\llega};
+  \node[align=center] at (4.0,0.6) {$B_i$\\entra a servicio};
+  \node[align=center] at (7.5,0.6) {$D_i$\\sale};
+
+  \draw (1.0,0) -- (1.0,0.25);
+  \draw (4.0,0) -- (4.0,0.25);
+  \draw (7.5,0) -- (7.5,0.25);
+
+  \draw[decorate, decoration={brace, amplitude=4pt}] (1.0,-0.2) -- (4.0,-0.2)
+    node[midway, below=6pt] {$W_i=B_i-A_i$ (espera en cola)};
+  \draw[decorate, decoration={brace, amplitude=4pt}] (4.0,-0.7) -- (7.5,-0.7)
+    node[midway, below=6pt] {$S_i$ (servicio)};
+\end{tikzpicture}
+\end{center}
+
+\vspace{2pt}
+\begin{block}{Definiciones (métricas por cliente)}
+\[
+W_i=B_i-A_i,\qquad T_i=D_i-A_i=(B_i-A_i)+S_i.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{alertblock}{Interpretación}
+En process-interaction, $B_i$ es el instante en que el \textbf{request} es concedido (evento interno “grant”).
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Ejemplo 1 en process view: misma corrida, reconstrucción de $A_i,B_i,D_i$}
+\small
+Usamos los mismos datos del Ejemplo 1:
+\[
+A=(0.0,\,1.2,\,1.9,\,3.2,\,3.6,\,4.6),\quad
+S=(1.1,\,0.9,\,2.0,\,1.2,\,0.8,\,1.5).
+\]
+
+\vspace{4pt}
+\begin{block}{Regla FCFS (1 servidor) que “emerge” del recurso}
+Si el servidor está libre al llegar, $B_i=A_i$; si no, el cliente espera hasta que el servidor se libere.
+En esta cola, eso equivale a la recurrencia:
+\[
+B_1=A_1,\qquad
+B_i=\max\{A_i,\,D_{i-1}\},\qquad
+D_i=B_i+S_i.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{block}{Con estos datos se obtiene (misma bitácora)}
+\[
+B=(0.0,\,1.2,\,2.1,\,4.1,\,5.3,\,6.1),\qquad
+D=(1.1,\,2.1,\,4.1,\,5.3,\,6.1,\,7.6).
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{alertblock}{Punto pedagógico}
+En event-scheduling tú calculas $B_i$ “a mano” con \texttt{dequeue}; en process-interaction el recurso lo hace.
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Bajo el capó: qué eventos está creando el motor (aunque tú no los escribas)}
+\small
+Process-interaction sigue siendo \textbf{next-event}.
+
+\vspace{4pt}
+\begin{block}{Tres “operaciones” $\Rightarrow$ tres tipos de eventos internos}
+\begin{itemize}
+\item \textbf{\texttt{env.timeout(x)}}: agenda un evento en $t+x$ (ej.: fin de servicio).
+\item \textbf{\texttt{server.request()}}: crea un evento “grant” que ocurre:
+  \begin{itemize}
+  \item inmediatamente si hay capacidad,
+  \item o en el instante en que algún \texttt{release} libera capacidad.
+  \end{itemize}
+\item \textbf{\texttt{release}}: dispara la activación del próximo request en la cola FCFS del recurso.
+\end{itemize}
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Correspondencia con la FEL del Ejemplo 1}
+\begin{itemize}
+\item Los \textbf{ARRIVAL} los crea el generador de llegadas (o el \texttt{timeout} hasta $A_i$).
+\item Los \textbf{DEPARTURE} los crea cada cliente cuando hace \texttt{timeout(service\_time)}.
+\end{itemize}
+\end{block}
+
+\vspace{2pt}
+\begin{alertblock}{Mensaje}
+La FEL existe, solo que ahora es un detalle de implementación del motor.
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Cómo recolectar métricas en process view: por cliente y por tiempo}
+\small
+\begin{block}{(I) Métricas por cliente: timestamps}
+Cada cliente registra:
+\[
+A_i=\text{arrival\_time},\quad B_i=\text{time cuando se concede el request},\quad D_i=\text{time al terminar servicio}.
+\]
+y se acumula:
+\[
+\texttt{total\_of\_delays} \mathrel{+}= W_i,\qquad
+\texttt{sum\_system\_time} \mathrel{+}= T_i.
+\]
+\end{block}
+
+\vspace{4pt}
+\begin{block}{(II) Métricas promediadas en el tiempo: áreas por monitoreo}
+Necesitas un \textbf{monitor} que acumule áreas cuando cambia el estado:
+\[
+\texttt{area\_num\_in\_q}=\int_0^T N_Q(t)\,dt,\qquad
+\texttt{area\_server\_status}=\int_0^T B(t)\,dt.
+\]
+Con 1 servidor:
+\[
+N_Q(t)=\texttt{len(server.queue)},\qquad B(t)=\texttt{server.count}.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{alertblock}{Idea práctica}
+El motor no “te da” áreas por defecto: tú decides cuándo muestrear o, mejor, cuándo registrar cambios de estado.
+\end{alertblock}
+\end{frame}
+
+
+% =========================================================
+% PROCESS VIEW (MANUAL) — EJEMPLO 1: 1 SERVIDOR + 1 COLA (FCFS)
+% Tabla por cliente (entity lifecycle) como en el PDF de process view
+% =========================================================
+
+\section{Simulación manual: Process View (Ejemplo 1)}
+
+% -------------------------
+\begin{frame}{Process View: la tabla por cliente }
+\small
+En \textbf{Process View} no llevas una FEL; llevas una \textbf{tabla por cliente} (entity lifecycle):
+cada fila es un cliente, y se calcula cuándo empieza/termina su servicio.
+
+\begin{block}{Columnas estándar (como el process table)}
+\[
+\begin{array}{llll}
+i & X_i & A_i & S_i \\
+ & & E_i & F_i \\
+ & & W_i & T_i \\
+ & & I_i &
+\end{array}
+\]
+donde:
+\[
+A_i=\text{Arrival},\quad
+E_i=\text{Service Begin},\quad
+F_i=\text{Service End},\quad
+W_i=\text{Time in Queue},\quad
+T_i=\text{Time in System},\quad
+I_i=\text{Idle Time}.
+\]
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Inputs del Ejemplo 1: interarrivals y service times}
+\small
+Usamos exactamente los datos del Ejemplo 1 (muestra fija):
+
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+Cliente $i$ & 1 & 2 & 3 & 4 & 5 & 6\\
+\midrule
+$X_i$ (entre llegadas) & 0.0 & 1.2 & 0.7 & 1.3 & 0.4 & 1.0\\
+$S_i$ (servicio)       & 1.1 & 0.9 & 2.0 & 1.2 & 0.8 & 1.5\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{4pt}
+\begin{block}{Primero generas la secuencia de llegadas}
+\[
+A_1=0,\qquad A_i=A_{i-1}+X_i \;\;(i\ge 2).
+\]
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Regla dorada (Process View): cuándo empieza el servicio}
+\small
+Esto es TODO el “motor” del process view (la lámina del MAX):
+
+\vspace{4pt}
+\begin{block}{Inicio de servicio}
+\[
+E_1=A_1,\qquad
+E_i=\max\{A_i,\;F_{i-1}\}\quad (i\ge 2).
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{block}{Fin de servicio}
+\[
+F_i = E_i + S_i.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{block}{Derivados (métricas por cliente)}
+\[
+W_i=E_i-A_i,\qquad
+T_i=F_i-A_i,\qquad
+I_i=\max\{0,\;E_i-F_{i-1}\}\;(i\ge 2),\;\; I_1=0.
+\]
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Paso 1–2: construir $A_i$ (arrival stream) y completar cliente 1}
+\small
+\begin{block}{Llegadas (sumando interarrivals)}
+\[
+A=(0.0,\;1.2,\;1.9,\;3.2,\;3.6,\;4.6).
+\]
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Cliente 1 (sistema vacío $\Rightarrow$ servicio inmediato)}
+\[
+E_1=A_1=0.0,\qquad
+F_1=E_1+S_1=0.0+1.1=1.1,
+\]
+\[
+W_1=0,\qquad T_1=1.1,\qquad I_1=0.
+\]
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Paso 3: caso “servidor ocioso” (cliente 2)}
+\small
+Cliente 2 llega cuando el servidor ya terminó con el cliente 1:
+
+\[
+A_2=1.2,\qquad F_1=1.1 \;\Rightarrow\; \text{servidor libre al llegar}.
+\]
+
+\vspace{4pt}
+\begin{block}{Cálculo fila 2}
+\[
+E_2=\max(A_2,F_1)=\max(1.2,1.1)=1.2,
+\]
+\[
+F_2=E_2+S_2=1.2+0.9=2.1,
+\]
+\[
+W_2=E_2-A_2=0,\qquad T_2=F_2-A_2=0.9,
+\]
+\[
+I_2=E_2-F_1=1.2-1.1=0.1.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{alertblock}{Lectura}
+Hubo \textbf{0.1} unidades de tiempo con el servidor \textbf{ocioso} entre $1.1$ y $1.2$.
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Paso 4: “se forma cola” (cliente 3) y regla MAX en acción}
+\small
+Cliente 3 llega antes de que el cliente 2 termine:
+
+\[
+A_3=1.9,\qquad F_2=2.1 \;\Rightarrow\; \text{servidor ocupado al llegar}.
+\]
+
+\vspace{4pt}
+\begin{block}{Cálculo fila 3}
+\[
+E_3=\max(A_3,F_2)=\max(1.9,2.1)=2.1,
+\qquad
+F_3=E_3+S_3=2.1+2.0=4.1,
+\]
+\[
+W_3=E_3-A_3=2.1-1.9=0.2,
+\qquad
+T_3=F_3-A_3=4.1-1.9=2.2,
+\]
+\[
+I_3=\max(0,E_3-F_2)=0.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{alertblock}{Lectura}
+Aquí aparece la cola: el cliente 3 \textbf{espera} $0.2$ antes de entrar.
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Completar clientes 4–6 (misma receta, fila por fila)}
+\small
+Se repite exactamente la misma receta:
+
+\vspace{2pt}
+\begin{block}{Cliente 4}
+\[
+E_4=\max(A_4,F_3)=\max(3.2,4.1)=4.1,\quad
+F_4=4.1+1.2=5.3,\quad
+W_4=0.9,\quad T_4=2.1.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{block}{Cliente 5}
+\[
+E_5=\max(A_5,F_4)=\max(3.6,5.3)=5.3,\quad
+F_5=5.3+0.8=6.1,\quad
+W_5=1.7,\quad T_5=2.5.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{block}{Cliente 6}
+\[
+E_6=\max(A_6,F_5)=\max(4.6,6.1)=6.1,\quad
+F_6=6.1+1.5=7.6,\quad
+W_6=1.5,\quad T_6=3.0.
+\]
+\end{block}
+
+\end{frame}
+
+% -------------------------
+\begin{frame}{Tabla completa (Process View) — Ejemplo 1 (6 clientes)}
+
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{table}
+\centering
+\begin{tabular}{@{}c c c c c c c c c@{}}
+\toprule
+Cliente $i$ & $X_i$ & $A_i$ & $S_i$ & $E_i$ (begin) & $F_i$ (end) & $W_i$ & $T_i$ & $I_i$\\
+\midrule
+1 & 0.0 & 0.0 & 1.1 & 0.0 & 1.1 & 0.0 & 1.1 & 0.0\\
+2 & 1.2 & 1.2 & 0.9 & 1.2 & 2.1 & 0.0 & 0.9 & 0.1\\
+3 & 0.7 & 1.9 & 2.0 & 2.1 & 4.1 & 0.2 & 2.2 & 0.0\\
+4 & 1.3 & 3.2 & 1.2 & 4.1 & 5.3 & 0.9 & 2.1 & 0.0\\
+5 & 0.4 & 3.6 & 0.8 & 5.3 & 6.1 & 1.7 & 2.5 & 0.0\\
+6 & 1.0 & 4.6 & 1.5 & 6.1 & 7.6 & 1.5 & 3.0 & 0.0\\
+\midrule
+\textbf{Suma} &  &  & \textbf{7.5} &  &  & \textbf{4.3} & \textbf{11.8} & \textbf{0.1}\\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Métricas (directo desde la tabla, sin áreas)}
+\small
+De la tabla (una corrida):
+
+\begin{block}{Promedios por cliente}
+\[
+\bar W=\frac{\sum W_i}{n}=\frac{4.3}{6}\approx 0.717,
+\qquad
+\bar T=\frac{\sum T_i}{n}=\frac{11.8}{6}\approx 1.967.
+\]
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Probabilidad de esperar}
+\[
+\widehat{\Prob}(W>0)=\frac{\#\{i:W_i>0\}}{n}=\frac{4}{6}\approx 0.667.
+\]
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Utilización del servidor (process view)}
+\[
+\hat\rho=\frac{\text{Total tiempo en servicio}}{\text{Tiempo total observado}}
+=\frac{\sum S_i}{F_6-0}=\frac{7.5}{7.6}\approx 0.987.
+\]
+\end{block}
+\end{frame}
+
+
+
+
+% -------------------------
+\begin{frame}{Tabla comparativa: misma cola 1 servidor, tres formas de modelar}
+\small
+\renewcommand{\arraystretch}{1.25}
+\setlength{\tabcolsep}{5pt}
+\begin{table}
+\centering
+\footnotesize
+\begin{tabular}{@{}p{0.22\textwidth} p{0.25\textwidth} p{0.25\textwidth} p{0.22\textwidth}@{}}
+\toprule
+ & \textbf{Event-Scheduling} & \textbf{Activity-Scanning} & \textbf{Process-Interaction}\\
+\midrule
+\textbf{Unidad de lógica} & Evento (Arrival/Departure) & Condición/actividad & Proceso de entidad\\
+\textbf{Qué escribes} & FEL + rutinas & Reglas “si condición entonces” & Flujo del cliente + recursos\\
+\textbf{Tiempo avanza} & $\min$ en FEL (explícito) & por escaneo (a veces por incrementos) & $\min$ en agenda interna\\
+\textbf{Ventaja} & Control + transparencia teórica & Natural con reglas lógicas & Máxima legibilidad (alto nivel)\\
+\textbf{Riesgo} & Verboso; fácil equivocarse en FEL & Ineficiente si time-slicing; difícil de depurar & “Magia”: el estudiante no ve FEL\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{2pt}
+\begin{alertblock}{Recomendación para pregrado}
+Primero \textbf{Event-Scheduling} (para entender estado/FEL/estadísticas), luego \textbf{Process-Interaction} (para modelar grande en Python).
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}{Mapa de correspondencias: cómo se traducen las mismas ideas}
+\small
+\begin{block}{Misma cola 1 servidor: equivalencias conceptuales}
+\begin{itemize}
+\item \textbf{FEL (Event-Scheduling)} $\leftrightarrow$ \textbf{agenda interna} (Process-Interaction)  
+\hspace{3mm} (ambas contienen “próximo ARRIVAL” y “próximo fin de servicio”).
+\item \textbf{Departure routine} $\leftrightarrow$ \textbf{release del recurso} + activación del siguiente en cola.
+\item \textbf{Si servidor IDLE al llegar} $\leftrightarrow$ \textbf{request se concede inmediatamente}.
+\item \textbf{Cola explícita \texttt{time\_arrive[ ]}} $\leftrightarrow$ \textbf{cola del recurso} (SimPy) + registro de timestamps.
+\end{itemize}
+\end{block}
+
+\vspace{4pt}
+\begin{block}{Qué debes exigir en cualquier worldview (criterio de rigor)}
+\begin{enumerate}
+\item Estado bien definido (suficiente para “predecir”).
+\item Reglas de transición claras (qué cambia en cada evento/actividad/paso).
+\item Estadísticas bien definidas (por tiempo vs por cliente).
+\end{enumerate}
+\end{block}
+\end{frame}
+
+
+
+
+\begin{frame}{Worldview 1: arquitectura estándar de un simulador Event-Scheduling}
+\small
+Banks presenta una \textbf{plantilla} (program structure) que separa responsabilidades:
+
+\vspace{2pt}
+\begin{center}
+\begin{tikzpicture}[node distance=8mm, every node/.style={font=\scriptsize}]
+  \node[draw, rounded corners, align=center, minimum width=38mm, minimum height=7mm] (main) {Main program\\(bucle de simulación)};
+  \node[draw, rounded corners, align=center, below=of main, minimum width=38mm, minimum height=7mm] (timing) {Timing routine\\(elige próximo evento)};
+  \node[draw, rounded corners, align=center, left=16mm of timing, minimum width=38mm, minimum height=7mm] (init) {Initialization routine\\(estado + FEL inicial)};
+  \node[draw, rounded corners, align=center, right=16mm of timing, minimum width=38mm, minimum height=7mm] (stats) {Update-time-avg-stats\\(áreas entre eventos)};
+  \node[draw, rounded corners, align=center, below=of timing, minimum width=38mm, minimum height=7mm] (events) {Event routines\\Arrival / Departure / \dots};
+  \node[draw, rounded corners, align=center, below=of events, minimum width=38mm, minimum height=7mm] (report) {Report generator\\(métricas finales)};
+
+  \draw[-{Stealth[length=2mm]}] (init) -- (main);
+  \draw[-{Stealth[length=2mm]}] (main) -- (timing);
+  \draw[-{Stealth[length=2mm]}] (timing) -- (stats);
+  \draw[-{Stealth[length=2mm]}] (stats) -- (events);
+  \draw[-{Stealth[length=2mm]}] (events) -- (main);
+  \draw[-{Stealth[length=2mm]}] (main) -- (report);
+\end{tikzpicture}
+\end{center}
+
+\vspace{2pt}
+\begin{block}{Qué gana el estudiante}
+Esta estructura obliga a:
+\textbf{(i)} definir estado y FEL con precisión,
+\textbf{(ii)} separar “avanzar reloj” de “cambiar estado”,
+\textbf{(iii)} calcular estadísticas por áreas de forma correcta.
+\end{block}
+\end{frame}
+
+% =========================
+% EJEMPLO COMPLETO: EVENT-SCHEDULING (al estilo Banks)
+% =========================
+
+% -------------------------
+\begin{frame}[fragile]{Ejemplo completo (1/4): problema, estado y FEL (1 servidor, FCFS)}
+\small
+\textbf{Problema:} simular una cola de \textbf{1 servidor} FCFS y estimar:
+\[
+\text{(i) espera promedio en cola } \bar W_q,\quad
+\text{(ii) } \bar Q=\frac{1}{T}\int_0^T N_Q(t)\,dt,\quad
+\text{(iii) utilización } \hat\rho.
+\]
+
+\vspace{2pt}
+\begin{block}{Estado y estructuras (mínimo necesario)}
+\begin{itemize}
+\item \texttt{clock} = $t$
+\item \texttt{server\_status} $\in\{\text{IDLE},\text{BUSY}\}$
+\item \texttt{num\_in\_q} = $N_Q$
+\item \texttt{time\_arrive[\,]}: arreglo (cola FCFS) con tiempos de llegada de quienes esperan
+\end{itemize}
+\end{block}
+
+\vspace{2pt}
+\begin{block}{FEL como arreglo \texttt{time\_next\_event} }
+\[
+\texttt{time\_next\_event[1]}=\text{NA (próxima llegada)},\quad
+\texttt{time\_next\_event[2]}=\text{ND (próxima salida)}.
+\]
+Si no hay salida programada: \texttt{time\_next\_event[2]}$=\infty$.
+\end{block}
+\end{frame}
+
+% -------------------------
+\begin{frame}[fragile]{Ejemplo completo (2/4): acumuladores estadísticos (áreas) y criterio de parada}
+\small
+\begin{block}{Acumuladores}
+\begin{itemize}
+\item \texttt{time\_last\_event}
+\item \texttt{total\_of\_delays} $=\sum$ esperas en cola (por cliente)
+\item \texttt{num\_custs\_delayed} = número de clientes que \emph{entran a servicio} (para promediar)
+\item \texttt{area\_num\_in\_q} $=\int N_Q(t)\,dt$
+\item \texttt{area\_server\_status} $=\int \1\{\text{BUSY}\}\,dt$
+\end{itemize}
+\end{block}
+
+\vspace{2pt}
+\begin{block}{Rutina: Update-time-average-stats }
+Con $\Delta = \texttt{clock} - \texttt{time\_last\_event}$:
+\[
+\texttt{area\_num\_in\_q} \mathrel{+}= \texttt{num\_in\_q}\cdot \Delta,\qquad
+\texttt{area\_server\_status} \mathrel{+}= \1\{\texttt{server\_status=BUSY}\}\cdot \Delta,
+\]
+\[
+\texttt{time\_last\_event} \leftarrow \texttt{clock}.
+\]
+\end{block}
+
+\vspace{2pt}
+\begin{alertblock}{Criterio de parada }
+Se suele fijar \texttt{num\_delays\_required} = $N$ y parar cuando
+\[
+\texttt{num\_custs\_delayed} \ge \texttt{num\_delays\_required}.
+\]
+\end{alertblock}
+\end{frame}
+
+% -------------------------
+\begin{frame}[fragile]{Ejemplo completo (3/4): Main program + Timing routine (pseudocódigo Banks)}
+\small
+\begin{block}{Main program (estructura canónica)}
+\end{block}
+\begin{verbatim}
+Initialization();
+
+while (num_custs_delayed < num_delays_required) {
+
+  Timing();                 // clock <- next event time, next_event_type <- argmin
+
+  Update_time_avg_stats();  // áreas entre el último evento y éste
+
+  if (next_event_type == ARRIVAL)   Arrival();
+  else if (next_event_type == DEPARTURE) Departure();
+}
+
+Report();                   // métricas finales
+\end{verbatim}
+
+\vspace{2pt}
+\begin{block}{Timing routine (elige el mínimo en la FEL)}
+\end{block}
+\begin{verbatim}
+Timing() {
+  min_time_next_event = infinity;
+  next_event_type = 0;
+
+  for (i = 1; i <= num_events; i++) {
+    if (time_next_event[i] < min_time_next_event) {
+      min_time_next_event = time_next_event[i];
+      next_event_type = i;
+    }
+  }
+  clock = min_time_next_event;
+}
+\end{verbatim}
+\end{frame}
+
+% -------------------------
+\begin{frame}[fragile]{Ejemplo completo (4/4): Arrival, Departure, Initialization y Report }
+\scriptsize
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.50\textwidth}
+\begin{block}{Initialization (idea Banks)}
+\end{block}
+\begin{verbatim}
+Initialization() {
+  clock = 0.0;
+  server_status = IDLE;
+  num_in_q = 0;
+  time_last_event = 0.0;
+
+  total_of_delays = 0.0;
+  num_custs_delayed = 0;
+  area_num_in_q = 0.0;
+  area_server_status = 0.0;
+
+  time_next_event[ARRIVAL]   = clock + expon(mean_interarrival);
+  time_next_event[DEPARTURE] = infinity;
+}
+\end{verbatim}
+
+\begin{block}{Arrival (Banks: programa siguiente llegada)}
+\end{block}
+\begin{verbatim}
+Arrival() {
+  time_next_event[ARRIVAL] = clock + expon(mean_interarrival);
+
+  if (server_status == BUSY) {
+    num_in_q++;
+    time_arrive[num_in_q] = clock;       // enqueue arrival time
+  } else {
+    delay = 0.0;
+    total_of_delays += delay;
+
+    num_custs_delayed++;
+    server_status = BUSY;
+
+    time_next_event[DEPARTURE] = clock + expon(mean_service);
+  }
+}
+\end{verbatim}
+\end{column}
+
+\begin{column}{0.50\textwidth}
+\begin{block}{Departure (Banks: si hay cola, saca FCFS y calcula delay)}
+\end{block}
+\begin{verbatim}
+Departure() {
+  if (num_in_q == 0) {
+    server_status = IDLE;
+    time_next_event[DEPARTURE] = infinity;
+  } else {
+    num_in_q--;
+    delay = clock - time_arrive[1];
+    total_of_delays += delay;
+
+    num_custs_delayed++;
+
+    for (i = 1; i <= num_in_q; i++)
+      time_arrive[i] = time_arrive[i+1]; // shift left (FCFS)
+
+    time_next_event[DEPARTURE] = clock + expon(mean_service);
+  }
+}
+\end{verbatim}
+
+\begin{block}{Report (métricas Banks)}
+\end{block}
+\begin{verbatim}
+Report() {
+  avg_delay_in_q = total_of_delays / num_custs_delayed;
+  avg_num_in_q   = area_num_in_q / clock;
+  util_server    = area_server_status / clock;
+}
+\end{verbatim}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+% -------------------------
+\begin{frame}{Referencia base}
+\small
+\begin{thebibliography}{9}
+\bibitem{banks}
+J. Banks, J. S. Carson II, B. L. Nelson, D. M. Nicol.
+\newblock \emph{Discrete-Event System Simulation}.
+
+\end{thebibliography}
+\end{frame}
+
+\end{document}
