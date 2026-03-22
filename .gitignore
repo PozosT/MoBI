@@ -17,6 +17,13 @@
 *.snm
 *.vrb
 
+# Compiled outputs — generados localmente con `make build`
+# Los PDFs y slides SÍ se suben al repo para que GitHub Pages los sirva.
+# Descomenta las líneas siguientes si prefieres no versionar compilados:
+# compiled/lecturas/*.pdf
+# compiled/presentaciones/*.pdf
+# compiled/notebooks/*.html
+
 # Jupyter checkpoints
 .ipynb_checkpoints/
 __pycache__/
