@@ -7429,7 +7429,7 @@ main {
     init_mathjax();
     </script>
 <!-- End of mathjax configuration --><!-- Reveal Theme -->
-<link href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/simple.css" id="theme" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme" rel="stylesheet"/>
 </head>
 <body class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
 <main>
@@ -7441,7 +7441,7 @@ main {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="CMTC:-Introducci%C3%B3n-y-Matriz-Generadora-Q">CMTC: Introducción y Matriz Generadora Q<a class="anchor-link" href="#CMTC:-Introducci%C3%B3n-y-Matriz-Generadora-Q">¶</a></h2><h3 id="T2.2-%C2%B7-Modelado-de-Sistemas-bajo-Incertidumbre">T2.2 · Modelado de Sistemas bajo Incertidumbre<a class="anchor-link" href="#T2.2-%C2%B7-Modelado-de-Sistemas-bajo-Incertidumbre">¶</a></h3><p>Universidad de los Andes · Ingeniería Industrial</p>
+<h2 id="Cadenas-de-Markov-de-Tiempo-Continuo:-Modelamiento">Cadenas de Markov de Tiempo Continuo: Modelamiento<a class="anchor-link" href="#Cadenas-de-Markov-de-Tiempo-Continuo:-Modelamiento">¶</a></h2><h3 id="T2.2-%C2%B7-Modelado-de-Sistemas-bajo-Incertidumbre">T2.2 · Modelado de Sistemas bajo Incertidumbre<a class="anchor-link" href="#T2.2-%C2%B7-Modelado-de-Sistemas-bajo-Incertidumbre">¶</a></h3><p>Universidad de los Andes · Ingeniería Industrial</p>
 </div>
 </div>
 </div>
@@ -7452,14 +7452,15 @@ main {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Agenda">Agenda<a class="anchor-link" href="#Agenda">¶</a></h2><ol>
-<li>De CMTD a CMTC: motivación</li>
-<li>Definición de Cadena de Markov de Tiempo Continuo</li>
-<li>Tasas de transición qᵢⱼ y tiempo de permanencia</li>
-<li>Matriz Generadora Q: construcción e interpretación</li>
-<li>Diagrama de tasas (rate diagram)</li>
-<li>Ejemplo: máquina con fallos y reparaciones</li>
-<li>Construcción de Q con Python</li>
+<h2 id="Contenido">Contenido<a class="anchor-link" href="#Contenido">¶</a></h2><ol>
+<li>Metodología de modelamiento (5 pasos)</li>
+<li><strong>Escenario 1:</strong> Cola M/M/1 — restaurante (una variable, tasas constantes)</li>
+<li><strong>Escenario 2:</strong> Cola M/M/1/K — clínica dental (capacidad finita)</li>
+<li><strong>Escenario 3:</strong> Cola M/M/c — call center (múltiples servidores)</li>
+<li><strong>Escenario 4:</strong> Reparación de máquinas (dos variables → reducción)</li>
+<li><strong>Escenario 5:</strong> Red de colas con dos estaciones (modelo implícito)</li>
+<li>Explícito vs. implícito</li>
+<li>Ejercicio propuesto</li>
 </ol>
 </div>
 </div>
@@ -7471,17 +7472,42 @@ main {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Motivaci%C3%B3n:-de-discreto-a-continuo">Motivación: de discreto a continuo<a class="anchor-link" href="#Motivaci%C3%B3n:-de-discreto-a-continuo">¶</a></h2><p>Las Cadenas de Markov de <strong>Tiempo Discreto</strong> (CMTD) asumen transiciones en instantes fijos.</p>
-<p>En muchos sistemas reales los cambios ocurren en instantes <strong>aleatorios</strong>:</p>
-<ul>
-<li>Una máquina falla después de un tiempo aleatorio</li>
-<li>Un cliente llega al azar durante el día</li>
-<li>Un servidor termina su atención en tiempo variable</li>
-</ul>
-<div class="defn">
-Una <strong>Cadena de Markov de Tiempo Continuo</strong> (CMTC) es un proceso estocástico {X(t), t ≥ 0} con espacio de estados discreto S que satisface la <em>propiedad de Markov</em>:
-
-<p>$$P(X(t+s)=j \mid X(s)=i, X(u)=x_u, u &lt; s) = P(X(t+s)=j \mid X(s)=i)$$</p>
+<h2 id="Metodolog%C3%ADa-de-modelamiento">Metodología de modelamiento<a class="anchor-link" href="#Metodolog%C3%ADa-de-modelamiento">¶</a></h2><div class="defn">
+<strong>Meta:</strong> Dada una descripción textual de un sistema estocástico, construir sistemáticamente su CMTC.
+</div>
+<p><strong>Proceso en 5 pasos:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Identificar las <strong>variables aleatorias</strong> relevantes</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Definir el <strong>espacio de estados</strong> de cada variable</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Construir la <strong>variable de estado conjunta</strong> y su espacio</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Identificar las <strong>transiciones posibles</strong> y sus tasas</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Ensamblar la <strong>matriz generadora Q</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="nota">
+Avanzaremos de escenarios simples (una variable) a complejos (dos variables con acoplamiento), y de matrices <strong>explícitas</strong> a representaciones <strong>implícitas</strong> programables.
 </div>
 </div>
 </div>
@@ -7493,37 +7519,82 @@ Una <strong>Cadena de Markov de Tiempo Continuo</strong> (CMTC) es un proceso es
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Tasas-de-transici%C3%B3n">Tasas de transición<a class="anchor-link" href="#Tasas-de-transici%C3%B3n">¶</a></h2><div class="defn">
-La <strong>tasa de transición</strong> del estado i al estado j (i ≠ j) es:
-
-<p>$$q_{ij} = \lim_{h \to 0} \frac{P(X(t+h)=j \mid X(t)=i)}{h} \geq 0$$</p>
+<h2 id="Escenario-1-%E2%80%94-Cola-M/M/1:-restaurante">Escenario 1 — Cola M/M/1: restaurante<a class="anchor-link" href="#Escenario-1-%E2%80%94-Cola-M/M/1:-restaurante">¶</a></h2><div class="defn">
+Un pequeño restaurante tiene <strong>un solo cajero</strong>. Los clientes llegan con tasa λ = 3 clientes/min. El cajero atiende a tasa μ = 5 clientes/min. La fila no tiene límite de capacidad.
 </div>
-<p><strong>Tiempo de permanencia en el estado i:</strong>
-El tiempo que el proceso permanece en i antes de saltar sigue una distribución <strong>Exponencial</strong> con parámetro:</p>
-<p>$$q_i = \sum_{j \neq i} q_{ij}$$</p>
-<p>Esta es la consecuencia directa de la propiedad sin memoria (conexión con el Proceso de Poisson).</p>
+<p><strong>Aplicando los 5 pasos:</strong></p>
+<ul>
+<li><strong>Variable aleatoria:</strong> N(t) = número de clientes en el sistema</li>
+<li><strong>Espacio de estados:</strong> S = {0, 1, 2, 3, …} = ℕ₀</li>
+<li><strong>Eventos:</strong> llegada (n → n+1, tasa λ); servicio (n → n−1, tasa μ, solo si n ≥ 1)</li>
+<li><strong>Forma implícita de Q:</strong></li>
+</ul>
+<p>$$q_{n,n+1} = \lambda, \quad q_{n,n-1} = \mu \cdot \mathbb{1}(n \geq 1), \quad q_{nn} = -\lambda - \mu \cdot \mathbb{1}(n \geq 1)$$</p>
+<div class="nota">
+Es un proceso de <strong>nacimiento y muerte</strong>: solo hay transiciones entre estados adyacentes. Las tasas son constantes e independientes del estado.
 </div>
 </div>
 </div>
-</div></section></section><section><section>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ae508c82">
+</div>
+</div></section></section><section><section><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=ae508c82">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Matriz-Generadora-Q">Matriz Generadora Q<a class="anchor-link" href="#Matriz-Generadora-Q">¶</a></h2><div class="defn">
-La <strong>Matriz Generadora Q</strong> (o matriz de tasas) es una matriz n×n donde:
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jmarkov.ctmc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ctmc</span>
 
-<p>$$Q_{ij} = \begin{cases} q_{ij} &amp; \text{si } i \neq j \\ -q_i = -\sum_{j \neq i} q_{ij} &amp; \text{si } i = j \end{cases}$$</p>
+<span class="n">lam</span><span class="p">,</span> <span class="n">mu</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">5.0</span>
+<span class="n">N</span> <span class="o">=</span> <span class="mi">10</span>   <span class="c1"># truncar para visualizar</span>
+
+<span class="c1"># Construcción implícita de Q</span>
+<span class="n">Q1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">N</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="n">N</span><span class="p">:</span>
+        <span class="n">Q1</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">lam</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">Q1</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">mu</span>
+<span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">Q1</span><span class="p">,</span> <span class="o">-</span><span class="n">Q1</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Matriz Q (M/M/1, primeras 5 filas):"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">Q1</span><span class="p">[:</span><span class="mi">5</span><span class="p">,</span> <span class="p">:</span><span class="mi">5</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Forma implícita: q_</span><span class="se">{{</span><span class="s2">n,n+1</span><span class="se">}}</span><span class="s2">=</span><span class="si">{</span><span class="n">lam</span><span class="si">}</span><span class="s2">, q_</span><span class="se">{{</span><span class="s2">n,n-1</span><span class="se">}}</span><span class="s2">=</span><span class="si">{</span><span class="n">mu</span><span class="si">}</span><span class="s2">  (tasa diagonal: q_00=</span><span class="si">{</span><span class="n">Q1</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">, q_11=</span><span class="si">{</span><span class="n">Q1</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+
+<span class="n">mc1</span> <span class="o">=</span> <span class="n">ctmc</span><span class="p">(</span><span class="n">Q1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">jmarkov — ¿Es ergódica? </span><span class="si">{</span><span class="n">mc1</span><span class="o">.</span><span class="n">is_ergodic</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="n">pi1</span> <span class="o">=</span> <span class="n">mc1</span><span class="o">.</span><span class="n">steady_state</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Distribución estacionaria π∞ (estados 0..5): </span><span class="si">{</span><span class="n">pi1</span><span class="p">[:</span><span class="mi">6</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="n">rho</span> <span class="o">=</span> <span class="n">lam</span><span class="o">/</span><span class="n">mu</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Verificación: ρ = λ/μ = </span><span class="si">{</span><span class="n">rho</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> &lt; 1 → estable  |  π₀ = 1-ρ = </span><span class="si">{</span><span class="mi">1</span><span class="o">-</span><span class="n">rho</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> ✓"</span><span class="p">)</span>
+</pre></div>
 </div>
-<p><strong>Propiedades de Q:</strong></p>
-<ul>
-<li>Todos los elementos fuera de la diagonal son ≥ 0</li>
-<li>La suma de cada <strong>fila</strong> es cero: Q · <strong>1</strong> = <strong>0</strong></li>
-<li>Los elementos de la diagonal son negativos (o cero)</li>
-<li>Q determina completamente la dinámica de la CMTC</li>
-</ul>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Matriz Q (M/M/1, primeras 5 filas):
+[[-3.  3.  0.  0.  0.]
+ [ 5. -8.  3.  0.  0.]
+ [ 0.  5. -8.  3.  0.]
+ [ 0.  0.  5. -8.  3.]
+ [ 0.  0.  0.  5. -8.]]
+
+Forma implícita: q_{n,n+1}=3.0, q_{n,n-1}=5.0  (tasa diagonal: q_00=-3.0, q_11=-8.0)
+
+jmarkov — ¿Es ergódica? True
+Distribución estacionaria π∞ (estados 0..5): [0.4015 0.2409 0.1445 0.0867 0.052  0.0312]
+Verificación: ρ = λ/μ = 0.60 &lt; 1 → estable  |  π₀ = 1-ρ = 0.4000 ✓
+</pre>
+</div>
 </div>
 </div>
 </div>
@@ -7534,54 +7605,76 @@ La <strong>Matriz Generadora Q</strong> (o matriz de tasas) es una matriz n×n d
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Ejemplo:-m%C3%A1quina-con-fallos-y-reparaciones">Ejemplo: máquina con fallos y reparaciones<a class="anchor-link" href="#Ejemplo:-m%C3%A1quina-con-fallos-y-reparaciones">¶</a></h2><p><strong>Estados:</strong> 0 = operativa, 1 = en reparación
-<strong>Parámetros:</strong> tasa de fallo α, tasa de reparación β</p>
-<p><strong>Diagrama de tasas:</strong></p>
-<pre><code>        α
-   0 -------&gt; 1
-   0 &lt;------- 1
-        β
-</code></pre>
-<p><strong>Probabilidades de transición en h pequeño:</strong></p>
-<ul>
-<li>P(0→1 en h) = αh + o(h)</li>
-<li>P(1→0 en h) = βh + o(h)</li>
-<li>P(0→0 en h) = 1 − αh + o(h)</li>
-<li>P(1→1 en h) = 1 − βh + o(h)</li>
-</ul>
-<p>$$Q = \begin{pmatrix} -\alpha &amp; \alpha \\ \beta &amp; -\beta \end{pmatrix}$$</p>
+<h2 id="Escenario-2-%E2%80%94-Cola-M/M/1/K:-cl%C3%ADnica-dental">Escenario 2 — Cola M/M/1/K: clínica dental<a class="anchor-link" href="#Escenario-2-%E2%80%94-Cola-M/M/1/K:-cl%C3%ADnica-dental">¶</a></h2><div class="defn">
+Una pequeña clínica dental tiene <strong>1 dentista</strong> y una sala de espera con <strong>3 sillas</strong> (capacidad total K = 4, incluyendo el paciente en atención). Los pacientes llegan a tasa λ = 2 pac/hora. El dentista atiende a tasa μ = 3 pac/hora. Si el sistema está lleno (K pacientes), <strong>el paciente se va y no regresa</strong>.
+</div>
+<p><strong>Diferencia con M/M/1:</strong> el espacio de estados es <strong>finito</strong> S = {0, 1, 2, 3, 4}.</p>
+<p>Las llegadas se <strong>bloquean</strong> cuando el sistema está lleno:
+$$q_{n,n+1} = \lambda \cdot \mathbb{1}(n &lt; K), \quad q_{n,n-1} = \mu \cdot \mathbb{1}(n \geq 1)$$</p>
+<p>Con K = 4, λ = 2, μ = 3:
+$$Q = \begin{pmatrix} -2 &amp; 2 &amp; 0 &amp; 0 &amp; 0 \\ 3 &amp; -5 &amp; 2 &amp; 0 &amp; 0 \\ 0 &amp; 3 &amp; -5 &amp; 2 &amp; 0 \\ 0 &amp; 0 &amp; 3 &amp; -5 &amp; 2 \\ 0 &amp; 0 &amp; 0 &amp; 3 &amp; -3 \end{pmatrix}$$</p>
 </div>
 </div>
 </div>
-</div></section><section><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=57a598bc">
+</div></section><section><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=57a598bc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpatches</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">lam2</span><span class="p">,</span> <span class="n">mu2</span><span class="p">,</span> <span class="n">K</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mi">4</span>
 
-<span class="c1"># ── Parámetros ──────────────────────────────</span>
-<span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.5</span>   <span class="c1"># tasa de fallo (fallas/hora)</span>
-<span class="n">beta</span>  <span class="o">=</span> <span class="mf">2.0</span>   <span class="c1"># tasa de reparación (reparaciones/hora)</span>
+<span class="n">Q2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">K</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">K</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="n">K</span><span class="p">:</span>
+        <span class="n">Q2</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">lam2</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">Q2</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">mu2</span>
+<span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">Q2</span><span class="p">,</span> <span class="o">-</span><span class="n">Q2</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
 
-<span class="c1"># ── Construcción de Q ────────────────────────</span>
-<span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="n">alpha</span><span class="p">,</span> <span class="n">alpha</span><span class="p">],</span>
-              <span class="p">[</span><span class="n">beta</span><span class="p">,</span>  <span class="o">-</span><span class="n">beta</span><span class="p">]])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Matriz Q (M/M/1/K=4):"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">Q2</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Matriz Generadora Q:"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span>
-<span class="n">Verificación</span> <span class="n">filas</span> <span class="n">suman</span> <span class="mi">0</span><span class="p">:</span> <span class="p">{</span><span class="n">Q</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)}</span><span class="s2">")</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span>
-<span class="n">Interpretación</span><span class="p">:</span><span class="s2">")</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Tiempo promedio operativa:    E[T₀] = 1/α = </span><span class="si">{</span><span class="mi">1</span><span class="o">/</span><span class="n">alpha</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> h"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Tiempo promedio en reparación: E[T₁] = 1/β = </span><span class="si">{</span><span class="mi">1</span><span class="o">/</span><span class="n">beta</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> h"</span><span class="p">)</span>
+<span class="n">mc2</span> <span class="o">=</span> <span class="n">ctmc</span><span class="p">(</span><span class="n">Q2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">K</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">pi2</span> <span class="o">=</span> <span class="n">mc2</span><span class="o">.</span><span class="n">steady_state</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">jmarkov — distribución estacionaria: </span><span class="si">{</span><span class="n">pi2</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="n">p_lleno</span> <span class="o">=</span> <span class="n">pi2</span><span class="p">[</span><span class="n">K</span><span class="p">]</span>                          <span class="c1"># P(sistema lleno = paciente rechazado)</span>
+<span class="n">lam_eff</span> <span class="o">=</span> <span class="n">lam2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p_lleno</span><span class="p">)</span>           <span class="c1"># tasa efectiva de ingreso</span>
+<span class="n">E_N</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">pi2</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">P(sistema lleno, paciente rechazado) = </span><span class="si">{</span><span class="n">p_lleno</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">p_lleno</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Tasa efectiva de admisión = λ(1-P_K)  = </span><span class="si">{</span><span class="n">lam_eff</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> pac/h"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Número promedio en sistema E[N]        = </span><span class="si">{</span><span class="n">E_N</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Comparación M/M/1 sin límite: ρ = </span><span class="si">{</span><span class="n">lam2</span><span class="o">/</span><span class="n">mu2</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> → estable, E[N] = </span><span class="si">{</span><span class="p">(</span><span class="n">lam2</span><span class="o">/</span><span class="n">mu2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">lam2</span><span class="o">/</span><span class="n">mu2</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Matriz Q (M/M/1/K=4):
+[[-2.  2.  0.  0.  0.]
+ [ 3. -5.  2.  0.  0.]
+ [ 0.  3. -5.  2.  0.]
+ [ 0.  0.  3. -5.  2.]
+ [ 0.  0.  0.  3. -3.]]
+
+jmarkov — distribución estacionaria: [0.3839 0.2559 0.1706 0.1137 0.0758]
+
+P(sistema lleno, paciente rechazado) = 0.0758 = 7.6%
+Tasa efectiva de admisión = λ(1-P_K)  = 1.8483 pac/h
+Número promedio en sistema E[N]        = 1.2417
+
+Comparación M/M/1 sin límite: ρ = 0.67 → estable, E[N] = 2.0000
+</pre>
 </div>
 </div>
 </div>
@@ -7593,58 +7686,85 @@ La <strong>Matriz Generadora Q</strong> (o matriz de tasas) es una matriz n×n d
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Ejemplo-extendido:-3-estados">Ejemplo extendido: 3 estados<a class="anchor-link" href="#Ejemplo-extendido:-3-estados">¶</a></h2>
+<h2 id="Escenario-3-%E2%80%94-Cola-M/M/c:-call-center">Escenario 3 — Cola M/M/c: call center<a class="anchor-link" href="#Escenario-3-%E2%80%94-Cola-M/M/c:-call-center">¶</a></h2><div class="defn">
+Un centro de llamadas tiene <strong>c = 3 operadores</strong> idénticos. Las llamadas llegan a tasa λ = 10 llamadas/min. Cada operador resuelve una llamada a tasa μ = 4 llamadas/min. Si todos están ocupados, las llamadas esperan en cola sin límite.
+</div>
+<p><strong>Novedad:</strong> la tasa de servicio total <strong>depende del estado</strong>:</p>
+<ul>
+<li>Si n ≤ c: hay n operadores activos → tasa de servicio = nμ</li>
+<li>Si n &gt; c: los c operadores están activos → tasa de servicio = cμ</li>
+</ul>
+<p>$$\lambda_n = \lambda \quad \forall n, \qquad \mu_n = \min(n, c) \cdot \mu$$</p>
+<p><strong>Condición de estabilidad:</strong> ρ = λ/(cμ) &lt; 1 → ρ = 10/(3×4) = <strong>0.833 &lt; 1</strong> ✓</p>
 </div>
 </div>
 </div>
-</div></section><section><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=e2d4e736">
+</div></section><section><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e2d4e736">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="c1"># Sistema con 3 modos: normal (0), degradado (1), fallo (2)</span>
-<span class="c1"># Tasas: 0-&gt;1: 0.3, 0-&gt;2: 0.1, 1-&gt;0: 1.0, 1-&gt;2: 0.4, 2-&gt;1: 0.8</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">lam3</span><span class="p">,</span> <span class="n">mu3</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mi">3</span>
+<span class="n">N3</span> <span class="o">=</span> <span class="mi">20</span>   <span class="c1"># truncar</span>
 
-<span class="n">estados</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'Normal'</span><span class="p">,</span> <span class="s1">'Degradado'</span><span class="p">,</span> <span class="s1">'Fallo'</span><span class="p">]</span>
-<span class="c1"># Construir Q entrada por entrada</span>
-<span class="n">Q3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
-<span class="n">tasas</span> <span class="o">=</span> <span class="p">{(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">):</span> <span class="mf">0.3</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">):</span> <span class="mf">0.1</span><span class="p">,</span>
-         <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">):</span> <span class="mf">1.0</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">):</span> <span class="mf">0.4</span><span class="p">,</span>
-         <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">):</span> <span class="mf">0.8</span><span class="p">}</span>
-<span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">),</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">tasas</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-    <span class="n">Q3</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">q</span>
-<span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">Q3</span><span class="p">,</span> <span class="o">-</span><span class="n">Q3</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>  <span class="c1"># diagonal = -suma de la fila</span>
+<span class="n">Q3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N3</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">N3</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N3</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="n">N3</span><span class="p">:</span>
+        <span class="n">Q3</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">lam3</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">Q3</span><span class="p">[</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">*</span> <span class="n">mu3</span>
+<span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">Q3</span><span class="p">,</span> <span class="o">-</span><span class="n">Q3</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Matriz Q (3 estados):"</span><span class="p">)</span>
-<span class="n">header</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">''</span><span class="si">:</span><span class="s2">12s</span><span class="si">}</span><span class="s2">"</span> <span class="o">+</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">e</span><span class="si">:</span><span class="s2">&gt;12</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">estados</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">Q3</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">estados</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">:</span><span class="s2">12s</span><span class="si">}</span><span class="s2">"</span> <span class="o">+</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">&gt;12.3f</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="p">))</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span>
-<span class="n">Verificación</span><span class="p">:</span> <span class="n">filas</span> <span class="o">=</span> <span class="p">{</span><span class="n">Q3</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)}</span><span class="s2">")</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Primeras filas de Q (M/M/3): la tasa de muerte satura en c·μ ="</span><span class="p">,</span> <span class="n">c</span><span class="o">*</span><span class="n">mu3</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">Q3</span><span class="p">[:</span><span class="mi">5</span><span class="p">,</span> <span class="p">:</span><span class="mi">5</span><span class="p">])</span>
 
-<span class="c1"># Visualización del diagrama de tasas</span>
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
-<span class="n">pos</span> <span class="o">=</span> <span class="p">[(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.85</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.85</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)]</span>
-<span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'#1A7A9A'</span><span class="p">,</span> <span class="s1">'#C8961E'</span><span class="p">,</span> <span class="s1">'#C0392B'</span><span class="p">]</span>
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">pos</span><span class="p">):</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="mf">0.08</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">))</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">estados</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">ha</span><span class="o">=</span><span class="s1">'center'</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">'center'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'white'</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">'bold'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
-<span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">),</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">tasas</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-    <span class="n">x0</span><span class="p">,</span><span class="n">y0</span> <span class="o">=</span> <span class="n">pos</span><span class="p">[</span><span class="n">i</span><span class="p">];</span> <span class="n">x1</span><span class="p">,</span><span class="n">y1</span> <span class="o">=</span> <span class="n">pos</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
-    <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">x1</span><span class="o">-</span><span class="n">x0</span><span class="p">,</span> <span class="n">y1</span><span class="o">-</span><span class="n">y0</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">''</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="n">x1</span><span class="o">-</span><span class="mf">0.09</span><span class="o">*</span><span class="n">dx</span><span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">dx</span><span class="o">+</span><span class="mf">1e-9</span><span class="p">),</span> <span class="n">y1</span><span class="o">-</span><span class="mf">0.09</span><span class="o">*</span><span class="n">dy</span><span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">dy</span><span class="o">+</span><span class="mf">1e-9</span><span class="p">)),</span>
-                <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="n">x0</span><span class="o">+</span><span class="mf">0.09</span><span class="o">*</span><span class="n">dx</span><span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">dx</span><span class="o">+</span><span class="mf">1e-9</span><span class="p">),</span> <span class="n">y0</span><span class="o">+</span><span class="mf">0.09</span><span class="o">*</span><span class="n">dy</span><span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">dy</span><span class="o">+</span><span class="mf">1e-9</span><span class="p">)),</span>
-                <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s1">'-&gt;'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'#333'</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">))</span>
-    <span class="n">mx</span><span class="p">,</span> <span class="n">my</span> <span class="o">=</span> <span class="p">(</span><span class="n">x0</span><span class="o">+</span><span class="n">x1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">y0</span><span class="o">+</span><span class="n">y1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">mx</span><span class="p">,</span> <span class="n">my</span><span class="o">+</span><span class="mf">0.05</span><span class="p">,</span> <span class="sa">f</span><span class="s1">'q=</span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">'center'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'#333'</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">1.1</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">'off'</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">'Diagrama de tasas — sistema 3 estados'</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">'bold'</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">();</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">mc3</span> <span class="o">=</span> <span class="n">ctmc</span><span class="p">(</span><span class="n">Q3</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N3</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">pi3</span> <span class="o">=</span> <span class="n">mc3</span><span class="o">.</span><span class="n">steady_state</span><span class="p">()</span>
+<span class="n">rho3</span> <span class="o">=</span> <span class="n">lam3</span> <span class="o">/</span> <span class="p">(</span><span class="n">c</span> <span class="o">*</span> <span class="n">mu3</span><span class="p">)</span>
+
+<span class="n">E_N3</span>  <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">pi3</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N3</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">E_Nq3</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="n">pi3</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N3</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">W3</span>    <span class="o">=</span> <span class="n">E_N3</span> <span class="o">/</span> <span class="n">lam3</span>
+<span class="n">Wq3</span>   <span class="o">=</span> <span class="n">E_Nq3</span> <span class="o">/</span> <span class="n">lam3</span>
+<span class="n">p_esp</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">pi3</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">N3</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>   <span class="c1"># P(esperar, todos ocupados)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">jmarkov — M/M/c (c=</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">, λ=</span><span class="si">{</span><span class="n">lam3</span><span class="si">}</span><span class="s2">, μ=</span><span class="si">{</span><span class="n">mu3</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  ρ efectiva   = </span><span class="si">{</span><span class="n">rho3</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  E[N]         = </span><span class="si">{</span><span class="n">E_N3</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  llamadas en sistema"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  E[Nq]        = </span><span class="si">{</span><span class="n">E_Nq3</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  llamadas en cola"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  W            = </span><span class="si">{</span><span class="n">W3</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  min en sistema"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Wq           = </span><span class="si">{</span><span class="n">Wq3</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  min en cola"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  P(esperar)   = </span><span class="si">{</span><span class="n">p_esp</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">p_esp</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">)</span>
 </pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Primeras filas de Q (M/M/3): la tasa de muerte satura en c·μ = 12.0
+[[-10.  10.   0.   0.   0.]
+ [  4. -14.  10.   0.   0.]
+ [  0.   8. -18.  10.   0.]
+ [  0.   0.  12. -22.  10.]
+ [  0.   0.   0.  12. -22.]]
+
+jmarkov — M/M/c (c=3, λ=10.0, μ=4.0)
+  ρ efectiva   = 0.8333
+  E[N]         = 5.470  llamadas en sistema
+  E[Nq]        = 2.983  llamadas en cola
+  W            = 0.547  min en sistema
+  Wq           = 0.298  min en cola
+  P(esperar)   = 0.6942 = 69.4%
+</pre>
 </div>
 </div>
 </div>
@@ -7657,13 +7777,326 @@ La <strong>Matriz Generadora Q</strong> (o matriz de tasas) es una matriz n×n d
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="Conclusiones">Conclusiones<a class="anchor-link" href="#Conclusiones">¶</a></h2><ul>
-<li>Una CMTC extiende las cadenas de Markov al tiempo continuo usando la propiedad sin memoria.</li>
-<li>Los tiempos de permanencia en cada estado son Exponenciales con tasa qᵢ.</li>
-<li>La Matriz Generadora Q codifica toda la dinámica: qᵢⱼ en fuera-diagonal, −qᵢ en diagonal.</li>
-<li>La suma de cada fila de Q es siempre cero.</li>
-<li>A partir de Q se obtiene tanto el análisis transitorio (ecuaciones de Kolmogorov) como el estacionario.</li>
+<li>La <strong>metodología de 5 pasos</strong> convierte cualquier descripción textual en una CMTC sistemáticamente.</li>
+<li>El <strong>modelo implícito</strong> (tasas como función de los sub-índices) es compacto y programable; el <strong>modelo explícito</strong> (matriz Q completa) es útil para verificación visual.</li>
+<li>La <strong>progresión de complejidad</strong>: M/M/1 → M/M/1/K → M/M/c → dos variables con acoplamiento.</li>
+<li>Con <strong><code>jmarkov</code></strong>: una vez construida Q, <code>ctmc(Q, estados)</code> resuelve automáticamente estado estacionario, análisis transitorio y tiempos de primer pasaje.</li>
 </ul>
-<p><strong>Siguiente tema:</strong> Análisis Transitorio y Estado Estable de CMTC.</p>
+<p>| Escenario | Sistema | Variables | |S| | Tasas | Acoplamiento |
+|-----------|---------|-----------|-----|-------|--------|
+| 1 | M/M/1 | 1 | ∞ | Ctes | — |
+| 2 | M/M/1/K | 1 | K+1 | Ctes + borde | — |
+| 3 | M/M/c | 1 | ∞ | Dep. estado | — |
+| 4 | Reparación | 1 (2→1) | M+1 | Dep. estado | — |
+| 5 | Red colas | 2 | (cA+1)(cB+1) | Dep. estado | Sí (bloqueo) |</p>
+<p><strong>Próximo tema:</strong> Análisis transitorio — ¿cómo evoluciona π(t) antes del estado estable?</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=s9ck7lfg8dp">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="Escenario-4-%E2%80%94-Reparaci%C3%B3n-de-m%C3%A1quinas-(dos-variables)">Escenario 4 — Reparación de máquinas (dos variables)<a class="anchor-link" href="#Escenario-4-%E2%80%94-Reparaci%C3%B3n-de-m%C3%A1quinas-(dos-variables)">¶</a></h2><div class="defn">
+Una fábrica tiene <strong>M = 2 máquinas</strong> idénticas y <strong>R = 1 técnico</strong> de reparación. Cada máquina falla con tasa α = 0.5 fallas/hora. El técnico repara a tasa β = 2 reparaciones/hora. Si ambas están dañadas, el técnico repara <strong>una a la vez</strong>.
+</div>
+<p><strong>Dos variables:</strong> X₁(t), X₂(t) ∈ {0=ok, 1=dañada} → estado conjunto ∈ {(0,0),(0,1),(1,0),(1,1)}</p>
+<p><strong>Reducción a una variable</strong> (máquinas idénticas):
+F(t) = X₁(t) + X₂(t) = número de máquinas dañadas, S = {0, 1, 2}</p>
+<p>$$\lambda_f = (M-f)\alpha, \quad \mu_f = \min(f, R)\beta$$</p>
+<p>$$Q_{\text{reducida}} = \begin{pmatrix} -2\alpha &amp; 2\alpha &amp; 0 \\ \beta &amp; -(\alpha+\beta) &amp; \alpha \\ 0 &amp; \beta &amp; -\beta \end{pmatrix} = \begin{pmatrix} -1 &amp; 1 &amp; 0 \\ 2 &amp; -2.5 &amp; 0.5 \\ 0 &amp; 2 &amp; -2 \end{pmatrix}$$</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=eq9mvuvy6u">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="c1"># Modelo general: M máquinas, R técnicos</span>
+<span class="n">M</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">2.0</span>
+
+<span class="c1"># Construcción implícita de Q (forma reducida)</span>
+<span class="n">Q4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">M</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">M</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">M</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">lam_f</span> <span class="o">=</span> <span class="p">(</span><span class="n">M</span> <span class="o">-</span> <span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">alpha</span>          <span class="c1"># tasa de fallo: máquinas operativas</span>
+    <span class="n">mu_f</span>  <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span> <span class="o">*</span> <span class="n">beta</span>         <span class="c1"># tasa de reparación: técnicos activos</span>
+    <span class="k">if</span> <span class="n">f</span> <span class="o">&lt;</span> <span class="n">M</span><span class="p">:</span>
+        <span class="n">Q4</span><span class="p">[</span><span class="n">f</span><span class="p">,</span> <span class="n">f</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">lam_f</span>
+    <span class="k">if</span> <span class="n">f</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">Q4</span><span class="p">[</span><span class="n">f</span><span class="p">,</span> <span class="n">f</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">mu_f</span>
+<span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">Q4</span><span class="p">,</span> <span class="o">-</span><span class="n">Q4</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Modelo de reparación: M=</span><span class="si">{</span><span class="n">M</span><span class="si">}</span><span class="s2"> máquinas, R=</span><span class="si">{</span><span class="n">R</span><span class="si">}</span><span class="s2"> técnico, α=</span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s2">, β=</span><span class="si">{</span><span class="n">beta</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Matriz Q (f = # máquinas dañadas):"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">M</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  f=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">Q4</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="n">mc4</span> <span class="o">=</span> <span class="n">ctmc</span><span class="p">(</span><span class="n">Q4</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s1">'0 dañadas'</span><span class="p">,</span> <span class="s1">'1 dañada'</span><span class="p">,</span> <span class="s1">'2 dañadas'</span><span class="p">]))</span>
+<span class="n">pi4</span> <span class="o">=</span> <span class="n">mc4</span><span class="o">.</span><span class="n">steady_state</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">jmarkov — distribución estacionaria:"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">lbl</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([</span><span class="s1">'0 dañadas'</span><span class="p">,</span> <span class="s1">'1 dañada'</span><span class="p">,</span> <span class="s1">'2 dañadas'</span><span class="p">]):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  π∞(</span><span class="si">{</span><span class="n">lbl</span><span class="si">}</span><span class="s2">) = </span><span class="si">{</span><span class="n">pi4</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="n">pi4</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)"</span><span class="p">)</span>
+
+<span class="n">disp</span> <span class="o">=</span> <span class="n">pi4</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">pi4</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Disponibilidad del sistema (≥1 máquina operativa): </span><span class="si">{</span><span class="n">disp</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"P(ambas dañadas, producción detenida):             </span><span class="si">{</span><span class="n">pi4</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">)</span>
+<span class="n">E_op</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">M</span><span class="o">-</span><span class="n">f</span><span class="p">)</span><span class="o">*</span><span class="n">pi4</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">M</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"E[máquinas operativas] = </span><span class="si">{</span><span class="n">E_op</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="c1"># Sensibilidad: ¿qué pasa si agregamos un segundo técnico?</span>
+<span class="n">M2</span><span class="p">,</span> <span class="n">R2</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span>
+<span class="n">Q4b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">M2</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">M2</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">M2</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">lf</span> <span class="o">=</span> <span class="p">(</span><span class="n">M2</span><span class="o">-</span><span class="n">f</span><span class="p">)</span><span class="o">*</span><span class="n">alpha</span><span class="p">;</span> <span class="n">mf</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">f</span><span class="p">,</span><span class="n">R2</span><span class="p">)</span><span class="o">*</span><span class="n">beta</span>
+    <span class="k">if</span> <span class="n">f</span> <span class="o">&lt;</span> <span class="n">M2</span><span class="p">:</span> <span class="n">Q4b</span><span class="p">[</span><span class="n">f</span><span class="p">,</span> <span class="n">f</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">lf</span>
+    <span class="k">if</span> <span class="n">f</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="n">Q4b</span><span class="p">[</span><span class="n">f</span><span class="p">,</span> <span class="n">f</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">mf</span>
+<span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">Q4b</span><span class="p">,</span> <span class="o">-</span><span class="n">Q4b</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">pi4b</span> <span class="o">=</span> <span class="n">ctmc</span><span class="p">(</span><span class="n">Q4b</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">M2</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">steady_state</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Con R=2 técnicos: P(ambas dañadas) = </span><span class="si">{</span><span class="n">pi4b</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%  (antes: </span><span class="si">{</span><span class="n">pi4</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Modelo de reparación: M=2 máquinas, R=1 técnico, α=0.5, β=2.0
+
+Matriz Q (f = # máquinas dañadas):
+  f=0: [-1.  1.  0.]
+  f=1: [ 2.  -2.5  0.5]
+  f=2: [ 0.  2. -2.]
+
+jmarkov — distribución estacionaria:
+  π∞(0 dañadas) = 0.6154  (61.5%)
+  π∞(1 dañada) = 0.3077  (30.8%)
+  π∞(2 dañadas) = 0.0769  (7.7%)
+
+Disponibilidad del sistema (≥1 máquina operativa): 92.3%
+P(ambas dañadas, producción detenida):             7.7%
+E[máquinas operativas] = 1.538
+
+Con R=2 técnicos: P(ambas dañadas) = 4.0%  (antes: 7.7%)
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=742tjfuncrp">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="Escenario-5-%E2%80%94-Red-de-colas:-taller-de-bicicletas">Escenario 5 — Red de colas: taller de bicicletas<a class="anchor-link" href="#Escenario-5-%E2%80%94-Red-de-colas:-taller-de-bicicletas">¶</a></h2><div class="defn">
+Un taller tiene <strong>dos estaciones en serie</strong>: Estación A (diagnóstico, μ_A=4/h) y Estación B (reparación, μ_B=3/h). Las bicicletas llegan a tasa λ=2/h. Cada estación tiene espacio para <strong>máximo 2 bicicletas</strong>. Si la estación B está llena, la estación A <strong>queda bloqueada</strong> aunque tenga bicicletas.
+</div>
+<p><strong>Variables:</strong> N_A(t) ∈ {0,1,2}, N_B(t) ∈ {0,1,2} → |S| = 9 estados</p>
+<p><strong>Tres tipos de eventos desde estado (a,b):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Evento</th>
+<th>Destino</th>
+<th>Tasa</th>
+<th>Condición</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Llegada externa</td>
+<td>(a+1, b)</td>
+<td>λ</td>
+<td>a &lt; 2</td>
+</tr>
+<tr>
+<td>Servicio A (pasa a B)</td>
+<td>(a−1, b+1)</td>
+<td>μ_A</td>
+<td>a ≥ 1 y b &lt; 2</td>
+</tr>
+<tr>
+<td>Servicio B (sale)</td>
+<td>(a, b−1)</td>
+<td>μ_B</td>
+<td>b ≥ 1</td>
+</tr>
+</tbody>
+</table>
+<div class="alerta">
+<strong>Bloqueo:</strong> si b = 2 (estación B llena), la estación A no puede despachar aunque tenga bicicletas. Esto <strong>acopla</strong> ambas variables.
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=1qzukvy6d8l">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">lam5</span><span class="p">,</span> <span class="n">muA</span><span class="p">,</span> <span class="n">muB</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">3.0</span>
+<span class="n">capA</span><span class="p">,</span> <span class="n">capB</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span>
+
+<span class="c1"># Espacio de estados: producto cartesiano {0..capA} x {0..capB}</span>
+<span class="n">states5</span> <span class="o">=</span> <span class="p">[(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">capA</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">capB</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
+<span class="n">idx</span> <span class="o">=</span> <span class="p">{</span><span class="n">s</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">states5</span><span class="p">)}</span>
+<span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">states5</span><span class="p">)</span>
+
+<span class="c1"># Construcción implícita de Q (forma de tabla de eventos)</span>
+<span class="n">Q5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+<span class="n">events5</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">((</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span>  <span class="mi">0</span><span class="p">),</span> <span class="n">lam5</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">:</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="n">capA</span><span class="p">),</span>           <span class="c1"># llegada</span>
+    <span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">),</span> <span class="n">muA</span><span class="p">,</span>  <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">:</span> <span class="n">a</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="n">capB</span><span class="p">),</span> <span class="c1"># servicio A → B</span>
+    <span class="p">((</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">muB</span><span class="p">,</span>  <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">:</span> <span class="n">b</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">),</span>              <span class="c1"># servicio B → salida</span>
+<span class="p">]</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="n">states5</span><span class="p">:</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">da</span><span class="p">,</span> <span class="n">db</span><span class="p">),</span> <span class="n">rate</span><span class="p">,</span> <span class="n">cond</span> <span class="ow">in</span> <span class="n">events5</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cond</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+            <span class="n">dest</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span><span class="o">+</span><span class="n">da</span><span class="p">,</span> <span class="n">b</span><span class="o">+</span><span class="n">db</span><span class="p">)</span>
+            <span class="n">Q5</span><span class="p">[</span><span class="n">idx</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)],</span> <span class="n">idx</span><span class="p">[</span><span class="n">dest</span><span class="p">]]</span> <span class="o">=</span> <span class="n">rate</span>
+<span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">Q5</span><span class="p">,</span> <span class="o">-</span><span class="n">Q5</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Escenario 5 — Red de colas: </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> estados"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Estados: </span><span class="si">{</span><span class="n">states5</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Matriz Q (9×9):"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">Q5</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+<span class="n">mc5</span> <span class="o">=</span> <span class="n">ctmc</span><span class="p">(</span><span class="n">Q5</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">states5</span><span class="p">]))</span>
+<span class="n">pi5</span> <span class="o">=</span> <span class="n">mc5</span><span class="o">.</span><span class="n">steady_state</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">jmarkov — distribución estacionaria:"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">states5</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">pi5</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.005</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  π∞</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">pi5</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="n">pi5</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)"</span><span class="p">)</span>
+
+<span class="c1"># Métricas de rendimiento</span>
+<span class="n">p_bloq</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">pi5</span><span class="p">[</span><span class="n">idx</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)]]</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="n">states5</span> <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="n">capA</span><span class="p">)</span>
+<span class="n">E_NA</span>   <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">pi5</span><span class="p">[</span><span class="n">idx</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)]]</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="n">states5</span><span class="p">)</span>
+<span class="n">E_NB</span>   <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">pi5</span><span class="p">[</span><span class="n">idx</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)]]</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="n">states5</span><span class="p">)</span>
+<span class="n">p_Abloq</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">pi5</span><span class="p">[</span><span class="n">idx</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)]]</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="n">states5</span> <span class="k">if</span> <span class="n">a</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">b</span> <span class="o">==</span> <span class="n">capB</span><span class="p">)</span>  <span class="c1"># A bloqueada</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Métricas de rendimiento:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  P(llegada rechazada, A llena) = </span><span class="si">{</span><span class="n">p_bloq</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">p_bloq</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  P(A bloqueada por B llena)    = </span><span class="si">{</span><span class="n">p_Abloq</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">p_Abloq</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  E[bicicletas en estación A]   = </span><span class="si">{</span><span class="n">E_NA</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  E[bicicletas en estación B]   = </span><span class="si">{</span><span class="n">E_NB</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Escenario 5 — Red de colas: 9 estados
+Estados: [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+
+Matriz Q (9×9):
+[[-2.  0.  0.  2.  0.  0.  0.  0.  0.]
+ [ 3. -5.  0.  0.  2.  0.  0.  0.  0.]
+ [ 0.  3. -5.  0.  0.  2.  0.  0.  0.]
+ [ 0.  4.  0. -6.  0.  0.  2.  0.  0.]
+ [ 0.  0.  4.  3. -9.  0.  0.  2.  0.]
+ [ 0.  0.  0.  0.  3. -5.  0.  0.  2.]
+ [ 0.  0.  0.  0.  4.  0. -4.  0.  0.]
+ [ 0.  0.  0.  0.  0.  4.  3. -7.  0.]
+ [ 0.  0.  0.  0.  0.  0.  0.  3. -3.]]
+
+jmarkov — distribución estacionaria:
+  π∞(0, 0) = 0.2351  (23.5%)
+  π∞(0, 1) = 0.1567  (15.7%)
+  π∞(0, 2) = 0.0855  (8.5%)
+  π∞(1, 0) = 0.1318  (13.2%)
+  π∞(1, 1) = 0.1069  (10.7%)
+  π∞(1, 2) = 0.0760  (7.6%)
+  π∞(2, 0) = 0.1051  (10.5%)
+  π∞(2, 1) = 0.0522  (5.2%)
+  π∞(2, 2) = 0.0507  (5.1%)
+
+Métricas de rendimiento:
+  P(llegada rechazada, A llena) = 0.2080 = 20.8%
+  P(A bloqueada por B llena)    = 0.1267 = 12.7%
+  E[bicicletas en estación A]   = 0.731
+  E[bicicletas en estación B]   = 0.740
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=hxxa0amgzzu">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="Ejercicio-propuesto-%E2%80%94-Hospital:-urgencias-+-quir%C3%B3fano">Ejercicio propuesto — Hospital: urgencias + quirófano<a class="anchor-link" href="#Ejercicio-propuesto-%E2%80%94-Hospital:-urgencias-+-quir%C3%B3fano">¶</a></h2><div class="defn">
+Un hospital tiene una <strong>sala de urgencias con 2 camas</strong> y un <strong>quirófano con 1 mesa</strong>. Los pacientes llegan con tasa λ = 1/hora. Un paciente en urgencias es atendido con tasa μ₁ = 0.5/hora. Con probabilidad p = 0.4 requiere cirugía y pasa al quirófano (si hay espacio); con probabilidad 1−p es dado de alta. La cirugía toma tiempo exponencial con tasa μ₂ = 0.3/hora. Si urgencias está llena, los pacientes se derivan.
+</div>
+<p><strong>Variables:</strong> U(t) ∈ {0,1,2}, Q(t) ∈ {0,1} → |S| = 6 estados</p>
+<p><strong>Tabla de eventos:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Evento</th>
+<th>Δ</th>
+<th>Tasa</th>
+<th>Condición</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Llegada</td>
+<td>(+1, 0)</td>
+<td>λ</td>
+<td>u &lt; 2</td>
+</tr>
+<tr>
+<td>Alta directa</td>
+<td>(−1, 0)</td>
+<td>(1−p)·μ₁·min(u,1)</td>
+<td>u ≥ 1</td>
+</tr>
+<tr>
+<td>Pasa a quirófano</td>
+<td>(−1, +1)</td>
+<td>p·μ₁·min(u,1)</td>
+<td>u ≥ 1, q = 0</td>
+</tr>
+<tr>
+<td>Fin cirugía</td>
+<td>(0, −1)</td>
+<td>μ₂</td>
+<td>q = 1</td>
+</tr>
+</tbody>
+</table>
+<p>Construya la matriz Q y calcule con jmarkov:</p>
+<ol>
+<li>¿Cuál es la utilización del quirófano?</li>
+<li>¿Qué fracción del tiempo urgencias está llena (pacientes derivados)?</li>
+<li>¿Cuál es el número promedio de pacientes en el hospital?</li>
+</ol>
 </div>
 </div>
 </div>
@@ -7707,7 +8140,7 @@ require(
         Reveal.addEventListener('slidechanged', update);
 
         function setScrollingSlide() {
-            var scroll = false
+            var scroll = true
             if (scroll === true) {
               var h = $('.reveal').height() * 0.95;
               $('section.present').find('section')
