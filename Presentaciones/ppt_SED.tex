@@ -1,44 +1,13 @@
-% !TEX program = pdflatex
 \documentclass[aspectratio=1610, 9pt]{beamer}
+\usepackage{mobi-beamer}
 
-% =========================
-%  Simulación de Eventos Discretos (SED)
-%  Basado en: Banks et al. (Discrete-Event System Simulation), cap. "General Principles"
-% =========================
-
-\usetheme{Madrid}
-\usecolortheme{dolphin}
-\setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}[frame number]
-
-% --- Idioma y tipografía
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[spanish]{babel}
-
-% --- Matemáticas y tablas
-\usepackage{amsmath,amssymb,mathtools,bm}
-\usepackage{booktabs}
-
-% --- Figuras
-\usepackage{graphicx}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric}
-
-% =========================
-%  Macros
-% =========================
-\newcommand{\E}{\mathbb{E}}
-\newcommand{\Var}{\mathrm{Var}}
-\newcommand{\Prob}{\mathbb{P}}
-\newcommand{\1}{\mathbf{1}}
-
-\title{Simulación de Eventos Discretos (SED)}
+\title[Simulación de Eventos Discretos (SE…]{Simulación de Eventos Discretos (SED)}
 \subtitle{Principios generales, fundamentos estocásticos y ejemplos manuales de colas}
 \author{Alejandra Tabares Pozos}
+\institute{Universidad de los Andes \\
+ Departamento de Ingeniería Industrial}
 \date{}
 
-% =========================
 \begin{document}
 
 % -------------------------
@@ -428,8 +397,8 @@ N_Q\leftarrow N_Q+1,\;\; \texttt{enqueue}(t).
 \begin{block}{Routine 4: DEPARTURE}
 En tiempo $t$:
 \begin{enumerate}
-\item Si $N_Q=0$: $S\leftarrow$ IDLE,\;\; \texttt{time\_next\_event[2]}\leftarrow \infty$
-\item Si $N_Q\gt0$: tomar siguiente (FCFS), calcular demora
+\item Si $N_Q=0$: $S\leftarrow \text{IDLE}$,\quad $\texttt{time\_next\_event[2]}\leftarrow \infty$
+\item Si $N_Q > 0$: tomar siguiente (FCFS), calcular demora
 \[
 \text{delay}=t-\texttt{dequeue}(),\;\;
 N_Q\leftarrow N_Q-1,
@@ -440,7 +409,6 @@ iniciar nuevo servicio:
 \]
 \end{enumerate}
 \end{block}
-\endlinebreak
 \end{column}
 \end{columns}
 \end{frame}

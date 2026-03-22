@@ -1,56 +1,12 @@
-% =============================================================================
-% SIMULACIÓN MANUAL DE COLAS — VERSIÓN MEJORADA CON ILUSTRACIONES
-% Métricas, Ley de Little, Utilización, Costos
-% =============================================================================
 \documentclass[aspectratio=1610, 9pt]{beamer}
-
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[spanish]{babel}
-\usepackage{amsmath, amssymb}
-\usepackage{booktabs}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning, calc, decorations.pathreplacing,
-                 patterns, shapes.geometric, babel}
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.18}
-\usepackage{colortbl}
-\usepackage{xcolor}
-\usepackage{siunitx}
-\sisetup{round-mode=places, round-precision=1}
-
-% --- Tema ---
-\usetheme{Madrid}
-\usecolortheme{whale}
-\setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}{
-  \leavevmode\hbox{%
-    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,center]{author in head/foot}
-      \usebeamerfont{author in head/foot}\insertshortauthor
-    \end{beamercolorbox}%
-    \begin{beamercolorbox}[wd=.34\paperwidth,ht=2.5ex,dp=1ex,center]{title in head/foot}
-      \usebeamerfont{title in head/foot}\insertshorttitle
-    \end{beamercolorbox}%
-    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,right]{date in head/foot}
-      \usebeamerfont{date in head/foot}\insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
-    \end{beamercolorbox}}%
-}
-
-% Colores
-\definecolor{azul}{RGB}{0,51,102}
-\definecolor{rojo}{RGB}{204,51,51}
-\definecolor{verde}{RGB}{0,120,60}
-\definecolor{naranja}{RGB}{230,126,34}
-\definecolor{gris}{RGB}{236,240,241}
-\definecolor{morado}{RGB}{120,40,140}
-\definecolor{busy}{RGB}{70,130,180}  % servidor ocupado
-\definecolor{idle}{RGB}{200,220,200} % servidor libre
+\usepackage{mobi-beamer}
 
 \title[Simulacion Manual de Colas]{Simulaci\'on Manual de Sistemas de Colas}
 \subtitle{M\'etricas, Ley de Little, Utilizaci\'on y Costos}
-\author[Ing.\ Industrial]{Departamento de Ingenier\'\i a Industrial}
-\institute[Universidad]{Curso de Simulaci\'on de Eventos Discretos}
-\date{Semestre 2026-I}
+\author{Alejandra Tabares Pozos}
+\institute{Universidad de los Andes \\
+ Departamento de Ingeniería Industrial}
+\date{}
 
 \begin{document}
 

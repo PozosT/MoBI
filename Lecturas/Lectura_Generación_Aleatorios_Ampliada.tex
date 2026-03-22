@@ -1,35 +1,9 @@
 \documentclass[11pt, letterpaper]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
-\usepackage{amsmath}
-\usepackage{amsfonts}
-\usepackage{amssymb}
-\usepackage{geometry}
-\usepackage{graphicx}
-\usepackage{setspace}
-\usepackage{fancyhdr}
-\usepackage{tcolorbox}
-\usepackage{enumitem}
+\usepackage{mobi-lectura}
 
-% Configuración de márgenes y diseño
-\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
-\onehalfspacing
-
-% Configuración de cajas para ejemplos y definiciones
-\newtcolorbox{definicionbox}[1]{colback=blue!5!white,colframe=blue!75!black,fonttitle=\bfseries,title=#1}
-\newtcolorbox{ejemplobox}[1]{colback=green!5!white,colframe=green!60!black,fonttitle=\bfseries,title=#1}
-\newtcolorbox{alertabox}[1]{colback=red!5!white,colframe=red!75!black,fonttitle=\bfseries,title=#1}
-
-% Encabezados
-\pagestyle{fancy}
-\fancyhf{}
-\rhead{Fundamentos de Simulación}
-\lhead{Lectura: Congruencia y Transformación}
-\rfoot{Página \thepage}
-
-\title{\textbf{Lectura: Congruencia y Transformación}}
-\author{Departamento de Ingeniería Industrial \\ Modelado de Sistemas Bajo Incertidumbre}
-\date{\today}
+\title{Lectura: Congruencia y Transformación}
+\author{Alejandra Tabares Pozos}
+\date{}
 
 \begin{document}
 
@@ -73,7 +47,7 @@ $$ 15 \div 12 = 1 \text{ (vuelta completa) con un residuo de } \mathbf{3}. $$
 
 En la aritmética modular, el residuo es lo único que importa. Definimos la operación módulo ($\mod$) como el acto de quedarse con el residuo de una división entera.
 
-\begin{definicionbox}{El Operador Módulo}
+\begin{definicionbox}[El Operador Módulo]
 Dados un entero $a$ y un entero positivo $m$ (el módulo), escribimos:
 $$ r = a \mod m $$
 Donde $r$ es el único entero tal que $0 \leq r < m$ y $a = qm + r$ para algún entero $q$.
@@ -102,7 +76,7 @@ $$ a \cdot a^{-1} \equiv 1 \pmod m $$
 
 Si encontramos este inverso, podemos despejar la $x$ multiplicando ambos lados por $a^{-1}$. Sin embargo, aquí yace una trampa crítica para nuestro diseño de simulación: no todos los números tienen inverso modular.
 
-\begin{alertabox}{Condición de Existencia del Inverso}
+\begin{alertabox}[Condición de Existencia del Inverso]
 El inverso de $a$ módulo $m$ existe si y solo si $a$ y $m$ son primos relativos, es decir, su Máximo Común Divisor es 1:
 $$ \gcd(a, m) = 1 $$
 \end{alertabox}
@@ -167,7 +141,7 @@ Ejecutemos el algoritmo a mano para ver cómo generamos el caos determinístico:
 2. \textit{Módulo:} $36 = 4 \times 8 + 4$. El residuo es \textbf{4}. Nuevo estado $Z_4 = 4$.
 3. \textit{Normalización:} $U_4 = 4 / 8 = \mathbf{0.500}$.
 
-\begin{ejemplobox}{Tabla de Rastreo Completa}
+\begin{ejemplobox}[Tabla de Rastreo Completa]
 Si continuamos el proceso, la secuencia de estados enteros ($Z$) y sus salidas uniformes ($U$) es:
 \begin{center}
 \begin{tabular}{c | c | c | c}
@@ -252,7 +226,7 @@ Aplicamos logaritmo natural a ambos lados:
 $$ -x/\beta = \ln(1 - U) $$
 $$ x = -\beta \ln(1 - U) $$
 
-\begin{alertabox}{Nota de Optimización}
+\begin{alertabox}[Nota de Optimización]
 Dado que $U$ es una variable aleatoria uniforme en $(0,1)$, su complemento $(1-U)$ también lo es. Si $U$ toma valores como $0.99, 0.01, 0.5$, $(1-U)$ tomará $0.01, 0.99, 0.5$. Estadísticamente son idénticos.
 Por lo tanto, los simuladores simplifican la fórmula para ahorrar una resta:
 $$ x = -\beta \ln(U) $$

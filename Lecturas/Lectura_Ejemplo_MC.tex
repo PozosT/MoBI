@@ -1,66 +1,13 @@
-% !TEX program = pdflatex
-\documentclass[11pt,a4paper]{article}
+\documentclass[11pt, letterpaper]{article}
+\usepackage{mobi-lectura}
 
-%========================
-% PAQUETES
-%========================
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
-\usepackage{lmodern}
-\usepackage{amsmath, amssymb, bm}
-\usepackage{geometry}
-\usepackage{booktabs}
-\usepackage{xcolor}
-\usepackage{listings}
-\usepackage{hyperref}
-
-\geometry{margin=1in}
-\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}
-
-%========================
-% LISTINGS (PYTHON)
-%========================
-\definecolor{codebg}{RGB}{248,248,248}
-\definecolor{codeframe}{RGB}{220,220,220}
-\definecolor{codekw}{RGB}{0,0,150}
-\definecolor{codecm}{RGB}{0,120,0}
-\definecolor{codestr}{RGB}{150,0,0}
-
-\lstdefinestyle{python}{
-  language=Python,
-  basicstyle=\ttfamily\small,
-  backgroundcolor=\color{codebg},
-  frame=single,
-  rulecolor=\color{codeframe},
-  keywordstyle=\color{codekw}\bfseries,
-  commentstyle=\color{codecm},
-  stringstyle=\color{codestr},
-  showstringspaces=false,
-  breaklines=true,
-  numbers=left,
-  numberstyle=\tiny,
-  xleftmargin=2.2em,
-  framexleftmargin=1.8em
-}
-
-%========================
-% MACROS
-%========================
-\newcommand{\E}{\mathbb{E}}
-\newcommand{\Var}{\mathrm{Var}}
-\newcommand{\R}{\mathbb{R}}
-\newcommand{\N}{\mathcal{N}}
-
-%========================
-% DOCUMENTO
-%========================
-\title{\textbf{Aplicación del Teorema del Límite Central (TLC)}\\
+\title{Aplicación del Teorema del Límite Central (TLC)\\
 Promedio de costos de importación a través de múltiples envíos}
-\author{}
+\author{Alejandra Tabares Pozos}
 \date{}
 
 \begin{document}
+
 \maketitle
 
 \section{Contexto para la Lectura}
@@ -140,6 +87,5 @@ E \approx z_{0.975}\,\frac{\sigma}{\sqrt{n}}
 n \approx \left(\frac{z_{0.975}\,\sigma}{E}\right)^2,
 \]
 con $z_{0.975}\approx 1.96$. En la práctica se usa una estimación piloto de $\sigma$ (por ejemplo $s$ histórico) y se redondea hacia arriba.
-
 
 \end{document}

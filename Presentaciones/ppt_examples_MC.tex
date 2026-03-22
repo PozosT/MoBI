@@ -1,82 +1,12 @@
-% !TEX program = pdflatex
-\documentclass[aspectratio=169,9pt]{beamer}
+\documentclass[aspectratio=1610, 9pt]{beamer}
+\usepackage{mobi-beamer}
 
-%================================================
-% PAQUETES
-%================================================
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
-\usepackage{lmodern}
-\usepackage{amsmath, amsfonts, amssymb, bm, mathtools}
-\usepackage{booktabs}
-\usepackage{array}
-\usepackage{multicol}
-\usepackage[dvipsnames]{xcolor}
-\usepackage{listings}
-\usepackage{hyperref}
-
-%================================================
-% TEMA Y ESTILO
-%================================================
-\usetheme{CambridgeUS}
-\usecolortheme{beaver}
-\setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}[frame number]
-
-\definecolor{darkred}{RGB}{139,0,0}
-\setbeamercolor{structure}{fg=darkred}
-\setbeamercolor{item projected}{bg=darkred, fg=white}
-\setbeamercolor{block title}{bg=darkred, fg=white}
-\setbeamercolor{block body}{bg=black!2, fg=black}
-\setbeamercolor{alerted text}{fg=darkred}
-
-%================================================
-% LISTINGS (Python)
-%================================================
-\definecolor{codegreen}{rgb}{0,0.5,0}
-\definecolor{codegray}{rgb}{0.45,0.45,0.45}
-\definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.96,0.96,0.94}
-
-\lstdefinestyle{mystyle}{
-  backgroundcolor=\color{backcolour},
-  commentstyle=\color{codegreen},
-  keywordstyle=\color{Magenta},
-  numberstyle=\tiny\color{codegray},
-  stringstyle=\color{codepurple},
-  basicstyle=\ttfamily\footnotesize,
-  breakatwhitespace=false,
-  breaklines=true,
-  captionpos=b,
-  keepspaces=true,
-  numbers=left,
-  numbersep=6pt,
-  showspaces=false,
-  showstringspaces=false,
-  showtabs=false,
-  tabsize=2
-}
-\lstset{style=mystyle}
-
-%================================================
-% MACROS MATEMÁTICOS
-%================================================
-\newcommand{\E}{\mathbb{E}}
-\newcommand{\Pp}{\mathbb{P}}
-\newcommand{\Var}{\mathrm{Var}}
-\newcommand{\1}{\mathbf{1}}
-\newcommand{\R}{\mathbb{R}}
-\newcommand{\dd}{\,\mathrm{d}}
-\newcommand{\q}{q} % cuantiles
-
-%================================================
-% METADATOS
-%================================================
-\title[]{Monte Carlo en práctica: distribuciones, réplicas, salida y TLC\\(con ejemplos financieros e inventario)}
+\title[Monte Carlo en práctica: distribuci…]{Monte Carlo en práctica: distribuciones, réplicas, salida y TLC\\(con ejemplos financieros e inventario)}
+\subtitle{}
 \author{Alejandra Tabares Pozos}
-\institute[Uniandes]{Universidad de los Andes \\ Departamento de Ingeniería Industrial}
-\date{\today}
+\institute{Universidad de los Andes \\
+ Departamento de Ingeniería Industrial}
+\date{}
 
 \begin{document}
 
@@ -201,12 +131,6 @@ Y=\sum_{i=1}^{m} \underbrace{\mathrm{EAD}}_{10{,}000}\cdot \mathrm{LGD}_i\cdot D
 \end{block}
 
 \begin{block}{Implementación (esqueleto)}
-\begin{lstlisting}[language=Python]
-U = np.random.rand(m)
-D = (U < p).astype(int)
-LGD = np.random.beta(2,5,m)
-Y = EAD * np.sum(LGD * D)
-\end{lstlisting}
 \end{block}
 \end{frame}
 
@@ -341,12 +265,6 @@ Y=e^{-rT}(S_T-K)_+.
 \end{block}
 
 \begin{block}{Esqueleto (Python)}
-\begin{lstlisting}[language=Python]
-Z = np.random.randn(N)
-ST = S0*np.exp((r-0.5*sigma**2)*T + sigma*np.sqrt(T)*Z)
-Y  = np.exp(-r*T)*np.maximum(ST-K,0.0)
-C_hat = Y.mean()
-\end{lstlisting}
 \end{block}
 \end{frame}
 
@@ -611,13 +529,6 @@ Salida (una réplica): $Y=\Pi(Q,D)$.
 \end{block}
 
 \begin{block}{Esqueleto (Python)}
-\begin{lstlisting}[language=Python]
-D = np.random.gamma(k, theta, N)
-sales = np.minimum(D, Q)
-profit = p*sales + v*(Q-sales) - c*Q
-mu_hat = profit.mean()
-pi_hat = np.mean(D > Q)
-\end{lstlisting}
 \end{block}
 \end{frame}
 
@@ -750,12 +661,6 @@ Capa (deducible) $d=15{,}000$. Salida para seguro: $h(Y)=(Y-d)_+$.
 \end{block}
 
 \begin{block}{Esqueleto (Python)}
-\begin{lstlisting}[language=Python]
-N = np.random.poisson(lam, size=Nsim)
-Y = np.array([np.random.lognormal(mu,sigma,k).sum() if k>0 else 0.0 for k in N])
-theta_hat = np.mean(np.maximum(Y-d,0.0))
-pi_hat    = np.mean(Y > d)
-\end{lstlisting}
 \end{block}
 \end{frame}
 

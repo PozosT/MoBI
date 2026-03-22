@@ -1,40 +1,8 @@
-\documentclass[11pt]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
-\usepackage{amsmath}
-\usepackage{amsfonts}
-\usepackage{amssymb}
-\usepackage{geometry}
-\usepackage{listings}
-\usepackage{xcolor}
-\usepackage{graphicx}
+\documentclass[11pt, letterpaper]{article}
+\usepackage{mobi-lectura}
 
-\geometry{margin=1in}
-
-\definecolor{codegreen}{rgb}{0,0.6,0}
-\definecolor{codegray}{rgb}{0.5,0.5,0.5}
-\definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
-
-\lstset{
-    backgroundcolor=\color{backcolour},   
-    commentstyle=\color{codegreen},
-    keywordstyle=\color{magenta},
-    numberstyle=\tiny\color{codegray},
-    stringstyle=\color{codepurple},
-    basicstyle=\ttfamily\small,
-    breaklines=true,
-    captionpos=b,                    
-    keepspaces=true,                 
-    numbers=left,                    
-    showspaces=false,                
-    showstringspaces=false,
-    showtabs=false,                  
-    tabsize=2
-}
-
-\title{\textbf{Estimación de Intervalos de Confianza en Simulación de Monte Carlo}}
-\author{Modelado de Sistemas Bajo Incertidumbre}
+\title{Estimación de Intervalos de Confianza en Simulación de Monte Carlo}
+\author{Alejandra Tabares Pozos}
 \date{}
 
 \begin{document}
@@ -87,33 +55,6 @@ Supongamos que el costo total de un proyecto depende de tres variables: mano de 
 
 A continuación, se presenta la implementación en Python para calcular el IC y visualizar la distribución.
 
-\begin{lstlisting}[language=Python, caption=Cálculo de Intervalo de Confianza en Python]
-import numpy as np
-import scipy.stats as st
-
-# Parametros de simulacion
-n = 10000
-confianza = 0.95
-
-# Generacion de variables aleatorias
-L = np.random.triangular(10, 15, 20, n)
-M = np.random.normal(50, 5, n)
-C = np.random.uniform(5, 15, n)
-
-# Variable de salida: Costo Total
-costos = L + M + C
-
-# Estadisticos descriptivos
-media = np.mean(costos)
-desv_std = np.std(costos, ddof=1)
-error_estandar = desv_std / np.sqrt(n)
-
-# Intervalo de Confianza
-intervalo = st.t.interval(confianza, n-1, loc=media, scale=error_estandar)
-
-print(f"Media: {media:.2f}")
-print(f"Intervalo de Confianza (95%): ({intervalo[0]:.2f}, {intervalo[1]:.2f})")
-\end{lstlisting}
 
 \section{Interpretación y Errores Comunes}
 Es vital entender que el intervalo de confianza \textbf{no} contiene el 95\% de los datos de los costos (ese sería un intervalo de predicción). El IC del 95\% significa que, si repitiéramos este experimento de simulación 100 veces, en 95 de esas veces el intervalo calculado contendría el verdadero valor medio del sistema.

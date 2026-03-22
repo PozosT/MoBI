@@ -1,76 +1,13 @@
 \documentclass[11pt, letterpaper]{article}
+\usepackage{mobi-lectura}
 
-% ── Layout ──
-\usepackage[margin=2.5cm, top=2.8cm, bottom=2.8cm, headheight=22pt]{geometry}
-\usepackage{setspace}\onehalfspacing
+\title{Lectura CMTC intro}
+\author{Alejandra Tabares Pozos}
+\date{}
 
-% ── Language ──
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[spanish, es-tabla]{babel}
-
-% ── Math ──
-\usepackage{amsmath, amssymb, mathtools}
-
-% ── Graphics ──
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta}
-\usetikzlibrary{automata, positioning, arrows.meta, decorations.pathreplacing, babel}
-\usepackage{float}
-
-% ── Tables ──
-\usepackage{booktabs, array, tabularx}
-
-% ── Colors ──
-\usepackage{xcolor}
-\definecolor{uniblue}{RGB}{0,71,133}
-\definecolor{unigold}{RGB}{200,160,40}
-\definecolor{darkgreen}{RGB}{0,110,60}
-
-% ── Boxes ──
-\usepackage{tcolorbox}
-\tcbuselibrary{skins, breakable}
-
-\newtcolorbox{metodobox}[1][]{enhanced, breakable,
-    colback=uniblue!5, colframe=uniblue, colbacktitle=uniblue, coltitle=white,
-    fonttitle=\bfseries, title={#1}, arc=2mm, boxrule=0.8pt,
-    left=6pt, right=6pt, top=4pt, bottom=4pt}
-
-\newtcolorbox{ejemplobox}[1][]{enhanced, breakable,
-    colback=green!5, colframe=darkgreen!70, colbacktitle=darkgreen!70, coltitle=white,
-    fonttitle=\bfseries, title={#1}, arc=2mm, boxrule=0.8pt,
-    left=6pt, right=6pt, top=4pt, bottom=4pt}
-
-\newtcolorbox{notabox}[1][]{enhanced, breakable,
-    colback=unigold!8, colframe=unigold!80!black, colbacktitle=unigold!80!black, coltitle=white,
-    fonttitle=\bfseries, title={#1}, arc=2mm, boxrule=0.8pt,
-    left=6pt, right=6pt, top=4pt, bottom=4pt}
-
-% ── Headers ──
-\usepackage{fancyhdr}
-\pagestyle{fancy}\fancyhf{}
-\fancyhead[L]{\small\textcolor{uniblue}{Modelado bajo Incertidumbre}}
-\fancyhead[R]{\small\textcolor{uniblue}{CTMC}}
-\fancyfoot[C]{\thepage}
-\renewcommand{\headrulewidth}{0.6pt}
-\renewcommand{\headrule}{\hbox to\headwidth{\color{uniblue}\leaders\hrule height \headrulewidth\hfill}}
-
-% ── Sections ──
-\usepackage{titlesec}
-\titleformat{\section}{\Large\bfseries\color{uniblue}}{\thesection}{0.8em}{}[\vspace{-0.5em}\textcolor{uniblue}{\rule{\textwidth}{0.8pt}}]
-\titleformat{\subsection}{\large\bfseries\color{uniblue!80!black}}{\thesubsection}{0.7em}{}
-
-% ── Links ──
-\usepackage[colorlinks=true, linkcolor=uniblue]{hyperref}
-
-% ── Macros ──
-\newcommand{\mat}[1]{\mathbf{#1}}
-\newcommand{\vect}[1]{\boldsymbol{#1}}
-\newcommand{\Prob}{\mathbb{P}}
-\newcommand{\ind}[1]{\mathbb{1}\!\left(#1\right)}
-
-% ══════════════════════════════════════════════════
 \begin{document}
+
+\maketitle
 
 \begin{center}
 {\Huge\bfseries\color{uniblue} Lectura modelamiento CTMC}
@@ -91,7 +28,7 @@
 
 Una CTMC $\{X(t), t\ge0\}$ queda completamente descrita por su \textbf{matriz generadora} $\mat{Q}=[q_{ij}]$, donde $q_{ij}\ge0$ ($i\neq j$) es la tasa de transici\'on de $i$ a $j$, y $q_{ii}=-\sum_{j\neq i}q_{ij}$ (filas suman cero). El tiempo de permanencia en el estado $i$ es $\text{Exp}(|q_{ii}|)$.
 
-\begin{metodobox}{Metodolog\'ia en 5 pasos}
+\begin{metodobox}[Metodolog\'ia en 5 pasos]
 \begin{enumerate}
     \item \textbf{Variables aleatorias:} \textquestiondown{}qu\'e cantidades cambian en el tiempo?
     \item \textbf{Espacio de estados:} \textquestiondown{}qu\'e valores puede tomar cada variable?
@@ -110,7 +47,7 @@ En estos sistemas, el estado es un entero $n$ y las transiciones solo van a $n\p
 % ──────────────────────────────────────────────
 \subsection{Escenario A: Cola M/M/1}
 
-\begin{ejemplobox}{Enunciado}
+\begin{ejemplobox}[Enunciado]
 Un cajero atiende clientes que llegan con tasa $\lambda=3$/min y son atendidos con tasa $\mu=5$/min. La fila no tiene l\'imite.
 \end{ejemplobox}
 
@@ -134,7 +71,7 @@ $\mat{Q}=\begin{psmallmatrix}-3&3&0&\cdots\\5&-8&3&\cdots\\0&5&-8&\cdots\\\vdots
 % ──────────────────────────────────────────────
 \subsection{Escenario B: Cola M/M/1/K (capacidad finita)}
 
-\begin{ejemplobox}{Enunciado}
+\begin{ejemplobox}[Enunciado]
 Cl\'inica dental: 1 dentista, capacidad total $K=4$. Llegadas $\lambda=2$/h, servicio $\mu=3$/h. Si el sistema est\'a lleno, el paciente se va.
 \end{ejemplobox}
 
@@ -153,7 +90,7 @@ Observe: la primera fila no tiene $\mu$ (sistema vac\'io) y la \'ultima no tiene
 % ──────────────────────────────────────────────
 \subsection{Escenario C: Cola M/M/c (m\'ultiples servidores)}
 
-\begin{ejemplobox}{Enunciado}
+\begin{ejemplobox}[Enunciado]
 Centro de llamadas: $c=3$ operadores, llegadas $\lambda=10$/min, servicio por operador $\mu=4$/min, cola infinita.
 \end{ejemplobox}
 
@@ -169,7 +106,7 @@ q_{n,n+1}=\lambda, \qquad q_{n,n-1}=\min(n,c)\cdot\mu, \qquad q_{nn}=-\lambda-\m
 
 La tasa de muerte crece ($\mu, 2\mu, 3\mu$) hasta saturarse en $c\mu=12$ a partir de $n=c$.
 
-\begin{notabox}{Patr\'on general: nacimiento--muerte}
+\begin{notabox}[Patr\'on general: nacimiento--muerte]
 Los tres escenarios comparten la estructura $q_{n,n+1}=\lambda_n$, $q_{n,n-1}=\mu_n$. Lo que los distingue es la forma funcional:
 \begin{center}\small
 \begin{tabular}{lcc}\toprule
@@ -190,7 +127,7 @@ Cuando una sola variable no captura toda la informaci\'on necesaria para determi
 % ──────────────────────────────────────────────
 \subsection{Escenario D: Reparaci\'on de m\'aquinas}
 
-\begin{ejemplobox}{Enunciado}
+\begin{ejemplobox}[Enunciado]
 $M=2$ m\'aquinas id\'enticas, $R=1$ t\'ecnico. Tasa de falla $\alpha=0.5$/h, tasa de reparaci\'on $\beta=2$/h. Si ambas fallan, el t\'ecnico repara una a la vez.
 \end{ejemplobox}
 
@@ -222,7 +159,7 @@ $\mat{Q}=\begin{pmatrix}-1&1&0\\2&-2.5&0.5\\0&2&-2\end{pmatrix}$
 % ──────────────────────────────────────────────
 \subsection{Escenario E: Red de colas con bloqueo (dos variables irreducibles)}
 
-\begin{ejemplobox}{Enunciado}
+\begin{ejemplobox}[Enunciado]
 Taller con dos estaciones en serie (A: diagn\'ostico, B: reparaci\'on). Capacidad m\'axima 2 en cada una. Llegadas $\lambda=2$/h, servicio $\mu_A=4$/h, $\mu_B=3$/h. Si B est\'a llena, A queda \textbf{bloqueada}.
 \end{ejemplobox}
 
@@ -308,7 +245,7 @@ El patr\'on general para la forma impl\'icita es: para cada tipo de evento $k$, 
 q_{\vect{x},\,\vect{x}+\vect{\delta}_k} = r_k(\vect{x})\cdot\ind{C_k(\vect{x})}, \qquad q_{\vect{x},\vect{x}} = -\sum_k r_k(\vect{x})\cdot\ind{C_k(\vect{x})}
 \]
 
-\begin{notabox}{Resumen de todos los escenarios}
+\begin{notabox}[Resumen de todos los escenarios]
 \begin{center}\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \begin{tabular}{lccccc}\toprule
@@ -322,6 +259,5 @@ Acople & no & no & no & no & s\'i (bloqueo) \\\bottomrule
 \end{notabox}
 
 \vfill
-
 
 \end{document}

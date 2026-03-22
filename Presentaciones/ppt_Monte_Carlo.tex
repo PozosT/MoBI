@@ -1,67 +1,12 @@
-\documentclass[aspectratio=169,9pt]{beamer}
+\documentclass[aspectratio=1610, 9pt]{beamer}
+\usepackage{mobi-beamer}
 
-%================================================
-% PAQUETES
-%================================================
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
-\usepackage{amsmath, amsfonts, amssymb}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage[dvipsnames]{xcolor}
-\usepackage{listings}
-\usepackage{hyperref}
-
-%================================================
-% TEMA Y ESTILO (mismo look que tu intro)
-%================================================
-\usetheme{CambridgeUS}
-\usecolortheme{beaver}
-\setbeamertemplate{navigation symbols}{}
-
-\definecolor{darkred}{RGB}{139,0,0}
-\setbeamercolor{structure}{fg=darkred}
-\setbeamercolor{item projected}{bg=darkred, fg=white}
-\setbeamercolor{block title}{bg=darkred, fg=white}
-\setbeamercolor{block body}{bg=black!2, fg=black}
-\setbeamercolor{alerted text}{fg=darkred}
-
-%================================================
-% LISTINGS (Python)
-%================================================
-\definecolor{codegreen}{rgb}{0,0.5,0}
-\definecolor{codegray}{rgb}{0.45,0.45,0.45}
-\definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.96,0.96,0.94}
-
-\lstdefinestyle{mystyle}{
-    backgroundcolor=\color{backcolour},
-    commentstyle=\color{codegreen},
-    keywordstyle=\color{Magenta},
-    numberstyle=\tiny\color{codegray},
-    stringstyle=\color{codepurple},
-    basicstyle=\ttfamily\footnotesize,
-    breakatwhitespace=false,
-    breaklines=true,
-    captionpos=b,
-    keepspaces=true,
-    numbers=left,
-    numbersep=6pt,
-    showspaces=false,
-    showstringspaces=false,
-    showtabs=false,
-    tabsize=2
-}
-\lstset{style=mystyle}
-
-%================================================
-% METADATOS
-%================================================
-\title[]{Simulación Monte Carlo: estimación, error y distribución de salida}
+\title[Simulación Monte Carlo: estimación,…]{Simulación Monte Carlo: estimación, error y distribución de salida}
+\subtitle{}
 \author{Alejandra Tabares Pozos}
-\institute[Uniandes]{Universidad de los Andes \\ Departamento de Ingeniería Industrial}
-\date{\today}
+\institute{Universidad de los Andes \\
+ Departamento de Ingeniería Industrial}
+\date{}
 
 \begin{document}
 
@@ -830,21 +775,6 @@ Si $U\sim\mathrm{Unif}(0,1)$ y $F$ es una cdf, entonces $X=F^{-1}(U)$ tiene dist
 \textbf{Situación:} un componente pasa una prueba con probabilidad desconocida $p$.
 Definimos $X=1$ si pasa y $0$ si falla. Entonces $X\sim \mathrm{Bernoulli}(p)$ y $\mu=\mathbb E[X]=p$.
 
-\begin{lstlisting}[language=Python]
-import numpy as np
-
-np.random.seed(0)
-N = 2000
-p = 0.62  # "verdadero" para la simulacion
-
-X = (np.random.rand(N) < p).astype(int)
-
-p_hat = X.mean()
-s_hat = X.std(ddof=1)
-half  = 1.96 * s_hat / np.sqrt(N)
-
-print(f"p_hat = {p_hat:.4f}  IC95%: [{p_hat-half:.4f}, {p_hat+half:.4f}]")
-\end{lstlisting}
 
 \begin{block}{Interpretación}
 El IC se estrecha como $1/\sqrt{N}$: si quieres la mitad del ancho, necesitas $\approx 4N$.
@@ -862,34 +792,6 @@ Y=c_s(D-Q)_+.
 \]
 Aquí $Y$ es la \textbf{salida} y su distribución suele ser \textbf{muy asimétrica} (muchos ceros, cola derecha).
 
-\begin{lstlisting}[language=Python]
-import numpy as np
-
-np.random.seed(1)
-N = 30000
-mu, sigma = 100.0, 30.0
-Q, cs = 100.0, 10.0
-
-D = np.random.normal(mu, sigma, N)
-D = np.clip(D, 0.0, None)           # demanda no negativa
-Y = cs * np.maximum(D - Q, 0.0)     # costo por faltantes
-
-# (1) Media + IC
-mu_hat = Y.mean()
-s_hat  = Y.std(ddof=1)
-half   = 1.96 * s_hat / np.sqrt(N)
-
-# (2) Probabilidad de "costo alto"
-tau = 200.0
-pi_hat = np.mean(Y > tau)
-
-# (3) Cuantil (p90)
-q90 = np.quantile(Y, 0.90)
-
-print("E[Y] =", mu_hat, " IC95% +/-", half)
-print("P(Y>tau) =", pi_hat, " tau =", tau)
-print("q0.90(Y) =", q90)
-\end{lstlisting}
 
 \begin{alertblock}{Lectura}
 La media resume costo esperado; $\mathbb P(Y>\tau)$ captura riesgo operacional; $q_{0.90}$ responde ``¿qué tan malo es un día malo típico?''.
@@ -907,25 +809,6 @@ Monte Carlo no solo entrega números: también exige \textbf{diagnósticos} mín
 (2) Media corrida $\widehat\mu_n$ vs.\ $n$ $\Rightarrow$ te muestra estabilidad del estimador.
 \end{block}
 
-\begin{lstlisting}[language=Python]
-import matplotlib.pyplot as plt
-import numpy as np
-
-# Histograma de la salida
-plt.figure(figsize=(9,4))
-plt.hist(Y, bins=50, edgecolor="black")
-plt.title("Distribucion empirica de Y (costo por faltantes)")
-plt.xlabel("Y"); plt.ylabel("Frecuencia")
-plt.show()
-
-# Convergencia de la media corrida
-running_mean = np.cumsum(Y) / np.arange(1, len(Y)+1)
-plt.figure(figsize=(9,4))
-plt.plot(running_mean)
-plt.title("Convergencia de la media corrida")
-plt.xlabel("n"); plt.ylabel("mu_hat(n)")
-plt.show()
-\end{lstlisting}
 \end{frame}
 
 
@@ -1026,27 +909,6 @@ El número $\widehat\mu_N$ cambia si repites el experimento completo $\Rightarro
 \small
 \textbf{Objetivo:} estimar $p=\mathbb E[X]$ con $X\sim \text{Bernoulli}(p)$ y reportar IC 95\%.
 
-\begin{lstlisting}[language=Python]
-import numpy as np
-
-np.random.seed(3)
-N = 2000
-p_true = 0.62
-
-# 1) Generar X_i ~ Bernoulli(p_true) usando Uniforme(0,1)
-U = np.random.rand(N)
-X = (U < ________).astype(int)
-
-# 2) Estimador de p
-p_hat = ________.mean()
-
-# 3) Desviacion muestral (ddof=1) y semi-ancho del IC (CLT)
-s_hat = X.std(ddof=______)
-half  = 1.96 * s_hat / np.sqrt(______)
-
-print("p_hat =", p_hat)
-print("IC95% = [", p_hat-half, ",", p_hat+half, "]")
-\end{lstlisting}
 
 \begin{block}{Preguntas}
 (i) ¿Qué cambia si $N$ pasa de 2000 a 8000? \quad
@@ -1066,34 +928,6 @@ Y=c_s(D-Q)_+.
 \]
 Use: $\mu=100,\ \sigma=30,\ Q=100,\ c_s=10,\ N=30000$.
 
-\begin{lstlisting}[language=Python]
-import numpy as np
-
-np.random.seed(4)
-N = 30000
-mu, sigma = 100.0, 30.0
-Q, cs = 100.0, 10.0
-
-D = np.random.normal(mu, sigma, N)
-D = np.clip(D, 0.0, None)
-Y = cs * np.maximum(D - Q, 0.0)
-
-# (a) Media + IC95%
-mu_hat = Y.mean()
-s_hat  = Y.std(ddof=1)
-half   = 1.96 * s_hat / np.sqrt(N)
-
-# (b) Probabilidad de exceder un umbral
-tau = 200.0
-p_hat = np.mean(Y > tau)
-
-# (c) Cuantil 0.95
-q95 = np.quantile(Y, 0.95)
-
-print("E[Y] =", mu_hat, "IC95% +/-", half)
-print("P(Y>tau) =", p_hat, "tau =", tau)
-print("q0.95(Y) =", q95)
-\end{lstlisting}
 
 \begin{block}{Tarea}
 Cambie SOLO una cosa a la vez:
@@ -1110,26 +944,6 @@ Explique en palabras qué cambia en (a), (b), (c).
 \small
 \textbf{Objetivo:} producir \textbf{dos gráficos} para el ejercicio anterior: (1) histograma de $Y$, (2) media corrida $\widehat\mu_n$.
 
-\begin{lstlisting}[language=Python]
-import numpy as np
-import matplotlib.pyplot as plt
-
-# 1) Histograma (forma/colas)
-plt.figure(figsize=(9,4))
-plt.hist(Y, bins=50, edgecolor="black")
-plt.title("Histograma de Y")
-plt.xlabel("Y"); plt.ylabel("Frecuencia")
-plt.show()
-
-# 2) Convergencia de la media corrida
-running_mean = np.cumsum(Y) / np.arange(1, len(Y)+1)
-
-plt.figure(figsize=(9,4))
-plt.plot(running_mean)
-plt.title("Convergencia de la media corrida")
-plt.xlabel("n"); plt.ylabel("mu_hat(n)")
-plt.show()
-\end{lstlisting}
 
 \begin{block}{Preguntas}
 (i) ¿Qué te dice el histograma que la media NO te dice? \quad
@@ -1145,22 +959,6 @@ plt.show()
 \small
 Este código \textbf{pretende} estimar $\mathbb E[Y]$ para $Y=c_s(D-Q)_+$, pero tiene errores.
 
-\begin{lstlisting}[language=Python]
-import numpy as np
-
-np.random.seed = 0
-N  = "5000"
-mu, sigma = 100, 30
-Q  = 100
-cs = 10
-
-D = np.random.normal(mu, sigma, N)
-D = np.clip(D, 0, None)
-
-Y = cs * np.max(D - Q, 0)
-
-print("E[Y] =", Y.mean)
-\end{lstlisting}
 
 \begin{block}{Tarea}
 Identifique y corrija \textbf{cuatro} errores. Luego corra y reporte $E[Y]$.
@@ -1187,6 +985,5 @@ En cada caso, proponga una distribución para la \textbf{entrada aleatoria} y ju
 Primero describa el soporte y el mecanismo; \textbf{luego} proponga distribución.
 \end{alertblock}
 \end{frame}
-
 
 \end{document}

@@ -1,46 +1,8 @@
 \documentclass[11pt, letterpaper]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
-\usepackage{amsmath, amssymb, amsthm}
-\usepackage{graphicx}
-\usepackage{geometry}
-\usepackage{listings}
-\usepackage{xcolor}
-\usepackage{hyperref}
-\usepackage{booktabs}
+\usepackage{mobi-lectura}
 
-% Configuración de márgenes
-\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
-
-% Configuración de código Python
-\definecolor{codegreen}{rgb}{0,0.6,0}
-\definecolor{codegray}{rgb}{0.5,0.5,0.5}
-\definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
-
-\lstdefinestyle{mystyle}{
-    backgroundcolor=\color{backcolour},   
-    commentstyle=\color{codegreen},
-    keywordstyle=\color{magenta}\bfseries,
-    numberstyle=\tiny\color{codegray},
-    stringstyle=\color{codepurple},
-    basicstyle=\ttfamily\small,
-    breakatwhitespace=false,         
-    breaklines=true,                 
-    captionpos=b,                    
-    keepspaces=true,                 
-    numbers=left,                    
-    numbersep=5pt,                  
-    showspaces=false,                
-    showstringspaces=false,
-    showtabs=false,                  
-    tabsize=4,
-    frame=single
-}
-\lstset{style=mystyle}
-
-\title{\textbf{Fundamentos de Simulación Estocástica: \\ De la Congruencia Lineal a la Transformada Inversa}}
-\author{Modelado de Sistemas Bajo Incertidumbre}
+\title{Fundamentos de Simulación Estocástica: \\ De la Congruencia Lineal a la Transformada Inversa}
+\author{Alejandra Tabares Pozos}
 \date{}
 
 \begin{document}
@@ -173,70 +135,6 @@ Estos valores $X_1, X_2, X_3$ son ahora datos de entrada válidos para una simul
 
 A continuación, formalizamos estos conceptos en un script de Python. Se crea una clase que encapsula el generador LCG y métodos para transformadas inversas.
 
-\begin{lstlisting}[language=Python, caption=Implementación de LCG y Transformada Inversa]
-import math
-import matplotlib.pyplot as plt
-
-class GeneradorPseudoaleatorio:
-    def __init__(self, seed, a=1664525, c=1013904223, m=2**32):
-        """
-        Inicializa el LCG con parametros estandar (Numerical Recipes).
-        """
-        self.state = seed
-        self.a = a
-        self.c = c
-        self.m = m
-
-    def next_uniform(self):
-        """
-        Genera el siguiente numero pseudoaleatorio U(0,1).
-        """
-        self.state = (self.a * self.state + self.c) % self.m
-        return self.state / self.m
-
-    def generar_exponencial(self, tasa_lambda, n):
-        """
-        Genera n variables aleatorias exponenciales usando Transformada Inversa.
-        Formula: X = - (1/lambda) * ln(U)
-        """
-        resultados = []
-        for _ in range(n):
-            u = self.next_uniform()
-            # Evitar log(0) en el caso extremadamente raro que u=0
-            if u == 0: u = 1e-10 
-            x = -(1 / tasa_lambda) * math.log(u)
-            resultados.append(x)
-        return resultados
-
-    def generar_bernoulli(self, p, n):
-        """
-        Genera n variables de Bernoulli (Ej. Moneda sesgada).
-        Si U <= p -> Exito (1), sino Fracaso (0).
-        """
-        resultados = []
-        for _ in range(n):
-            u = self.next_uniform()
-            resultados.append(1 if u <= p else 0)
-        return resultados
-
-# --- BLOQUE PRINCIPAL DE EJECUCION ---
-
-# 1. Instanciar el generador con una semilla arbitraria
-mi_generador = GeneradorPseudoaleatorio(seed=987654321)
-
-# 2. Simular Tiempos de Servicio (Exponencial, lambda=2 clientes/min)
-# Media esperada = 0.5 min
-tiempos_servicio = mi_generador.generar_exponencial(tasa_lambda=2.0, n=5)
-
-print("--- Simulación de Tiempos de Servicio (Exponencial) ---")
-for i, t in enumerate(tiempos_servicio):
-    print(f"Cliente {i+1}: {t:.4f} minutos")
-
-# 3. Simular Aprobación de Crédito (Bernoulli, p=0.7)
-aprobaciones = mi_generador.generar_bernoulli(p=0.7, n=5)
-print("\n--- Simulación de Aprobación de Crédito (Bernoulli) ---")
-print(f"Decisiones (1=Aprobado, 0=Rechazado): {aprobaciones}")
-\end{lstlisting}
 
 \section{Conclusión}
 

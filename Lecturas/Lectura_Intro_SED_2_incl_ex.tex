@@ -1,67 +1,17 @@
-\documentclass[12pt, letterpaper]{article}
+\documentclass[11pt, letterpaper]{article}
+\usepackage{mobi-lectura}
 
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[spanish]{babel}
-\usepackage{amsmath, amssymb, amsthm}
-\usepackage{geometry}
-\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
-\usepackage{parskip}
-\usepackage{setspace}
-\usepackage{booktabs}
-\usepackage{enumitem}
-\usepackage{hyperref}
-\usepackage{fancyhdr}
-\usepackage{titlesec}
-\usepackage{xcolor}
-\usepackage{array}
-\usepackage{colortbl}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning, calc, shapes.geometric}
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.18}
-\usepackage{float}
-
-\definecolor{uniandes}{RGB}{0,51,102}
-\definecolor{rojoclaro}{RGB}{204,51,51}
-\definecolor{verdeoscuro}{RGB}{0,102,51}
-\definecolor{naranja}{RGB}{230,126,34}
-\definecolor{grisclaro}{RGB}{236,240,241}
-
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{\small\textcolor{uniandes}{Universidad de los Andes}}
-\fancyhead[R]{\small\textcolor{uniandes}{Modelado de Sistemas bajo Incertidumbre}}
-\fancyfoot[C]{\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
-
-\titleformat{\section}{\large\bfseries\color{uniandes}}{\thesection.}{0.5em}{}
-\titleformat{\subsection}{\normalsize\bfseries\color{uniandes!80!black}}{\thesubsection.}{0.5em}{}
-\titleformat{\subsubsection}{\normalsize\itshape\color{uniandes!60!black}}{\thesubsubsection.}{0.5em}{}
-
-\theoremstyle{definition}
-\newtheorem{definicion}{Definición}[section]
-\newtheorem{teorema}{Teorema}[section]
-\newtheorem{ejemplo}{Ejemplo}[section]
-
-\newcommand{\E}{\mathbb{E}}
-\newcommand{\1}{\mathbf{1}}
-\newcommand{\FEL}{\texttt{FEL}}
-
-\setstretch{1.15}
+\title{Lectura Intro SED 2 incl ex}
+\author{Alejandra Tabares Pozos}
+\date{}
 
 \begin{document}
 
 % ===================== PORTADA =====================
-\begin{center}
-    {\Large\bfseries\textcolor{uniandes}{Universidad de los Andes}}\\[0.2cm]
-    {\normalsize Departamento de Ingeniería Industrial}\\[0.5cm]
-    \rule{\textwidth}{1pt}\\[0.5cm]
-    {\LARGE\bfseries Lectura: Simulación de Eventos Discretos}\\[0.3cm]
-    {\large Principios, Mecánica de Colas, Ley de Little y Estado Estable}\\[0.5cm]
-    \rule{\textwidth}{1pt}\\[0.5cm]
-    {\normalsize\textbf{Curso:} Modelado de Sistemas bajo Incertidumbre \hfill \textbf{Semestre:} 2026-I}\\[0.8cm]
-\end{center}
+
+\maketitle
+
+
 
 % ===================== SECCIÓN 1 =====================
 \section{¿Qué es la simulación de eventos discretos?}

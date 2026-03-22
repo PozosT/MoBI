@@ -1,46 +1,8 @@
 \documentclass[11pt, letterpaper]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
-\usepackage{amsmath, amssymb, amsthm}
-\usepackage{graphicx}
-\usepackage{geometry}
-\usepackage{listings}
-\usepackage{xcolor}
-\usepackage{float}
-\usepackage{hyperref}
+\usepackage{mobi-lectura}
 
-% Configuración de márgenes profesional
-\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
-
-% Estilo de Código Python
-\definecolor{codegreen}{rgb}{0,0.6,0}
-\definecolor{codegray}{rgb}{0.5,0.5,0.5}
-\definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.96,0.96,0.96}
-
-\lstdefinestyle{mystyle}{
-    backgroundcolor=\color{backcolour},   
-    commentstyle=\color{codegreen},
-    keywordstyle=\color{blue}\bfseries,
-    numberstyle=\tiny\color{codegray},
-    stringstyle=\color{codepurple},
-    basicstyle=\ttfamily\footnotesize,
-    breakatwhitespace=false,         
-    breaklines=true,                 
-    captionpos=b,                    
-    keepspaces=true,                 
-    numbers=left,                    
-    numbersep=5pt,                  
-    showspaces=false,                
-    showstringspaces=false,
-    showtabs=false,                  
-    tabsize=2
-}
-
-\lstset{style=mystyle}
-
-\title{\textbf{Caminatas Aleatorias (Random Walks): \\ Modelación de la Incertidumbre en Ingeniería}}
-\author{Modelado de Sistemas bajo Incertidumbre}
+\title{Caminatas Aleatorias (Random Walks): \\ Modelación de la Incertidumbre en Ingeniería}
+\author{Alejandra Tabares Pozos}
 \date{}
 
 \begin{document}
@@ -108,33 +70,6 @@ Observe cómo la posición fluctúa. Si repitiéramos esto mil veces, la posici�
 \subsection{Implementación en Python}
 Simularemos esta caminata simple para visualizar la trayectoria.
 
-\begin{lstlisting}[language=Python, caption=Caminata Aleatoria Simple]
-import numpy as np
-import matplotlib.pyplot as plt
-
-def random_walk_1d(n_pasos):
-    # Generar pasos aleatorios: -1 o +1
-    pasos = np.random.choice([-1, 1], size=n_pasos)
-    
-    # La trayectoria es la suma acumulada (cumsum)
-    trayectoria = np.cumsum(pasos)
-    
-    # Agregar el punto de inicio 0
-    return np.insert(trayectoria, 0, 0)
-
-# Parametros
-N = 100
-camino = random_walk_1d(N)
-
-# Visualizacion
-plt.figure(figsize=(8, 4))
-plt.plot(camino, marker='o', markersize=3, linestyle='-', alpha=0.8)
-plt.title(f'Trayectoria de una Caminata Aleatoria ({N} pasos)')
-plt.xlabel('Tiempo (Pasos)')
-plt.ylabel('Posición')
-plt.grid(True)
-plt.show()
-\end{lstlisting}
 
 \section{De la Suma al Producto: Caminatas en Finanzas}
 
@@ -161,49 +96,6 @@ Donde $Z_t$ es un número aleatorio normal estándar (el "paso"), $\mu$ es el re
 \subsection{Objetivo de la Simulación}
 Simularemos 10 posibles futuros para una acción durante un año (252 días de trading) para observar el "cono de incertidumbre".
 
-\begin{lstlisting}[language=Python, caption=Caminata Aleatoria Geométrica (Multiples Trayectorias)]
-import numpy as np
-import matplotlib.pyplot as plt
-
-# Parametros del mercado
-S0 = 100       # Precio inicial
-T = 1.0        # Tiempo en años
-N = 252        # Pasos (dias de trading)
-dt = T / N     # Tamaño del paso de tiempo
-mu = 0.05      # Retorno esperado (5% anual)
-sigma = 0.20   # Volatilidad (20% anual)
-M = 10         # Numero de simulaciones (trayectorias)
-
-# Inicializar matriz de precios (N+1 dias x M simulaciones)
-S = np.zeros((N + 1, M))
-S[0] = S0
-
-# Generar todos los pasos aleatorios a la vez
-# Z ~ Normal(0, 1)
-Z = np.random.normal(0, 1, (N, M))
-
-# Ciclo de evolucion temporal (Caminata paso a paso)
-for t in range(1, N + 1):
-    # El precio de hoy es el de ayer multiplicado por el factor de cambio
-    # Factor = exp( (mu - 0.5*sigma^2)dt + sigma*sqrt(dt)*Z )
-    factor_cambio = np.exp((mu - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z[t-1])
-    S[t] = S[t-1] * factor_cambio
-
-# Visualizacion
-plt.figure(figsize=(10, 6))
-plt.plot(S)
-plt.title('Simulación de 10 Caminatas Aleatorias Geométricas')
-plt.xlabel('Días de Trading')
-plt.ylabel('Precio del Activo ($)')
-plt.grid(True, alpha=0.3)
-plt.axhline(S0, color='black', linestyle='--', label='Precio Inicial')
-plt.legend(['Trayectorias', 'Precio Inicial'])
-plt.show()
-
-# Resultado final
-promedio_final = np.mean(S[-1])
-print(f"Precio promedio final esperado: ${promedio_final:.2f}")
-\end{lstlisting}
 
 \section{Conclusión}
 

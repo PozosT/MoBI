@@ -1,55 +1,12 @@
-% =============================================================================
-% PRESENTACIÓN: SIMULACIÓN DE SISTEMAS DE COLAS EN ESTADO ESTABLE
-% Ejemplo con Dos Servidores — Ley de Little y Período Transitorio
-% =============================================================================
-\documentclass[aspectratio=169, 9pt]{beamer}
+\documentclass[aspectratio=1610, 9pt]{beamer}
+\usepackage{mobi-beamer}
 
-% --- Paquetes ---
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[spanish]{babel}
-\usepackage{amsmath, amssymb, amsthm}
-\usepackage{booktabs}
-\usepackage{graphicx}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning, calc, decorations.pathreplacing, shapes.geometric}
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.18}
-\usepackage{algorithm2e}
-\usepackage{multirow}
-\usepackage{colortbl}
-\usepackage{xcolor}
-
-% --- Tema ---
-\usetheme{Madrid}
-\usecolortheme{whale}
-\setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}{
-  \leavevmode\hbox{%
-    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,center]{author in head/foot}
-      \usebeamerfont{author in head/foot}\insertshortauthor
-    \end{beamercolorbox}%
-    \begin{beamercolorbox}[wd=.34\paperwidth,ht=2.5ex,dp=1ex,center]{title in head/foot}
-      \usebeamerfont{title in head/foot}\insertshorttitle
-    \end{beamercolorbox}%
-    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,right]{date in head/foot}
-      \usebeamerfont{date in head/foot}\insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
-    \end{beamercolorbox}}%
-}
-
-% --- Colores personalizados ---
-\definecolor{azuloscuro}{RGB}{0,51,102}
-\definecolor{rojoclaro}{RGB}{204,51,51}
-\definecolor{verdeoscuro}{RGB}{0,102,51}
-\definecolor{naranja}{RGB}{230,126,34}
-\definecolor{grisclaro}{RGB}{236,240,241}
-
-% --- Información ---
 \title[Simulación de Colas]{Simulación de Sistemas de Colas\\en Estado Estable}
 \subtitle{Ejemplo con Dos Servidores, Ley de Little y Período Transitorio}
-\author[Ingeniería Industrial]{Departamento de Ingeniería Industrial}
-\institute[Universidad]{Curso de Simulación de Eventos Discretos}
-\date{Semestre 2026-I}
+\author{Alejandra Tabares Pozos}
+\institute{Universidad de los Andes \\
+ Departamento de Ingeniería Industrial}
+\date{}
 
 \begin{document}
 

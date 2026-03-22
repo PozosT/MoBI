@@ -1,0 +1,300 @@
+% =============================================================================
+%  mobi-beamer.sty — Tema Beamer unificado para presentaciones del curso MoBI
+%  Modelado de Sistemas bajo Incertidumbre · Uniandes · Ingeniería Industrial
+%  aspectratio=1610  |  9pt  |  Paleta institucional Uniandes
+% =============================================================================
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{mobi-beamer}[2026/01/01 MoBI Beamer Style]
+
+% ── Codificación e idioma ────────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish, es-noshorthands, es-tabla]{babel}
+
+% ── Matemáticas ──────────────────────────────────────────────────────────────
+\usepackage{amsmath, amssymb, mathtools, bm}
+
+% ── Gráficos ─────────────────────────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, automata, calc,
+                decorations.pathreplacing, matrix, chains,
+                backgrounds, fit, shapes.geometric}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% ── Tablas ───────────────────────────────────────────────────────────────────
+\usepackage{booktabs, array, multirow, colortbl}
+
+% ── Miscelánea ───────────────────────────────────────────────────────────────
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{pifont}
+
+% ── Cajas ────────────────────────────────────────────────────────────────────
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{skins, breakable}
+
+% ── Algoritmos ───────────────────────────────────────────────────────────────
+\usepackage[ruled, vlined, spanish]{algorithm2e}
+
+% ── Miscelánea adicional ─────────────────────────────────────────────────────
+\usepackage{qrcode}
+
+% =============================================================================
+%  PALETA DE COLORES MoBI
+% =============================================================================
+\definecolor{mobiblue}{RGB}{0,71,133}
+\definecolor{mobigold}{RGB}{200,160,40}
+\definecolor{mobidark}{RGB}{0,40,85}
+\definecolor{mobilightblue}{RGB}{220,235,250}
+\definecolor{mobilightgold}{RGB}{255,245,200}
+\definecolor{mobilightgreen}{RGB}{220,245,220}
+\definecolor{mobisoftred}{RGB}{255,225,225}
+\definecolor{mobisoftgray}{RGB}{242,243,244}
+% Alias para compatibilidad con archivos existentes
+\definecolor{uniblue}{RGB}{0,71,133}
+\definecolor{unigold}{RGB}{200,160,40}
+\definecolor{darkblue}{RGB}{0,40,85}
+\definecolor{lightblue}{RGB}{220,235,250}
+\definecolor{lightgold}{RGB}{255,245,200}
+\definecolor{softgreen}{RGB}{220,245,220}
+\definecolor{softred}{RGB}{255,225,225}
+\definecolor{deepgreen}{RGB}{0,110,60}
+\definecolor{princetonorange}{RGB}{232,119,34}
+\definecolor{accentblue}{HTML}{1A5276}
+\definecolor{softblue}{HTML}{2980B9}
+\definecolor{lightbg}{HTML}{EBF5FB}
+\definecolor{warmgold}{HTML}{D4AC0D}
+\definecolor{successgreen}{HTML}{1E8449}
+\definecolor{alertred}{HTML}{C0392B}
+\definecolor{softgray}{HTML}{F2F3F4}
+\definecolor{darktext}{HTML}{2C3E50}
+\definecolor{purplehl}{HTML}{7D3C98}
+\definecolor{azuloscuro}{RGB}{0,71,133}
+\definecolor{rojoclaro}{RGB}{204,51,51}
+\definecolor{verdeoscuro}{RGB}{0,102,51}
+\definecolor{naranja}{RGB}{230,126,34}
+\definecolor{grisclaro}{RGB}{236,240,241}
+\definecolor{azul}{RGB}{0,71,133}
+\definecolor{rojo}{RGB}{204,51,51}
+\definecolor{verde}{RGB}{0,102,51}
+\definecolor{morado}{RGB}{102,0,153}
+\definecolor{gris}{RGB}{127,140,141}
+\definecolor{busy}{RGB}{0,71,133}
+\definecolor{idle}{RGB}{220,245,220}
+\definecolor{lightyellow}{RGB}{255,255,220}
+
+% =============================================================================
+%  TEMA BEAMER PERSONALIZADO
+% =============================================================================
+\usetheme{default}
+\usecolortheme{default}
+
+\setbeamercolor{structure}{fg=mobiblue}
+\setbeamercolor{frametitle}{fg=white, bg=mobiblue}
+\setbeamercolor{frametitle right}{bg=mobidark}
+\setbeamercolor{title}{fg=white, bg=mobidark}
+\setbeamercolor{subtitle}{fg=mobigold}
+\setbeamercolor{author in title page}{fg=white}
+\setbeamercolor{institute in title page}{fg=mobilightblue}
+\setbeamercolor{date in title page}{fg=mobilightgold}
+
+\setbeamercolor{block title}{fg=white, bg=mobiblue}
+\setbeamercolor{block body}{bg=mobilightblue}
+\setbeamercolor{block title alerted}{fg=white, bg=princetonorange}
+\setbeamercolor{block body alerted}{bg=mobilightgold}
+\setbeamercolor{block title example}{fg=white, bg=mobiblue!55!black}
+\setbeamercolor{block body example}{bg=mobilightgreen}
+
+\setbeamercolor{itemize item}{fg=mobiblue}
+\setbeamercolor{itemize subitem}{fg=mobigold}
+\setbeamercolor{itemize subsubitem}{fg=mobiblue!60}
+\setbeamercolor{enumerate item}{fg=mobiblue}
+\setbeamercolor{enumerate subitem}{fg=mobigold}
+
+\setbeamercolor{footline}{fg=mobiblue!80, bg=mobiblue!6}
+\setbeamercolor{headline}{bg=mobiblue!8}
+
+\setbeamerfont{frametitle}{series=\bfseries, size=\normalsize}
+\setbeamerfont{title}{series=\bfseries, size=\large}
+\setbeamerfont{subtitle}{series=\mdseries, size=\small}
+\setbeamerfont{author}{size=\small}
+\setbeamerfont{institute}{size=\footnotesize}
+\setbeamerfont{footline}{size=\tiny}
+
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{enumerate items}[default]
+\setbeamertemplate{navigation symbols}{}
+
+% Frametitle con línea inferior de color dorado
+\setbeamertemplate{frametitle}{%
+  \nointerlineskip%
+  \begin{beamercolorbox}[wd=\paperwidth,ht=2.4ex,dp=0.8ex,leftskip=1em]{frametitle}%
+    \usebeamerfont{frametitle}\insertframetitle%
+    \ifx\insertframesubtitle\@empty\else%
+      \;{\usebeamerfont{framesubtitle}\color{mobilightblue}— \insertframesubtitle}%
+    \fi%
+  \end{beamercolorbox}%
+  \nointerlineskip%
+  {\color{mobigold}\rule{\paperwidth}{1.2pt}}%
+}
+
+% Pie de página: autor | título | número de slide
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.32\paperwidth,ht=2.4ex,dp=1ex,left]{footline}%
+      \hspace*{2ex}\textit{A.~Tabares Pozos}%
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.46\paperwidth,ht=2.4ex,dp=1ex,center]{footline}%
+      \insertshorttitle%
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.22\paperwidth,ht=2.4ex,dp=1ex,right]{footline}%
+      \insertframenumber\,/\,\inserttotalframenumber\hspace*{2ex}%
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+
+% Página de título
+\setbeamertemplate{title page}{%
+  \vbox{}%
+  \vfill%
+  \begin{beamercolorbox}[wd=\textwidth, sep=12pt, center]{title}%
+    \usebeamerfont{title}\inserttitle\par%
+    \ifx\insertsubtitle\@empty\else%
+      \vskip0.4em%
+      {\usebeamerfont{subtitle}\color{mobigold}\insertsubtitle\par}%
+    \fi%
+  \end{beamercolorbox}%
+  \vskip0.5em%
+  \begin{beamercolorbox}[wd=\textwidth, sep=6pt, center]{author}%
+    {\usebeamerfont{author}\color{mobidark}\insertauthor}\\[0.3em]%
+    {\usebeamerfont{institute}\color{mobiblue!70}\insertinstitute}\\[0.3em]%
+    {\usebeamerfont{date}\color{mobiblue!60}\small\insertdate}%
+  \end{beamercolorbox}%
+  \vfill%
+  {\color{mobigold}\rule{\textwidth}{1.5pt}}%
+}
+
+% Listas con íconos de color
+\setlist[itemize,1]{label={\color{mobiblue}$\blacktriangleright$},
+                    leftmargin=1.2em, itemsep=3pt}
+\setlist[itemize,2]{label={\color{mobigold}$\bullet$},
+                    leftmargin=1.6em, itemsep=2pt}
+
+% =============================================================================
+%  CAJAS TCOLORBOX (compatibles con todas las presentaciones)
+%  Argumento único opcional: título de la caja (por defecto = tipo de caja)
+% =============================================================================
+
+\newtcolorbox{definicionbox}[1][Definición]{
+  colback=mobilightblue, colframe=mobiblue,
+  colbacktitle=mobiblue, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=1pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+\newtcolorbox{ejemplobox}[1][Ejemplo]{
+  colback=mobilightgreen, colframe=deepgreen!80,
+  colbacktitle=deepgreen!80, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=1pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+\newtcolorbox{alertabox}[1][Atención]{
+  colback=mobisoftred, colframe=red!70!black,
+  colbacktitle=red!70!black, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=1pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+\newtcolorbox{notabox}[1][Nota]{
+  colback=mobilightgold, colframe=mobigold,
+  colbacktitle=mobigold, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=1pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+\newtcolorbox{resultadobox}[1][Resultado]{
+  colback=mobilightgold, colframe=princetonorange,
+  colbacktitle=princetonorange, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=1.2pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+\newtcolorbox{preguntabox}[1][Pregunta]{
+  colback=white, colframe=mobigold,
+  colbacktitle=mobigold, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=1.5pt, arc=4pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+\newtcolorbox{situacionbox}[1][Situación]{
+  colback=mobilightgreen, colframe=deepgreen!70,
+  colbacktitle=deepgreen!70, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=1.5pt, arc=5pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+  shadow={1mm}{-1mm}{0mm}{black!20}
+}
+\newtcolorbox{modelobox}[1][Modelo]{
+  colback=mobilightblue, colframe=mobiblue!80,
+  colbacktitle=mobiblue!80, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=1.5pt, arc=5pt, left=8pt, right=8pt, top=6pt, bottom=6pt
+}
+\newtcolorbox{teoremabox}[1][Teorema]{
+  colback=mobilightgold, colframe=princetonorange!90,
+  colbacktitle=princetonorange!90, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=1.5pt, arc=4pt, left=8pt, right=8pt, top=6pt, bottom=6pt
+}
+\newtcolorbox{formulabox}[1][Fórmula]{
+  colback=softblue!8, colframe=softblue,
+  colbacktitle=softblue, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=0.8pt, arc=3pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+\newtcolorbox{derivbox}[1][Derivación]{
+  colback=lightyellow, colframe=mobigold!60,
+  colbacktitle=mobigold!80, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=0.6pt, arc=3pt, left=4pt, right=4pt, top=2pt, bottom=2pt
+}
+\newtcolorbox{metodobox}[1][Método]{
+  colback=mobiblue!5, colframe=mobiblue,
+  colbacktitle=mobiblue, coltitle=white,
+  fonttitle=\bfseries\small, title={#1},
+  boxrule=0.8pt, arc=2pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+% =============================================================================
+%  COMANDOS MATEMÁTICOS
+% =============================================================================
+% Compatibilidad con macros usados en archivos existentes
+\newcommand{\mat}[1]{\mathbf{#1}}           % Matriz en negrita
+\newcommand{\vect}[1]{\boldsymbol{#1}}      % Vector en negrita
+\newcommand{\ind}[1]{\mathbf{1}_{[#1]}}     % Función indicadora
+\newcommand{\FEL}{\texttt{FEL}}
+\newcommand{\q}{q}                          % Función cuantil (VaR notation)
+\newenvironment{thmbox}[1][Teorema]{\begin{teoremabox}[#1]}{\end{teoremabox}}
+\newenvironment{tipbox}[1][Consejo]{\begin{notabox}[#1]}{\end{notabox}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Prob}{\mathbb{P}}
+\providecommand{\R}{\mathbb{R}}
+\providecommand{\N}{\mathbb{N}}
+\providecommand{\1}{\mathbf{1}}
+\newcommand{\vpi}{\bm{\pi}}
+\newcommand{\vp}{\mathbf{p}}
+\newcommand{\mQ}{\mathbf{Q}}
+\newcommand{\mP}{\mathbf{P}}
+\newcommand{\mI}{\mathbf{I}}
+\newcommand{\bQ}{\bm{Q}}
+\newcommand{\bP}{\bm{P}}
+\newcommand{\bV}{\bm{V}}
+\newcommand{\bI}{\bm{I}}
+\newcommand{\bpi}{\bm{\pi}}
+\newcommand{\bp}{\bm{p}}
+\newcommand{\bone}{\bm{1}}
+\newcommand{\bzero}{\bm{0}}
+\newcommand{\bLambda}{\bm{\Lambda}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\Pp}{\mathbb{P}}
+
+\endinput
