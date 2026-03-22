@@ -197,12 +197,15 @@ img { max-width: 100%; }
   width: 44px; height: 44px;
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.3rem;
-  flex-shrink: 0;
+  font-size: .72rem; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; flex-shrink: 0;
 }
-.icon-lecture  { background: var(--m1-lt); }
-.icon-slides   { background: var(--m2-lt); }
-.icon-notebook { background: var(--m3-lt); }
+.icon-lecture  { background: var(--m1-lt); color: var(--m1); }
+.icon-lecture::after  { content: "LEC"; }
+.icon-slides   { background: var(--m2-lt); color: var(--m2); }
+.icon-slides::after   { content: "PPT"; }
+.icon-notebook { background: var(--m3-lt); color: var(--m3); }
+.icon-notebook::after { content: "NB"; }
 
 .material-info { flex: 1; }
 .material-info h3 { font-size: .97rem; color: var(--navy); margin-bottom: .2rem; }
@@ -315,10 +318,9 @@ img { max-width: 100%; }
   border-bottom: 2px solid var(--border);
 }
 .section-title .icon {
-  background: var(--teal-lt); color: var(--teal);
-  width: 34px; height: 34px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1rem; flex-shrink: 0;
+  width: 4px; height: 28px; border-radius: 2px;
+  background: var(--teal); flex-shrink: 0;
+  display: block;
 }
 
 /* ── Placeholder/coming soon ──────────────────────────── */
