@@ -1,108 +1,31 @@
-%%======================================================================
-%%  Lectura: Tiempos de Primera Pasada y Tiempos de Ocupación
-%%           para Cadenas de Markov de Tiempo Continuo (CTMC)
-%%
-%%  Referencia principal: V.G. Kulkarni — "Modeling and Analysis
-%%  of Stochastic Systems" (3.ª ed.)
-%%======================================================================
-\documentclass[11pt,letterpaper]{article}
+\documentclass[11pt, letterpaper]{article}
+\usepackage{mobi-lectura}
 
-%% ── Paquetes ─────────────────────────────────────────────────────────
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage[spanish,es-tabla,es-noshorthands]{babel}
-\usepackage{amsmath,amssymb,amsthm}
-\usepackage{mathtools}
-\usepackage{geometry}
-\usepackage{enumitem}
-\usepackage{booktabs}
-\usepackage{array}
-\usepackage{tikz}
-\usetikzlibrary{automata,positioning,arrows.meta}
-\usepackage{tcolorbox}
-\tcbuselibrary{theorems,skins,breakable}
-\usepackage{hyperref}
-\hypersetup{colorlinks=true,linkcolor=blue!70!black,citecolor=green!50!black}
-\usepackage{fancyhdr}
-\usepackage{titlesec}
+\title{Tiempos de Primera Pasada y Tiempos de Ocupación\\[4pt]
+       {\large Cadenas de Markov de Tiempo Continuo}}
+\author{Modelado de Sistemas bajo Incertidumbre}
+\date{}
 
-%% ── Geometría ────────────────────────────────────────────────────────
-\geometry{margin=2.5cm}
-
-%% ── Encabezado / pie ────────────────────────────────────────────────
-\pagestyle{fancy}
-\fancyhf{}
-\lhead{\small\textsc{Procesos Estocásticos}}
-\rhead{\small Tiempos de Primera Pasada y Ocupación — CTMC}
-\cfoot{\thepage}
-
-%% ── Estilos de sección ──────────────────────────────────────────────
-\titleformat{\section}{\Large\bfseries\sffamily}{§\thesection.}{0.5em}{}
-\titleformat{\subsection}{\large\bfseries\sffamily}{\thesubsection.}{0.4em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\sffamily}{\thesubsubsection.}{0.4em}{}
-
-%% ── Entornos con tcolorbox ──────────────────────────────────────────
-\newtcbtheorem[number within=section]{definicion}{Definición}%
-  {colback=blue!5,colframe=blue!60!black,fonttitle=\bfseries}{def}
-
-\newtcbtheorem[number within=section]{teorema}{Teorema}%
-  {colback=red!5,colframe=red!60!black,fonttitle=\bfseries}{teo}
-
-\newtcbtheorem[number within=section]{proposicion}{Proposición}%
-  {colback=orange!5,colframe=orange!60!black,fonttitle=\bfseries}{prop}
-
-\newtcbtheorem[number within=section]{ejemplo}{Ejemplo}%
-  {colback=green!5,colframe=green!50!black,fonttitle=\bfseries}{ej}
-
-\newtcbtheorem[number within=section]{observacion}{Observación}%
-  {colback=gray!8,colframe=gray!60,fonttitle=\bfseries}{obs}
-
-\newtcbtheorem[number within=section]{ejercicio}{Ejercicio}%
-  {colback=violet!5,colframe=violet!60!black,fonttitle=\bfseries}{exr}
-
-%% ── Comandos útiles ─────────────────────────────────────────────────
-\newcommand{\E}{\mathbb{E}}
-\newcommand{\PP}{\mathbb{P}}
-\newcommand{\R}{\mathbb{R}}
-\newcommand{\N}{\mathbb{N}}
-\newcommand{\ind}{\mathbf{1}}
-\newcommand{\vect}[1]{\boldsymbol{#1}}
-\DeclareMathOperator{\diag}{diag}
-
-%%======================================================================
 \begin{document}
+\maketitle
 
-%% ── Portada ──────────────────────────────────────────────────────────
-\begin{center}
-  {\LARGE\bfseries\sffamily Tiempos de Primera Pasada y\\[4pt]
-   Tiempos de Ocupación}\\[8pt]
-  {\Large\sffamily Cadenas de Markov de Tiempo Continuo}\\[16pt]
-  {\large Lectura — Procesos Estocásticos}\\[6pt]
-  {\normalsize Referencia principal: V.\,G.\ Kulkarni, 
-   \textit{Modeling and Analysis of Stochastic Systems}, 3.ª ed.}\\[20pt]
-  \rule{0.6\textwidth}{0.4pt}
-\end{center}
-
-\vspace{1em}
 \tableofcontents
 \newpage
 
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
 \section{Preliminares: recordatorio de CTMC}
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
 
 Consideremos una \textbf{cadena de Markov de tiempo continuo} (CTMC)
-$\{X(t),\; t\ge 0\}$ con espacio de estados finito 
-$S=\{1,2,\ldots,N\}$.  Su dinámica queda completamente descrita por
-la \emph{matriz de tasas} (o \emph{generador infinitesimal})
-
-\begin{equation}\label{eq:generador}
+$\{X(t),\; t\ge 0\}$ con espacio de estados finito $S=\{1,2,\ldots,N\}$.
+Su dinámica queda completamente descrita por la \emph{matriz de tasas}
+(o \emph{generador infinitesimal})
+\[
   Q = [q_{ij}]_{i,j\in S},
-\end{equation}
+\]
 donde $q_{ij}\ge 0$ para $i\ne j$ y
 \[
-  q_{ii} = -\sum_{j\ne i} q_{ij} \;\eqqcolon -q_i,
-  \qquad i\in S.
+  q_{ii} = -\sum_{j\ne i} q_{ij} \eqqcolon -q_i, \qquad i\in S.
 \]
 
 Recordemos la interpretación: cuando la cadena se encuentra en el
@@ -111,116 +34,95 @@ abandonar~$i$, salta a~$j\ne i$ con probabilidad
 \[
   p_{ij} = \frac{q_{ij}}{q_i}, \qquad j\ne i.
 \]
-
 La \emph{cadena embebida} (de tiempo discreto) tiene matriz de
 transición $P=[p_{ij}]$ con $p_{ii}=0$.
 
-\begin{observacion}{Notación consistente con Kulkarni}{}
-  A lo largo de esta lectura seguimos la notación de Kulkarni:
-  $q_{ij}$ denota la tasa de transición de~$i$ a~$j$; la tasa total
-  de salida del estado~$i$ es $q_i = -q_{ii}$.  La matriz~$Q$ 
-  satisface $Q\,\vect{1}=\vect{0}$.
-\end{observacion}
+\begin{notabox}[Notación]
+  A lo largo de esta lectura, $q_{ij}$ denota la tasa de transición
+  de~$i$ a~$j$; la tasa total de salida del estado~$i$ es
+  $q_i = -q_{ii}$.  La matriz~$Q$ satisface $Q\,\mathbf{1}=\mathbf{0}$.
+\end{notabox}
 
-%%======================================================================
-\section{Tiempos de primera pasada (\emph{first passage times})}
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
+\section{Tiempos de primera pasada}
+% ══════════════════════════════════════════════════════════════════════
 
 \subsection{Definición y motivación}
 
-\begin{definicion}{Tiempo de primera pasada}{fp}
-  Sea $\{X(t)\}$ una CTMC con espacio de estados~$S$ y sea 
-  $A\subseteq S$ un subconjunto no vacío.  Para cada estado 
+\begin{definicionbox}[Tiempo de primera pasada]
+  Sea $\{X(t)\}$ una CTMC con espacio de estados~$S$ y sea
+  $A\subseteq S$ un subconjunto no vacío.  Para cada estado
   inicial~$i\in S$ definimos el \textbf{tiempo de primera pasada}
   (o \textbf{tiempo de primer arribo}) al conjunto~$A$ como
   \[
     T_A = \inf\{t > 0 : X(t) \in A\}.
   \]
-  En el caso particular $A=\{j\}$ escribimos simplemente $T_j$ y lo
-  llamamos el \emph{tiempo de primera pasada al estado~$j$}.
+  En el caso particular $A=\{j\}$ escribimos simplemente $T_j$.
   Si $X(0)=j$ y $A=\{j\}$, entonces $T_j$ se interpreta como el
   \textbf{tiempo de retorno} al estado~$j$.
-\end{definicion}
+\end{definicionbox}
 
 La cantidad central de interés es el \textbf{tiempo medio de primera
 pasada} (\emph{mean first passage time}, MFPT):
 \[
-  m_{iA} \;=\; \E_i[T_A],
-  \qquad i\in S,
+  m_{iA} \;=\; \E_i[T_A], \qquad i\in S,
 \]
 donde $\E_i[\cdot]$ denota la esperanza condicionada a $X(0)=i$.
 
 \medskip
-\noindent\textbf{¿Por qué es importante?}  Los MFPT permiten
-responder preguntas como:
-\begin{itemize}[nosep]
+\textbf{¿Por qué es importante?}  Los MFPT permiten responder
+preguntas como:
+\begin{itemize}
   \item ¿Cuánto tiempo tarda, en promedio, un sistema en pasar de un
         modo de operación a otro?
-  \item ¿Cuál es el tiempo medio de retorno a un estado específico
-        (relacionado con la frecuencia de visita)?
+  \item ¿Cuál es el tiempo medio de retorno a un estado específico?
   \item ¿Cuánto demora una cola en vaciarse por primera vez?
 \end{itemize}
 
-\subsection{Ecuaciones para el MFPT}\label{sec:ecuaciones_mfpt}
+\subsection{Ecuaciones para el MFPT}
 
-\begin{teorema}{Ecuaciones de primer paso para CTMC}{mfpt}
+\begin{metodobox}[Teorema: Ecuaciones de primer paso para CTMC]
   Sea $A\subsetneq S$ y defínase $B = S\setminus A$.  Si la cadena
-  es irreducible (o, más generalmente, si $A$ es alcanzable desde
-  todo estado en~$B$), entonces los tiempos medios de primera pasada
-  $m_{iA}$, $i\in B$, satisfacen el sistema lineal
+  es irreducible (o si $A$ es alcanzable desde todo estado en~$B$),
+  entonces los tiempos medios de primera pasada $m_{iA}$, $i\in B$,
+  satisfacen el sistema lineal
   \begin{equation}\label{eq:mfpt_sistema}
-    \boxed{%
-      \sum_{j\in B} q_{ij}\,m_{jA} \;=\; -1,
-      \qquad i \in B,}
+    \sum_{j\in B} q_{ij}\,m_{jA} = -1, \qquad i \in B,
   \end{equation}
   con la condición de frontera $m_{iA}=0$ para todo $i\in A$.
 
   \medskip
-  En forma matricial, si ordenamos los estados de modo que $B$
-  corresponda a los primeros $|B|$ índices, el bloque de~$Q$
-  restringido a~$B$ es la submatriz $Q_B = [q_{ij}]_{i,j\in B}$.
-  Entonces
+  En forma matricial, si $Q_B = [q_{ij}]_{i,j\in B}$ es la
+  submatriz de~$Q$ restringida a~$B$:
   \begin{equation}\label{eq:mfpt_matricial}
-    Q_B\,\vect{m} = -\vect{1},
+    Q_B\,\mathbf{m} = -\mathbf{1}
     \qquad\Longrightarrow\qquad
-    \vect{m} = -Q_B^{-1}\,\vect{1},
+    \mathbf{m} = -Q_B^{-1}\,\mathbf{1}.
   \end{equation}
-  donde $\vect{m}=(m_{iA})_{i\in B}$.
-\end{teorema}
+\end{metodobox}
 
-\begin{proof}[\textbf{Idea de la demostración} (condicionamiento al primer paso)]
-  Dado $X(0)=i\in B$, la cadena permanece en~$i$ un tiempo
-  exponencial de media $1/q_i$.  Al abandonar~$i$ salta a algún 
-  estado~$j$ con probabilidad $p_{ij}=q_{ij}/q_i$.  Por la propiedad 
-  de Markov fuerte:
-  \[
-    m_{iA} = \frac{1}{q_i} + \sum_{j\in B} p_{ij}\,m_{jA}
-           = \frac{1}{q_i} + \sum_{j\in B} \frac{q_{ij}}{q_i}\,m_{jA}.
-  \]
-  (Los términos con $j\in A$ desaparecen porque $m_{jA}=0$.)
-  Multiplicando ambos lados por $q_i$ y recordando que 
-  $q_{ii}=-q_i$:
-  \[
-    q_i\,m_{iA} = 1 + \sum_{j\in B,\,j\ne i} q_{ij}\,m_{jA}
-    \;\;\Longrightarrow\;\;
-    -q_{ii}\,m_{iA} - \sum_{j\in B,\,j\ne i} q_{ij}\,m_{jA} = 1,
-  \]
-  lo que es equivalente a~\eqref{eq:mfpt_sistema}.
-\end{proof}
+\textbf{Idea de la demostración (condicionamiento al primer paso).}
+Dado $X(0)=i\in B$, la cadena permanece en~$i$ un tiempo exponencial
+de media $1/q_i$.  Al abandonar~$i$ salta a algún estado~$j$ con
+probabilidad $p_{ij}=q_{ij}/q_i$.  Por la propiedad de Markov
+fuerte:
+\[
+  m_{iA} = \frac{1}{q_i} + \sum_{j\in B} p_{ij}\,m_{jA}
+         = \frac{1}{q_i} + \sum_{j\in B} \frac{q_{ij}}{q_i}\,m_{jA}.
+\]
+Multiplicando ambos lados por $q_i$ y recordando que $q_{ii}=-q_i$
+se obtiene~\eqref{eq:mfpt_sistema}. $\square$
 
-\begin{observacion}{Invertibilidad de $Q_B$}{}
+\begin{notabox}[Invertibilidad de $Q_B$]
   Si $A$ es alcanzable desde todo estado de~$B$, la submatriz~$Q_B$
   es \emph{no singular}: todos sus valores propios tienen parte real
   estrictamente negativa.  Esto garantiza la existencia y unicidad
-  de la solución~\eqref{eq:mfpt_matricial}.  (Véase Kulkarni, 
-  Teorema~6.14.)
-\end{observacion}
+  de la solución~\eqref{eq:mfpt_matricial}.
+\end{notabox}
 
-%%----------------------------------------------------------------------
-\subsection{Ejemplo pequeño: CTMC de 3~estados}\label{sec:ejemplo3}
-%%----------------------------------------------------------------------
+\subsection{Ejemplo: MFPT en una cadena de 3 estados}
 
-\begin{ejemplo}{MFPT en una cadena de 3~estados}{tres}
+\begin{ejemplobox}[MFPT en una cadena de 3 estados]
   Consideremos una CTMC con $S=\{1,2,3\}$ y generador
   \[
     Q = \begin{pmatrix}
@@ -230,417 +132,240 @@ responder preguntas como:
     \end{pmatrix}.
   \]
 
-  \begin{center}
-  \begin{tikzpicture}[>={Stealth[round]}, node distance=3cm,
-      every state/.style={thick,fill=blue!10,minimum size=1cm}]
-    \node[state] (1) {$1$};
-    \node[state] (2) [right=of 1] {$2$};
-    \node[state] (3) [below right=2cm and 1.5cm of 1] {$3$};
-
-    \path[->,thick]
-      (1) edge[bend left=15] node[above]{$2$} (2)
-      (1) edge[bend right=10] node[left]{$1$} (3)
-      (2) edge[bend left=15] node[below]{$1$} (1)
-      (2) edge[bend left=15] node[right]{$3$} (3)
-      (3) edge[bend right=10] node[right]{$2$} (1)
-      (3) edge[bend left=15] node[left]{$1$} (2);
-  \end{tikzpicture}
-  \end{center}
-
   \textbf{Pregunta:} ¿Cuánto tiempo tarda en promedio la cadena en
   llegar al estado~$3$ partiendo de cada uno de los otros estados?
 
-  \medskip\noindent\textbf{Solución.}  
+  \medskip\noindent\textbf{Solución.}
   Aquí $A=\{3\}$ y $B=\{1,2\}$.  La submatriz $Q_B$ es
   \[
     Q_B = \begin{pmatrix} -3 & 2 \\ 1 & -4 \end{pmatrix}.
   \]
-  Resolvemos $Q_B\,\vect{m}=-\vect{1}$:
+  Resolvemos $Q_B\,\mathbf{m}=-\mathbf{1}$:
   \[
-    \begin{pmatrix} -3 & 2 \\ 1 & -4 \end{pmatrix}
-    \begin{pmatrix} m_{13} \\ m_{23} \end{pmatrix}
-    = \begin{pmatrix} -1 \\ -1 \end{pmatrix}.
-  \]
-
-  Calculamos $\det(Q_B) = (-3)(-4)-(2)(1)=12-2=10$.  Luego
-  \[
+    \det(Q_B) = (-3)(-4)-(2)(1) = 10, \quad
     Q_B^{-1} = \frac{1}{10}\begin{pmatrix} -4 & -2 \\ -1 & -3 \end{pmatrix}.
   \]
-  Por tanto
+  Por tanto:
   \[
-    \vect{m} = -Q_B^{-1}\vect{1}
-    = -\frac{1}{10}\begin{pmatrix} -4-2 \\ -1-3 \end{pmatrix}
+    \mathbf{m} = -Q_B^{-1}\mathbf{1}
     = -\frac{1}{10}\begin{pmatrix} -6 \\ -4 \end{pmatrix}
     = \begin{pmatrix} 3/5 \\ 2/5 \end{pmatrix}.
   \]
+\end{ejemplobox}
 
-  \textbf{Resultado:} $m_{13}=\dfrac{3}{5}$ unidades de tiempo y 
-  $m_{23}=\dfrac{2}{5}$ unidades de tiempo.  Es natural que
-  $m_{23}<m_{13}$, pues desde el estado~2 la tasa directa hacia~3 
-  es~3, mayor que la tasa~1 desde el estado~1.
-\end{ejemplo}
+\begin{resultadobox}[Resultado]
+  $m_{13} = \dfrac{3}{5} = 0.6$ u.t. \quad y \quad $m_{23} = \dfrac{2}{5} = 0.4$ u.t.
 
-%%======================================================================
-\section{Tiempos de ocupación (\emph{occupation times})}
-%%======================================================================
+  \medskip
+  Es natural que $m_{23}<m_{13}$, pues desde el estado~2 la tasa
+  directa hacia~3 es~3, mayor que la tasa~1 desde el estado~1.
+\end{resultadobox}
+
+% ══════════════════════════════════════════════════════════════════════
+\section{Tiempos de ocupación}
+% ══════════════════════════════════════════════════════════════════════
 
 \subsection{Definición general y motivación}
 
-\begin{definicion}{Tiempo de ocupación en horizonte fijo}{occ}
+\begin{definicionbox}[Tiempo de ocupación en horizonte fijo]
   Sea $\{X(t)\}$ una CTMC con espacio de estados~$S$, y sea~$j\in S$
-  un estado fijo.  Para un horizonte de tiempo~$t>0$, el 
-  \textbf{tiempo de ocupación} del estado~$j$ en el intervalo 
+  un estado fijo.  Para un horizonte de tiempo~$t>0$, el
+  \textbf{tiempo de ocupación} del estado~$j$ en el intervalo
   $[0,t]$ es
   \[
-    M_j(t) = \int_0^t \ind_{\{X(s)=j\}}\,ds.
+    M_j(t) = \int_0^t \mathbf{1}_{\{X(s)=j\}}\,ds.
   \]
-  Más generalmente, dado un conjunto $A\subseteq S$,
+  Más generalmente, dado un conjunto $A\subseteq S$:
   \[
-    M_A(t) = \int_0^t \ind_{\{X(s)\in A\}}\,ds
+    M_A(t) = \int_0^t \mathbf{1}_{\{X(s)\in A\}}\,ds
             = \sum_{j\in A} M_j(t).
   \]
-\end{definicion}
+\end{definicionbox}
 
 El tiempo de ocupación $M_j(t)$ mide \emph{cuánto tiempo acumulado}
-pasa la cadena en el estado~$j$ durante el intervalo~$[0,t]$.  Es
-una variable aleatoria con valores en~$[0,t]$ y, naturalmente,
+pasa la cadena en el estado~$j$ durante $[0,t]$.  Es una variable
+aleatoria con valores en~$[0,t]$ y, naturalmente,
 \[
-  \sum_{j\in S} M_j(t) = t \quad\text{con probabilidad 1,}
+  \sum_{j\in S} M_j(t) = t \quad\text{con probabilidad 1.}
 \]
-pues en cada instante $s\in[0,t]$ la cadena se encuentra exactamente
-en un estado.
 
-\medskip
-\noindent\textbf{¿Por qué es importante?}  Los tiempos de ocupación
-responden preguntas fundamentales del análisis de desempeño:
-\begin{itemize}[nosep]
+\textbf{¿Por qué es importante?}
+\begin{itemize}
   \item ¿Cuánto tiempo acumulado opera un servidor durante las
-        primeras 10~horas?
+        primeras 10 horas?
   \item ¿Qué fracción de un periodo de observación pasa el sistema
         en estado de falla?
-  \item ¿Cuál es el costo esperado acumulado si el costo depende del
-        estado?
+  \item ¿Cuál es el costo esperado acumulado si el costo depende
+        del estado?
 \end{itemize}
 
-\subsection{Valor esperado del tiempo de ocupación: la fórmula 
-  integral}\label{sec:occ_general}
+\subsection{Valor esperado del tiempo de ocupación: la fórmula integral}
 
-\begin{teorema}{Tiempo medio de ocupación en horizonte fijo}{occ_media}
-  Sea $p_{ij}(s) = \PP_i(X(s)=j)$ la probabilidad de transición en
+\begin{metodobox}[Teorema: Tiempo medio de ocupación en horizonte fijo]
+  Sea $p_{ij}(s) = \Prob_i(X(s)=j)$ la probabilidad de transición en
   tiempo~$s$.  Entonces
   \begin{equation}\label{eq:occ_esperanza}
     \E_i[M_j(t)] = \int_0^t p_{ij}(s)\,ds
     = \int_0^t \bigl[e^{Qs}\bigr]_{ij}\,ds.
   \end{equation}
-  En forma matricial, si definimos la \textbf{matriz de tiempos medios
-  de ocupación}
-  \[
-    \mathcal{O}(t) = \bigl[\E_i[M_j(t)]\bigr]_{i,j\in S},
-  \]
-  entonces
+  En forma matricial, la \textbf{matriz de tiempos medios de
+  ocupación} es:
   \begin{equation}\label{eq:occ_matricial}
-    \boxed{\mathcal{O}(t) = \int_0^t e^{Qs}\,ds.}
+    \mathcal{O}(t) = \int_0^t e^{Qs}\,ds.
   \end{equation}
-\end{teorema}
+\end{metodobox}
 
-\begin{proof}
-  Por linealidad de la esperanza y la definición del indicador:
+\textbf{Demostración.}  Por linealidad de la esperanza y la
+definición del indicador:
+\[
+  \E_i[M_j(t)] = \E_i\!\left[\int_0^t \mathbf{1}_{\{X(s)=j\}}\,ds\right]
+  = \int_0^t \Prob_i(X(s)=j)\,ds
+  = \int_0^t p_{ij}(s)\,ds.
+\]
+El intercambio esperanza--integral se justifica por Fubini.
+Usando la solución de Kolmogorov hacia adelante, $P(s) = e^{Qs}$,
+se obtiene~\eqref{eq:occ_esperanza}. $\square$
+
+\begin{notabox}[Cómputo práctico vía diagonalización]
+  Si $Q = V\Lambda V^{-1}$ con
+  $\Lambda=\mathrm{diag}(\lambda_1,\ldots,\lambda_N)$, entonces:
   \[
-    \E_i[M_j(t)] = \E_i\!\left[\int_0^t \ind_{\{X(s)=j\}}\,ds\right]
-    = \int_0^t \E_i\bigl[\ind_{\{X(s)=j\}}\bigr]\,ds
-    = \int_0^t \PP_i(X(s)=j)\,ds
-    = \int_0^t p_{ij}(s)\,ds.
+    \mathcal{O}(t) = V\!\left[\mathrm{diag}\!\left(
+    \frac{e^{\lambda_k t}-1}{\lambda_k}\right)\right]V^{-1},
   \]
-  El intercambio esperanza-integral se justifica por Fubini (el
-  integrando está acotado por~1).  Usando la solución de las
-  ecuaciones de Kolmogorov hacia adelante, 
-  $P(s) = e^{Qs}$, se obtiene~\eqref{eq:occ_esperanza}.
-\end{proof}
+  con la convención $\frac{e^{0\cdot t}-1}{0}=t$ para el valor propio
+  $\lambda=0$ (que siempre existe en una CTMC irreducible).
+\end{notabox}
 
-\begin{observacion}{Cómputo práctico de $\mathcal{O}(t)$ vía
-  diagonalización}{}
-  Si $Q$ es diagonalizable, es decir $Q=V\,\Lambda\,V^{-1}$ con
-  $\Lambda=\diag(\lambda_1,\ldots,\lambda_N)$, entonces
-  $e^{Qs}=V\,e^{\Lambda s}\,V^{-1}$ y la integral se evalúa
-  componente a componente:
+\begin{notabox}[Comportamiento asintótico y teorema ergódico]
+  Para $t$ grande, $e^{Qs}\to\mathbf{1}\,\boldsymbol{\pi}$ (cada fila
+  converge a~$\boldsymbol{\pi}$, la distribución estacionaria), de modo que:
   \[
-    \int_0^t e^{\Lambda s}\,ds
-    = \diag\!\left(\frac{e^{\lambda_1 t}-1}{\lambda_1},\;\ldots,\;
-    \frac{e^{\lambda_N t}-1}{\lambda_N}\right),
+    \frac{\E_i[M_j(t)]}{t} \;\xrightarrow{t\to\infty}\; \pi_j,
   \]
-  con la convención $\frac{e^{0\cdot t}-1}{0}=t$ para el valor 
-  propio $\lambda=0$ (que siempre existe en una CTMC irreducible,
-  correspondiente a la distribución estacionaria).  Así:
-  \begin{equation}\label{eq:occ_diag}
-    \mathcal{O}(t) = V\!\left[\int_0^t e^{\Lambda s}\,ds\right]V^{-1}.
-  \end{equation}
-\end{observacion}
+  independientemente del estado inicial.  Esta es la manifestación
+  del \textbf{teorema ergódico}: la fracción de tiempo que la cadena
+  pasa en cada estado converge a la probabilidad estacionaria.
+\end{notabox}
 
-\begin{observacion}{Comportamiento asintótico y teorema ergódico}{}
-  Para $t$ grande, $e^{Qs}\to\vect{1}\,\vect{\pi}$ (cada fila
-  converge a~$\vect{\pi}$, la distribución estacionaria), de modo que
+\subsection{Ejemplo: tiempos de ocupación en cadena de 2 estados}
+
+\begin{ejemplobox}[Tiempos medios de ocupación para una cadena de 2 estados]
+  Consideremos $S=\{1,2\}$ y generador
   \[
-    \E_i[M_j(t)] = \int_0^t p_{ij}(s)\,ds 
-    \;\xrightarrow{t\to\infty}\; \pi_j\,t + C_{ij},
-  \]
-  donde $C_{ij}$ es una constante que depende del estado inicial.
-  Es decir, para $t$ grande el tiempo medio de ocupación en el 
-  estado~$j$ crece aproximadamente como $\pi_j\cdot t$,
-  independientemente del estado inicial.  Esto es la manifestación
-  del \textbf{teorema ergódico} para CTMC: la fracción de tiempo
-  que la cadena pasa en cada estado converge a la probabilidad
-  estacionaria.  Kulkarni desarrolla esto en detalle en el 
-  Capítulo~6.
-\end{observacion}
-
-%%----------------------------------------------------------------------
-\subsection{Ejemplo: cálculo explícito en horizonte fijo}
-\label{sec:ej_occ_fijo}
-%%----------------------------------------------------------------------
-
-\begin{ejemplo}{Tiempos medios de ocupación en $[0,t]$ para una
-  cadena de 2~estados}{occ_2est}
-  Consideremos una cadena con $S=\{1,2\}$ y generador
-  \[
-    Q = \begin{pmatrix} -\alpha & \alpha \\ \beta & -\beta
-    \end{pmatrix},
+    Q = \begin{pmatrix} -\alpha & \alpha \\ \beta & -\beta \end{pmatrix},
     \qquad \alpha,\beta>0.
   \]
-  Los valores propios son $\lambda_1=0$ y 
-  $\lambda_2=-(\alpha+\beta)$.  La matriz exponencial es
-  \[
-    e^{Qt} = \frac{1}{\alpha+\beta}
-    \begin{pmatrix}
-      \beta+\alpha\,e^{-(\alpha+\beta)t} & 
-      \alpha-\alpha\,e^{-(\alpha+\beta)t}\\[4pt]
-      \beta-\beta\,e^{-(\alpha+\beta)t} &
-      \alpha+\beta\,e^{-(\alpha+\beta)t}
-    \end{pmatrix}.
-  \]
-  Integrando componente a componente en $[0,t]$ según la
-  fórmula~\eqref{eq:occ_esperanza}:
+  Los valores propios son $\lambda_1=0$ y $\lambda_2=-(\alpha+\beta)$.
+  Integrando componente a componente en $[0,t]$:
   \begin{align*}
-    \E_1[M_1(t)] &= \int_0^t p_{11}(s)\,ds
-    = \frac{1}{\alpha+\beta}\left[\beta\,t 
-    + \frac{\alpha}{\alpha+\beta}\bigl(1-e^{-(\alpha+\beta)t}\bigr)
-    \right],\\[6pt]
-    \E_1[M_2(t)] &= \int_0^t p_{12}(s)\,ds
-    = \frac{1}{\alpha+\beta}\left[\alpha\,t 
-    - \frac{\alpha}{\alpha+\beta}\bigl(1-e^{-(\alpha+\beta)t}\bigr)
-    \right].
+    \E_1[M_1(t)] &= \frac{1}{\alpha+\beta}\left[\beta\,t
+    + \frac{\alpha}{\alpha+\beta}\bigl(1-e^{-(\alpha+\beta)t}\bigr)\right],\\[4pt]
+    \E_1[M_2(t)] &= \frac{1}{\alpha+\beta}\left[\alpha\,t
+    - \frac{\alpha}{\alpha+\beta}\bigl(1-e^{-(\alpha+\beta)t}\bigr)\right].
   \end{align*}
 
-  \textbf{Verificación de consistencia:}  
-  $\E_1[M_1(t)]+\E_1[M_2(t)] 
-  = \frac{(\alpha+\beta)t}{\alpha+\beta} = t\;\checkmark$
+  \textbf{Verificación:} $\E_1[M_1(t)]+\E_1[M_2(t)] = t\;\checkmark$
 
   \medskip
   \textbf{Caso numérico:} $\alpha=2$, $\beta=3$, $t=1$.
-  La distribución estacionaria es 
-  $\pi_1=\frac{\beta}{\alpha+\beta}=\frac{3}{5}=0.6$, 
-  $\pi_2=\frac{\alpha}{\alpha+\beta}=\frac{2}{5}=0.4$.
+  La distribución estacionaria es $\pi_1=3/5=0.6$,
+  $\pi_2=2/5=0.4$.
   \[
-    \E_1[M_1(1)] = \frac{1}{5}\left[3 
-    + \frac{2}{5}(1-e^{-5})\right]
-    = \frac{1}{5}\left[3+0.3987\right] \approx 0.680,
+    \E_1[M_1(1)] \approx 0.680, \qquad \E_1[M_2(1)] = 0.320.
   \]
-  \[
-    \E_1[M_2(1)] = 1 - 0.680 = 0.320.
-  \]
-  Compare con lo que daría la distribución estacionaria: 
-  $\pi_1\cdot t = 0.6$.  En $t=1$ la cadena aún no ha alcanzado
-  el equilibrio (partiendo de~1, todavía pasa más tiempo en~1 que lo
-  que dictaría~$\pi_1$).
+  Compare con $\pi_1\cdot t = 0.6$: en $t=1$ la cadena aún no
+  ha alcanzado el equilibrio (partiendo del estado~1, todavía pasa
+  más tiempo en~1 que lo que dictaría~$\pi_1$).
+\end{ejemplobox}
 
-  \medskip
-  Para $t=10$:
-  \[
-    \E_1[M_1(10)] = \frac{1}{5}\left[30 
-    + \frac{2}{5}(1-e^{-50})\right]
-    \approx \frac{1}{5}(30.4) = 6.08
-    \approx \pi_1\cdot 10 = 6.0.
-  \]
-  A $t=10$ la cadena ya está muy cerca del comportamiento 
-  estacionario.
-\end{ejemplo}
-
-\begin{ejemplo}{Tiempos medios de ocupación en $[0,t]$ para la 
-  cadena de 3~estados}{occ_fijo_3}
-  Retomemos la cadena del Ejemplo~\ref{ej:tres} con
-  \[
-    Q = \begin{pmatrix}
-      -3 &  2 &  1 \\
-       1 & -4 &  3 \\
-       2 &  1 & -3
-    \end{pmatrix}.
-  \]
-  Queremos calcular $\E_1[M_j(t)]$ para $j=1,2,3$.
-
-  \medskip\noindent\textbf{Distribución estacionaria.}
-  Resolviendo $\vect{\pi}Q=\vect{0}$ con $\sum\pi_j=1$:
-  de la primera ecuación $-3\pi_1+\pi_2+2\pi_3=0$, es decir
-  $\pi_2=3\pi_1-2\pi_3$; sustituyendo en la segunda 
-  $2\pi_1-4(3\pi_1-2\pi_3)+\pi_3=0$, lo que da 
-  $-10\pi_1+9\pi_3=0$, luego $\pi_3=\frac{10}{9}\pi_1$ y 
-  $\pi_2=3\pi_1-\frac{20}{9}\pi_1=\frac{7}{9}\pi_1$.  
-  Normalizando: $\pi_1\cdot\frac{26}{9}=1$, así que
-  \[
-    \pi_1=\frac{9}{26}\approx 0.346, \qquad 
-    \pi_2=\frac{7}{26}\approx 0.269, \qquad 
-    \pi_3=\frac{10}{26}\approx 0.385.
-  \]
-
-  \textbf{Interpretación concreta para $t$ grande:}  Si observamos 
-  el sistema durante $t=100$ unidades de tiempo, partiendo de
-  cualquier estado, esperamos que pase aproximadamente 
-  $34.6$ u.t.\ en el estado~1, $26.9$ u.t.\ en el estado~2, y 
-  $38.5$ u.t.\ en el estado~3.  Para horizontes pequeños, la
-  distribución del tiempo entre estados dependerá del estado 
-  inicial y requiere el cálculo de la integral $\int_0^t e^{Qs}\,ds$.
-\end{ejemplo}
-
-%%----------------------------------------------------------------------
-\subsection{Tiempos de ocupación hasta la primera pasada: caso
-  particular}\label{sec:occ_fp}
-%%----------------------------------------------------------------------
+\subsection{Tiempos de ocupación hasta la primera pasada}
 
 Hasta ahora hemos estudiado los tiempos de ocupación en un horizonte
-de tiempo \emph{fijo y determinista}~$t$.  Un caso particular
-importante surge cuando el horizonte no es fijo sino \emph{aleatorio}:
-específicamente, cuando se toma como el tiempo de primera pasada
-$T_A$ a un conjunto~$A$.
+fijo~$t$.  Un caso particular importante surge cuando el horizonte es
+el tiempo de primera pasada $T_A$ a un conjunto~$A$.
 
-\begin{definicion}{Tiempo de ocupación hasta primera pasada}{occ_fp}
-  Sea $A\subsetneq S$ y $B=S\setminus A$.  Sea $T_A$ el tiempo de 
-  primera pasada al conjunto~$A$.  El \textbf{tiempo de ocupación del
-  estado~$j\in B$ hasta la primera pasada a~$A$} es
+\begin{definicionbox}[Tiempo de ocupación hasta primera pasada]
+  Sea $A\subsetneq S$ y $B=S\setminus A$.  El \textbf{tiempo de
+  ocupación del estado~$j\in B$ hasta la primera pasada a~$A$} es
   \[
-    M_j^{(A)} = \int_0^{T_A} \ind_{\{X(s)=j\}}\,ds,
+    M_j^{(A)} = \int_0^{T_A} \mathbf{1}_{\{X(s)=j\}}\,ds,
     \qquad j\in B.
   \]
-  Nótese que esta es la Definición~\ref{def:occ} evaluada en el 
-  horizonte aleatorio~$T_A$ en lugar del horizonte fijo~$t$:
-  $M_j^{(A)} = M_j(T_A)$.
-\end{definicion}
+\end{definicionbox}
 
-\begin{teorema}{Ecuaciones para los tiempos medios de ocupación
-  hasta primera pasada}{occ_fp_eq}
+\begin{metodobox}[Teorema: Ecuaciones para tiempos medios de ocupación hasta primera pasada]
   Definamos $\mu_{ij} = \E_i[M_j^{(A)}]$ para $i,j\in B$.  Entonces
-  los valores $\{\mu_{ij}\}_{i\in B}$ (para~$j$ fijo) satisfacen:
+  los valores $\{\mu_{ij}\}_{i\in B}$ satisfacen, para~$j$ fijo:
   \begin{equation}\label{eq:occ_fp}
-    \boxed{%
-      \sum_{k\in B} q_{ik}\,\mu_{kj} = -\delta_{ij},
-      \qquad i\in B,}
+    \sum_{k\in B} q_{ik}\,\mu_{kj} = -\delta_{ij},
+    \qquad i\in B.
   \end{equation}
-  donde $\delta_{ij}$ es la delta de Kronecker.  En forma matricial:
+  En forma matricial:
   \begin{equation}\label{eq:occ_fp_mat}
-    Q_B\,\mathcal{M} = -I_{|B|},
+    Q_B\,\mathcal{M} = -I_{|B|}
     \qquad\Longrightarrow\qquad
     \mathcal{M} = -Q_B^{-1},
   \end{equation}
   donde $\mathcal{M}=[\mu_{ij}]_{i,j\in B}$.
-\end{teorema}
+\end{metodobox}
 
-\begin{proof}[\textbf{Idea de la demostración} (condicionamiento al
-  primer paso)]
-  Para $j$ fijo, condicionamos al primer paso desde~$i\in B$.  
-  La cadena permanece en~$i$ un tiempo exponencial de media~$1/q_i$.
-  Si $i=j$, ese tiempo contribuye $1/q_i$ al tiempo de ocupación
-  en~$j$; si $i\ne j$, no contribuye.  Después del salto a algún
-  $k$ ($k\in B$ con probabilidad $p_{ik}$), por la propiedad de 
-  Markov:
-  \[
-    \mu_{ij} = \frac{\delta_{ij}}{q_i}
-    + \sum_{k\in B} \frac{q_{ik}}{q_i}\,\mu_{kj}.
-  \]
-  Multiplicando por $q_i$ y reorganizando se llega 
-  a~\eqref{eq:occ_fp}.
-\end{proof}
-
-\begin{observacion}{Relación entre los dos enfoques}{}
-  Es instructivo comparar las dos formas de calcular tiempos medios
-  de ocupación:
-  \begin{itemize}[nosep]
-    \item \textbf{Horizonte fijo~$t$} (\S\ref{sec:occ_general}): 
-      se usa la integral 
-      $\mathcal{O}(t)=\int_0^t e^{Qs}\,ds$, que requiere calcular
-      la exponencial matricial.  Se obtiene una \emph{función de~$t$}.
-    \item \textbf{Hasta primera pasada} (\S\ref{sec:occ_fp}): 
-      se resuelve el sistema lineal $Q_B\mathcal{M}=-I$, que da 
-      \emph{un número fijo} (no depende de~$t$, pues el 
-      horizonte~$T_A$ es implícito).
+\begin{notabox}[Relación entre los dos enfoques]
+  \begin{itemize}
+    \item \textbf{Horizonte fijo~$t$}: $\mathcal{O}(t)=\int_0^t e^{Qs}\,ds$
+      — requiere la exponencial matricial; el resultado es función de~$t$.
+    \item \textbf{Hasta primera pasada}: $\mathcal{M}=-Q_B^{-1}$
+      — solo álgebra lineal; el resultado es un número fijo.
   \end{itemize}
-  El segundo caso es algebraicamente más simple, pero conceptualmente
-  es una especialización del primero: se reemplaza el horizonte 
-  determinista~$t$ por el tiempo de parada aleatorio~$T_A$.
-\end{observacion}
+  El segundo caso es algebraicamente más simple, pero es una
+  especialización del primero con horizonte aleatorio~$T_A$.
+\end{notabox}
 
-\begin{observacion}{Conexión MFPT $\leftrightarrow$ tiempo de 
-  ocupación hasta primera pasada}{}
-  El MFPT se puede expresar como la suma de todos los
-  tiempos medios de ocupación en los estados de~$B$:
+\begin{notabox}[Conexión MFPT $\leftrightarrow$ ocupación hasta primera pasada]
+  El MFPT se expresa como la suma de todos los tiempos medios de
+  ocupación en los estados de~$B$:
   \[
     m_{iA} = \E_i[T_A] = \sum_{j\in B} \mu_{ij}
     \qquad\Longleftrightarrow\qquad
-    \vect{m} = \mathcal{M}\,\vect{1} = (-Q_B^{-1})\,\vect{1}.
+    \mathbf{m} = \mathcal{M}\,\mathbf{1} = (-Q_B^{-1})\,\mathbf{1}.
   \]
-  Esto es consistente con~\eqref{eq:mfpt_matricial}: la matriz
-  $-Q_B^{-1}$ contiene toda la información sobre los tiempos de
-  ocupación (hasta primera pasada) y los MFPT simultáneamente.
-\end{observacion}
+  La matriz $-Q_B^{-1}$ contiene \emph{simultáneamente} toda la
+  información sobre los tiempos de ocupación y los MFPT.
+\end{notabox}
 
-%%----------------------------------------------------------------------
-\subsection{Ejemplo: tiempos de ocupación hasta primera pasada en la
-  cadena de 3~estados}
-%%----------------------------------------------------------------------
-
-\begin{ejemplo}{Tiempos de ocupación hasta primera pasada en la 
-    cadena del Ejemplo~\ref{ej:tres}}{occ3}
-  Con la misma cadena ($S=\{1,2,3\}$, $A=\{3\}$, $B=\{1,2\}$),
-  ya calculamos
-  \[
-    Q_B^{-1} = \frac{1}{10}\begin{pmatrix} -4 & -2 \\ -1 & -3
-    \end{pmatrix}.
-  \]
-  Por tanto
+\begin{ejemplobox}[Tiempos de ocupación hasta primera pasada en la cadena de 3 estados]
+  Con la misma cadena ($S=\{1,2,3\}$, $A=\{3\}$, $B=\{1,2\}$):
   \[
     \mathcal{M} = -Q_B^{-1}
     = \frac{1}{10}\begin{pmatrix} 4 & 2 \\ 1 & 3 \end{pmatrix}.
   \]
 
   \textbf{Interpretación:}
-  \begin{itemize}[nosep]
-    \item $\mu_{11}=4/10$: partiendo de~1, el tiempo medio que la
-      cadena pasa en el estado~1 antes de llegar a~3.
-    \item $\mu_{12}=2/10$: partiendo de~1, el tiempo medio en el
-      estado~2 antes de llegar a~3.
-    \item $\mu_{21}=1/10$: partiendo de~2, el tiempo medio en el
-      estado~1 antes de llegar a~3.
-    \item $\mu_{22}=3/10$: partiendo de~2, el tiempo medio en el
-      estado~2 antes de llegar a~3.
+  \begin{itemize}
+    \item $\mu_{11}=4/10$: partiendo de~1, tiempo medio en el estado~1 antes de llegar a~3.
+    \item $\mu_{12}=2/10$: partiendo de~1, tiempo medio en el estado~2 antes de llegar a~3.
+    \item $\mu_{21}=1/10$: partiendo de~2, tiempo medio en el estado~1 antes de llegar a~3.
+    \item $\mu_{22}=3/10$: partiendo de~2, tiempo medio en el estado~2 antes de llegar a~3.
   \end{itemize}
 
-  \medskip\noindent\textbf{Verificación con el MFPT:}
+  \textbf{Verificación con el MFPT:}
   \[
     m_{13} = \mu_{11}+\mu_{12} = \tfrac{4}{10}+\tfrac{2}{10}
-    = \tfrac{6}{10} = \tfrac{3}{5}\;\checkmark,
+    = \tfrac{3}{5}\;\checkmark,
     \qquad
     m_{23} = \mu_{21}+\mu_{22} = \tfrac{1}{10}+\tfrac{3}{10}
-    = \tfrac{4}{10} = \tfrac{2}{5}\;\checkmark.
+    = \tfrac{2}{5}\;\checkmark.
   \]
-\end{ejemplo}
+\end{ejemplobox}
 
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
 \section{Ejemplo detallado con dos variables de estado}
-\label{sec:ejemplo_2var}
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
 
-Consideremos un sistema modelado por una CTMC con espacio de estados
-$S=\{0,1,2\}$ que se describe mediante \textbf{dos variables
-indicadoras}: una variable~$X$ que indica si un componente está
-operativo ($X=1$) o no ($X=0$), y una variable~$Y$ que indica si un
-recurso de respaldo está disponible ($Y=1$) o no ($Y=0$).  Los
-estados compuestos son:
+Consideremos un sistema con espacio de estados $S=\{0,1,2\}$ descrito
+por dos variables indicadoras: $X$ indica si el componente está
+operativo ($X=1$) o no ($X=0$), e $Y$ indica si hay respaldo
+disponible ($Y=1$) o no ($Y=0$).
 
 \begin{center}
 \begin{tabular}{ccl}
@@ -656,8 +381,6 @@ estados compuestos son:
 
 \subsection{Generador infinitesimal}
 
-Las tasas de transición reflejan fallas, reparaciones y provisión del
-respaldo:
 \[
   Q = \begin{pmatrix}
     -2 &  2 &  0 \\
@@ -666,347 +389,206 @@ respaldo:
   \end{pmatrix}.
 \]
 
-\begin{center}
-\begin{tikzpicture}[>={Stealth[round]}, node distance=3.5cm,
-    every state/.style={thick,fill=green!10,minimum size=1.2cm,
-      font=\footnotesize}]
-  \node[state] (0) {$0$\\[-2pt]{\tiny$(0,0)$}};
-  \node[state] (1) [right=of 0] {$1$\\[-2pt]{\tiny$(1,0)$}};
-  \node[state] (2) [right=of 1] {$2$\\[-2pt]{\tiny$(1,1)$}};
+Nótese que el estado~$0$ no se comunica directamente con el
+estado~$2$: para llegar al modo completo hay que pasar primero por el
+modo operativo sin respaldo.
 
-  \path[->,thick]
-    (0) edge[bend left=15] node[above]{$2$} (1)
-    (1) edge[bend left=15] node[below]{$1$} (0)
-    (1) edge[bend left=15] node[above]{$4$} (2)
-    (2) edge[bend left=15] node[below]{$3$} (1);
-\end{tikzpicture}
-\end{center}
-
-Nótese que el estado~$0$ no se comunica directamente con el estado~$2$
-(para llegar al modo completo hay que pasar primero por el modo
-operativo sin respaldo).
-
-%%----------------------------------------------------------------------
 \subsection{Cálculo de los tiempos medios de primera pasada}
-%%----------------------------------------------------------------------
 
-\subsubsection*{Pregunta 1: ¿Cuánto tarda en promedio el sistema en
-  alcanzar el modo completo (estado~2) desde cada estado?}
+\textbf{Pregunta 1: ¿Cuánto tarda en promedio el sistema en alcanzar
+el modo completo (estado~2) desde cada estado?}
 
-\textbf{Objetivo:} $A=\{2\}$, $B=\{0,1\}$.
-
+Con $A=\{2\}$, $B=\{0,1\}$, $Q_B = \begin{pmatrix} -2 & 2 \\ 1 & -5 \end{pmatrix}$,
+$\det(Q_B)=8$:
 \[
-  Q_B = \begin{pmatrix} -2 & 2 \\ 1 & -5 \end{pmatrix}.
-\]
-
-\textbf{Determinante:} $\det(Q_B)=(-2)(-5)-(2)(1)=10-2=8$.
-
-\textbf{Inversa:}
-\[
-  Q_B^{-1} = \frac{1}{8}\begin{pmatrix} -5 & -2 \\ -1 & -2
-  \end{pmatrix}.
-\]
-
-\textbf{MFPT:}
-\[
-  \vect{m} = -Q_B^{-1}\,\vect{1}
-  = -\frac{1}{8}\begin{pmatrix} -5-2 \\ -1-2 \end{pmatrix}
-  = -\frac{1}{8}\begin{pmatrix} -7 \\ -3 \end{pmatrix}
+  \mathbf{m} = -Q_B^{-1}\,\mathbf{1}
   = \begin{pmatrix} 7/8 \\ 3/8 \end{pmatrix}.
 \]
 
-\begin{tcolorbox}[colback=yellow!8,colframe=yellow!60!black,title=Resultado: MFPT al estado~2]
-  \[
-    m_{02} = \frac{7}{8} = 0.875 \text{ u.t.},
-    \qquad
-    m_{12} = \frac{3}{8} = 0.375 \text{ u.t.}
-  \]
-\end{tcolorbox}
+\begin{resultadobox}[MFPT al estado 2]
+  $m_{02} = \dfrac{7}{8} = 0.875$ u.t., \quad
+  $m_{12} = \dfrac{3}{8} = 0.375$ u.t.
+\end{resultadobox}
 
-%%----------------------------------------------------------------------
-\subsubsection*{Pregunta 2: ¿Cuánto tarda en promedio en llegar al
-  estado inactivo (estado~0) partiendo del modo completo?}
+\medskip
+\textbf{Pregunta 2: ¿Cuánto tarda en promedio en llegar al estado
+inactivo (estado~0) partiendo del modo completo?}
 
-\textbf{Objetivo:} $A=\{0\}$, $B=\{1,2\}$.
-
+Con $A=\{0\}$, $B=\{1,2\}$, $Q_B = \begin{pmatrix} -5 & 4 \\ 3 & -3 \end{pmatrix}$,
+$\det(Q_B)=3$:
 \[
-  Q_B = \begin{pmatrix} -5 & 4 \\ 3 & -3 \end{pmatrix}.
-\]
-
-$\det(Q_B)=15-12=3$.
-
-\[
-  Q_B^{-1} = \frac{1}{3}\begin{pmatrix} -3 & -4 \\ -3 & -5
-  \end{pmatrix}.
-\]
-
-\[
-  \vect{m} = -Q_B^{-1}\,\vect{1}
-  = -\frac{1}{3}\begin{pmatrix} -7 \\ -8 \end{pmatrix}
+  \mathbf{m} = -Q_B^{-1}\,\mathbf{1}
   = \begin{pmatrix} 7/3 \\ 8/3 \end{pmatrix}.
 \]
 
-\begin{tcolorbox}[colback=yellow!8,colframe=yellow!60!black,title=Resultado: MFPT al estado~0]
-  \[
-    m_{10} = \frac{7}{3} \approx 2.333 \text{ u.t.},
-    \qquad
-    m_{20} = \frac{8}{3} \approx 2.667 \text{ u.t.}
-  \]
-\end{tcolorbox}
+\begin{resultadobox}[MFPT al estado 0]
+  $m_{10} = \dfrac{7}{3} \approx 2.333$ u.t., \quad
+  $m_{20} = \dfrac{8}{3} \approx 2.667$ u.t.
+\end{resultadobox}
 
-\noindent Es razonable que el estado~2 (modo completo) demore más en
-caer al estado~0 que el estado~1, pues primero debe perder el
-respaldo y luego fallar.
+Es razonable que el estado~2 (modo completo) demore más en caer al
+estado~0 que el estado~1, pues primero debe perder el respaldo y
+luego fallar.
 
-%%----------------------------------------------------------------------
 \subsection{Cálculo de los tiempos medios de ocupación}
-%%----------------------------------------------------------------------
 
-\subsubsection*{Pregunta 3: Antes de alcanzar el modo completo
-  (estado~2), ¿cuánto tiempo pasa el sistema en cada estado?}
+\textbf{Pregunta 3: Antes de alcanzar el modo completo (estado~2),
+¿cuánto tiempo pasa el sistema en cada estado?}
 
-Con $A=\{2\}$, $B=\{0,1\}$, ya tenemos
-
+Con $A=\{2\}$, $B=\{0,1\}$:
 \[
   \mathcal{M} = -Q_B^{-1}
   = \frac{1}{8}\begin{pmatrix} 5 & 2 \\ 1 & 2 \end{pmatrix}.
 \]
 
-\begin{tcolorbox}[colback=yellow!8,colframe=yellow!60!black,
-  title=Resultado: Tiempos medios de ocupación antes de llegar al estado~2]
-  \begin{center}
-  \renewcommand{\arraystretch}{1.5}
-  \begin{tabular}{c|cc|c}
-    \toprule
-    \textbf{Desde} & $\mu_{i0}$ (en estado~0) & $\mu_{i1}$ (en estado~1) 
-    & $m_{i2}=\mu_{i0}+\mu_{i1}$\\
-    \midrule
-    $i=0$ & $5/8=0.625$ & $2/8=0.250$ & $7/8=0.875$\\
-    $i=1$ & $1/8=0.125$ & $2/8=0.250$ & $3/8=0.375$\\
-    \bottomrule
-  \end{tabular}
-  \end{center}
-\end{tcolorbox}
+\begin{resultadobox}[Tiempos medios de ocupación antes de llegar al estado 2]
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{c|cc|c}
+  \toprule
+  \textbf{Desde} & $\mu_{i0}$ (en estado~0) & $\mu_{i1}$ (en estado~1)
+  & $m_{i2}=\mu_{i0}+\mu_{i1}$\\
+  \midrule
+  $i=0$ & $5/8=0.625$ & $2/8=0.250$ & $7/8=0.875$\\
+  $i=1$ & $1/8=0.125$ & $2/8=0.250$ & $3/8=0.375$\\
+  \bottomrule
+\end{tabular}
+\end{center}
+\end{resultadobox}
 
-\textbf{Interpretación:}  Partiendo del estado~0 (sistema inactivo),
-antes de llegar al modo completo, el sistema pasa en promedio $0.625$
-unidades de tiempo inactivo y $0.250$ unidades operativo sin
-respaldo.  Partiendo del estado~1, solo pasa $0.125$ u.t.\ en
-inactivo pero el mismo $0.250$ en operativo sin respaldo.
-
-%%----------------------------------------------------------------------
-\subsubsection*{Pregunta 4: Antes de caer al estado inactivo
-  (estado~0), ¿cuánto tiempo pasa en cada modo operativo?}
+\medskip
+\textbf{Pregunta 4: Antes de caer al estado inactivo (estado~0),
+¿cuánto tiempo pasa en cada modo operativo?}
 
 Con $A=\{0\}$, $B=\{1,2\}$:
-
 \[
   \mathcal{M} = -Q_B^{-1}
   = \frac{1}{3}\begin{pmatrix} 3 & 4 \\ 3 & 5 \end{pmatrix}
   = \begin{pmatrix} 1 & 4/3 \\ 1 & 5/3 \end{pmatrix}.
 \]
 
-\begin{tcolorbox}[colback=yellow!8,colframe=yellow!60!black,
-  title=Resultado: Tiempos medios de ocupación antes de llegar al estado~0]
-  \begin{center}
-  \renewcommand{\arraystretch}{1.5}
-  \begin{tabular}{c|cc|c}
-    \toprule
-    \textbf{Desde} & $\mu_{i1}$ (operativo) & $\mu_{i2}$ (completo) 
-    & $m_{i0}=\mu_{i1}+\mu_{i2}$\\
-    \midrule
-    $i=1$ & $1$ & $4/3\approx 1.333$ & $7/3\approx 2.333$\\
-    $i=2$ & $1$ & $5/3\approx 1.667$ & $8/3\approx 2.667$\\
-    \bottomrule
-  \end{tabular}
-  \end{center}
-\end{tcolorbox}
+\begin{resultadobox}[Tiempos medios de ocupación antes de llegar al estado 0]
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{c|cc|c}
+  \toprule
+  \textbf{Desde} & $\mu_{i1}$ (operativo) & $\mu_{i2}$ (completo)
+  & $m_{i0}=\mu_{i1}+\mu_{i2}$\\
+  \midrule
+  $i=1$ & $1$ & $4/3\approx 1.333$ & $7/3\approx 2.333$\\
+  $i=2$ & $1$ & $5/3\approx 1.667$ & $8/3\approx 2.667$\\
+  \bottomrule
+\end{tabular}
+\end{center}
+\end{resultadobox}
 
-\textbf{Observación notable:}  Sin importar si se parte del estado~1
-o del estado~2, el tiempo medio de ocupación en el estado~1 (operativo
-sin respaldo) antes de caer al estado~0 es el mismo ($\mu_{11}=\mu_{21}=1$).
-Esto tiene una explicación intuitiva: desde el estado~2, la cadena
-\emph{necesariamente} pasa por~1 antes de llegar a~0, y al llegar
-a~1 ``se reinicia'' (propiedad de Markov).
+\begin{notabox}[Observación notable]
+  Sin importar si se parte del estado~1 o del estado~2, el tiempo
+  medio de ocupación en el estado~1 antes de caer al estado~0 es el
+  mismo ($\mu_{11}=\mu_{21}=1$).  Esto se explica porque desde el
+  estado~2 la cadena \emph{necesariamente} pasa por~1 antes de llegar
+  a~0 y, al llegar a~1, la propiedad de Markov ``reinicia'' el proceso.
+\end{notabox}
 
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
 \section{Preguntas de aplicación con valores esperados}
-\label{sec:preguntas}
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
 
-Todas las preguntas siguientes se refieren al sistema del
-\S\ref{sec:ejemplo_2var}.
+Las siguientes preguntas se refieren al sistema de la sección anterior.
 
-\begin{ejercicio}{Valor esperado del costo hasta la falla total}{costo}
-  Suponga que el sistema incurre en un costo por unidad de tiempo de
-  \$5 cuando está en el estado~1 (operativo sin respaldo) y de \$2
-  cuando está en el estado~2 (completo).  Sea~$C$ el costo total
-  acumulado desde que el sistema arranca en modo completo (estado~2)
-  hasta que cae al estado~0 (falla total).  Calcule $\E[C]$.
+\begin{ejemplobox}[Ejercicio: Valor esperado del costo hasta la falla total]
+  El sistema incurre en un costo por unidad de tiempo de \$5 cuando
+  está en el estado~1 (operativo sin respaldo) y de \$2 cuando está
+  en el estado~2 (completo).  Sea~$C$ el costo total acumulado desde
+  que el sistema arranca en modo completo (estado~2) hasta que cae al
+  estado~0 (falla total).  Calcule $\E[C]$.
 
-  \tcblower
+  \medskip
   \textbf{Solución.}  El costo total es
-  \[
-    C = 5\,M_1^{(\{0\})} + 2\,M_2^{(\{0\})},
-  \]
-  donde $M_j^{(\{0\})}$ es el tiempo de ocupación del estado~$j$
-  hasta la primera pasada al estado~0.  Ya calculamos los valores
-  esperados (con estado inicial~2):
+  $C = 5\,M_1^{(\{0\})} + 2\,M_2^{(\{0\})}$.
+  Por linealidad de la esperanza, con estado inicial~2:
   \[
     \E_2[C] = 5\,\mu_{21} + 2\,\mu_{22}
     = 5\cdot 1 + 2\cdot\frac{5}{3}
-    = 5 + \frac{10}{3}
     = \frac{25}{3} \approx \$8.33.
   \]
-\end{ejercicio}
+\end{ejemplobox}
 
-\begin{ejercicio}{Fracción esperada de tiempo operativo}{fraccion}
-  Un ingeniero de confiabilidad define la
-  \emph{disponibilidad transitoria hasta la falla} como la fracción 
-  del tiempo total antes de la falla que el sistema estuvo 
-  operativo (estados~1 o~2).  Si el sistema arranca en el estado~1,
-  calcule el valor esperado de esta fracción.
-
-  \tcblower
-  \textbf{Solución.}  Partiendo de $i=1$ con $A=\{0\}$, $B=\{1,2\}$:
-  \[
-    \E_1\!\left[\frac{M_1^{(\{0\})}+M_2^{(\{0\})}}{T_{\{0\}}}\right].
-  \]
-  Pero $M_1^{(\{0\})}+M_2^{(\{0\})}=T_{\{0\}}$ (pues los estados
-  de~$B$ cubren todo el tiempo hasta la pasada), así que esta fracción
-  es \textbf{exactamente~1} con probabilidad~1.
+\begin{ejemplobox}[Ejercicio: Número esperado de visitas a un estado]
+  ¿Cuántas veces se espera que el sistema visite el estado~1 antes de
+  alcanzar el modo completo (estado~2), si arranca en el estado~0?
 
   \medskip
-  Una pregunta más interesante: ¿qué fracción del tiempo hasta la
-  falla pasa el sistema \emph{en modo completo} (estado~2)?
-  \[
-    \E_1\!\left[\frac{M_2^{(\{0\})}}{T_{\{0\}}}\right].
-  \]
-  Aunque la fracción $M_2^{(\{0\})}/T_{\{0\}}$ es una variable 
-  aleatoria cuya esperanza \emph{no} es simplemente el cociente de
-  esperanzas, podemos dar una cota o aproximación.  A nivel de
-  esperanzas (como indicador):
-  \[
-    \frac{\E_1[M_2^{(\{0\})}]}{\E_1[T_{\{0\}}]}
-    = \frac{\mu_{12}}{m_{10}}
-    = \frac{4/3}{7/3} = \frac{4}{7} \approx 0.571.
-  \]
-  Es decir, aproximadamente un $57\%$ del tiempo esperado antes de la
-  falla total se pasa en el modo completo, partiendo del estado~1.
-\end{ejercicio}
-
-\begin{ejercicio}{Número esperado de visitas a un estado antes de la primera pasada}{visitas}
-  ¿Cuántas veces se espera que el sistema visite el estado~1
-  (operativo sin respaldo) antes de alcanzar el modo completo
-  (estado~2), si arranca en el estado~0?
-
-  \tcblower
-  \textbf{Solución.}  El número esperado de visitas al estado~$j\in B$
-  antes de la primera pasada a~$A$ está relacionado con el tiempo
-  de ocupación.  Cada visita al estado~$j$ dura un tiempo exponencial
-  de media $1/q_j$.  Si $N_j$ es el número de visitas al estado~$j$,
-  entonces
+  \textbf{Solución.}  El número esperado de visitas al estado~$j$ está
+  relacionado con el tiempo de ocupación.  Cada visita al estado~$j$
+  dura un tiempo exponencial de media $1/q_j$:
   \[
     \E_i[M_j^{(A)}] = \E_i[N_j]\cdot\frac{1}{q_j}
     \qquad\Longrightarrow\qquad
     \E_i[N_j] = q_j\,\mu_{ij}.
   \]
-  Con $i=0$, $j=1$, $A=\{2\}$: $q_1=5$ y $\mu_{01}=2/8=1/4$.
+  Con $i=0$, $j=1$, $A=\{2\}$: $q_1=5$ y $\mu_{01}=2/8=1/4$:
   \[
     \E_0[N_1] = 5\cdot\frac{1}{4} = \frac{5}{4} = 1.25 \text{ visitas.}
   \]
-  Similarmente, el número esperado de visitas al estado~0 desde~0:
-  $q_0=2$, $\mu_{00}=5/8$:
-  \[
-    \E_0[N_0] = 2\cdot\frac{5}{8} = \frac{10}{8} = 1.25 \text{ visitas.}
-  \]
-  (La primera ``visita'' al estado~0 cuenta como la estancia inicial.)
-\end{ejercicio}
+\end{ejemplobox}
 
-\begin{ejercicio}{Tiempo medio de retorno en régimen estacionario}{retorno}
+\begin{ejemplobox}[Ejercicio: Tiempo medio de retorno en régimen estacionario]
   Encuentre la distribución estacionaria de la cadena y verifique
-  que el tiempo medio de retorno al estado~$j$ en régimen estacionario
-  satisface $\E[T_j \mid X(0)=j] = 1/(\pi_j\,q_j)$ para la cadena
-  embebida, donde $\pi_j$ es la probabilidad estacionaria.
+  que el tiempo medio de retorno al estado~$j$ satisface
+  $\E_j[T_j] = 1/(\pi_j\,q_j)$.
 
-  \tcblower
-  \textbf{Solución.}  Resolvemos $\vect{\pi}\,Q=\vect{0}$ con
-  $\pi_0+\pi_1+\pi_2=1$.
-
-  Del sistema:
-  \begin{align*}
-    -2\pi_0 + \pi_1 &= 0 \implies \pi_1 = 2\pi_0,\\
-    2\pi_0 - 5\pi_1 + 3\pi_2 &= 0 \implies 2\pi_0-10\pi_0+3\pi_2=0
-    \implies \pi_2 = \tfrac{8}{3}\pi_0.
-  \end{align*}
-  Normalizando: $\pi_0 + 2\pi_0 + \tfrac{8}{3}\pi_0 = 1$ da
-  $\tfrac{17}{3}\pi_0=1$, así que
+  \medskip
+  \textbf{Solución.}  Resolviendo $\boldsymbol{\pi}\,Q=\mathbf{0}$
+  con $\sum\pi_j=1$:
   \[
-    \pi_0 = \frac{3}{17}, \qquad
-    \pi_1 = \frac{6}{17}, \qquad
-    \pi_2 = \frac{8}{17}.
+    \pi_0 = \frac{3}{17}\approx 0.176, \quad
+    \pi_1 = \frac{6}{17}\approx 0.353, \quad
+    \pi_2 = \frac{8}{17}\approx 0.471.
   \]
+  Para el estado~0: $\E_0[T_0] = 1/(\pi_0\,q_0) = 1/((3/17)(2)) = 17/6 \approx 2.833$ u.t.
 
-  El tiempo medio de retorno al estado~$j$ en la CTMC es
-  $1/(\pi_j\,q_j)$ (esto se deduce de la relación entre frecuencia de
-  visita y distribución estacionaria, véase Kulkarni, Cap.~6).
-  Verifiquemos para $j=0$:
-  \[
-    \frac{1}{\pi_0\,q_0} = \frac{1}{(3/17)(2)} = \frac{17}{6}
-    \approx 2.833 \text{ u.t.}
-  \]
-  Para $j=2$:
-  \[
-    \frac{1}{\pi_2\,q_2} = \frac{1}{(8/17)(3)} = \frac{17}{24}
-    \approx 0.708 \text{ u.t.}
-  \]
-  Estos valores representan el tiempo medio entre visitas consecutivas a
-  cada estado cuando la cadena ha alcanzado el equilibrio.
-\end{ejercicio}
+  Para el estado~2: $\E_2[T_2] = 1/(\pi_2\,q_2) = 1/((8/17)(3)) = 17/24 \approx 0.708$ u.t.
+\end{ejemplobox}
 
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
 \section{Resumen de fórmulas clave}
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
 
-\begin{tcolorbox}[colback=blue!5,colframe=blue!70!black,
-  title=\textbf{Fórmulas principales},fonttitle=\large\sffamily]
+Sea $\{X(t)\}$ una CTMC irreducible con generador~$Q$ sobre
+$S=\{1,\ldots,N\}$.  Sea $A\subsetneq S$, $B=S\setminus A$,
+y $Q_B$ la submatriz de~$Q$ con filas y columnas en~$B$.
 
-Sea $\{X(t)\}$ una CTMC irreducible con generador~$Q$ sobre 
-$S=\{1,\ldots,N\}$.  Sea $A\subsetneq S$ y $B=S\setminus A$.
-Denotemos $Q_B$ la submatriz de~$Q$ con filas y columnas en~$B$.
+\begin{metodobox}[Fórmulas principales]
 
-\medskip
-\textbf{1.\ Tiempos medios de primera pasada} 
-  ($m_{iA}=\E_i[T_A]$, $i\in B$):
+\textbf{1.\ Tiempos medios de primera pasada} ($m_{iA}=\E_i[T_A]$,
+  $i\in B$):
   \[
-    Q_B\,\vect{m} = -\vect{1}
+    Q_B\,\mathbf{m} = -\mathbf{1}
     \qquad\Longrightarrow\qquad
-    \vect{m} = -Q_B^{-1}\,\vect{1}.
+    \mathbf{m} = -Q_B^{-1}\,\mathbf{1}.
   \]
 
-\textbf{2.\ Tiempos medios de ocupación en horizonte fijo~$t$}
-  (concepto general):
+\textbf{2.\ Tiempos medios de ocupación en horizonte fijo~$t$}:
   \[
     \E_i[M_j(t)] = \int_0^t [e^{Qs}]_{ij}\,ds,
-    \qquad\text{es decir,}\quad
+    \qquad
     \mathcal{O}(t) = \int_0^t e^{Qs}\,ds.
   \]
 
 \textbf{3.\ Tiempos medios de ocupación hasta primera pasada}
-  (caso particular de~2 con horizonte aleatorio~$T_A$; 
-  $\mu_{ij}=\E_i[M_j^{(A)}]$, $i,j\in B$):
+  ($\mu_{ij}=\E_i[M_j^{(A)}]$, $i,j\in B$):
   \[
     Q_B\,\mathcal{M} = -I
     \qquad\Longrightarrow\qquad
     \mathcal{M} = -Q_B^{-1}.
   \]
 
-\textbf{4.\ Relación MFPT $\leftrightarrow$ ocupación hasta
-  primera pasada:}
+\textbf{4.\ Relación MFPT $\leftrightarrow$ ocupación hasta primera
+  pasada:}
   \[
-    m_{iA} = \sum_{j\in B}\mu_{ij},
-    \qquad\text{es decir,}\quad
-    \vect{m} = \mathcal{M}\,\vect{1}.
+    m_{iA} = \sum_{j\in B}\mu_{ij}, \qquad
+    \mathbf{m} = \mathcal{M}\,\mathbf{1}.
   \]
 
 \textbf{5.\ Número esperado de visitas} al estado~$j\in B$ antes de
@@ -1015,24 +597,28 @@ Denotemos $Q_B$ la submatriz de~$Q$ con filas y columnas en~$B$.
     \E_i[N_j] = q_j\,\mu_{ij}.
   \]
 
-\textbf{6.\ Comportamiento asintótico} ($t\to\infty$, cadena 
+\textbf{6.\ Comportamiento asintótico} ($t\to\infty$, cadena
   irreducible):
   \[
-    \frac{\E_i[M_j(t)]}{t}\;\xrightarrow{t\to\infty}\;\pi_j,
+    \frac{\E_i[M_j(t)]}{t}\;\xrightarrow{t\to\infty}\;\pi_j.
   \]
-  donde $\vect{\pi}$ es la distribución estacionaria.
-\end{tcolorbox}
 
-%%======================================================================
+\textbf{7.\ Tiempo medio de retorno} al estado~$j$:
+  \[
+    \E_j[T_j] = \frac{1}{\pi_j\,q_j}.
+  \]
+
+\end{metodobox}
+
+% ══════════════════════════════════════════════════════════════════════
 \section*{Referencias}
-%%======================================================================
+% ══════════════════════════════════════════════════════════════════════
 
-\begin{enumerate}[label={[\arabic*]},nosep]
-  \item V.\,G.\ Kulkarni, \textit{Modeling and Analysis of
-    Stochastic Systems}, 3.ª ed., CRC Press, 2017.  Capítulos~6 
-    y~8.
+\begin{enumerate}
+  \item V.\,G.\ Kulkarni, \textit{Modeling and Analysis of Stochastic
+    Systems}, 3.ª ed., CRC Press, 2017.  Capítulos~6 y~8.
   \item J.\,R.\ Norris, \textit{Markov Chains}, Cambridge University
-    Press, 1997.  (Complementario para la teoría general.)
+    Press, 1997.
   \item W.\,J.\ Stewart, \textit{Probability, Markov Chains, Queues,
     and Simulation}, Princeton University Press, 2009.
 \end{enumerate}
