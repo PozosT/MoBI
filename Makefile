@@ -8,9 +8,12 @@
 # ══════════════════════════════════════════════════════════════
 
 PDFLATEX  = pdflatex -interaction=nonstopmode -output-directory
-NBCONVERT = jupyter nbconvert --to slides --no-input \
-            --SlidesExporter.reveal_scroll=True \
-            --SlidesExporter.reveal_theme=white
+NBCONVERT = python3 -c "\
+import nbformat, sys; from nbconvert import SlidesExporter; \
+e=SlidesExporter(); e.reveal_scroll=True; e.reveal_theme='white'; \
+e.reveal_url_prefix='https://cdn.jsdelivr.net/npm/reveal.js@5'; \
+nb=nbformat.read(sys.argv[1],as_version=4); body,_=e.from_notebook_node(nb); \
+open(sys.argv[2],'w').write(body)" --
 
 LECT_SRC  = $(wildcard Lecturas/*.tex)
 LECT_PDF  = $(patsubst Lecturas/%.tex, compiled/lecturas/%.pdf, $(LECT_SRC))
@@ -56,13 +59,13 @@ compiled/lecturas/%.pdf: Lecturas/%.tex | compiled/lecturas
 
 compiled/presentaciones/%.pdf: Presentaciones/%.tex | compiled/presentaciones
 	@echo "📊  Compilando presentación: $<"
-	$(PDFLATEX) compiled/presentaciones $< > /dev/null 2>&1 || \
-	$(PDFLATEX) compiled/presentaciones $< > /dev/null 2>&1
+	cd Presentaciones && $(PDFLATEX) ../compiled/presentaciones $*.tex > /dev/null 2>&1 || \
+	                     $(PDFLATEX) ../compiled/presentaciones $*.tex > /dev/null 2>&1
 	@echo "    → $@"
 
 compiled/notebooks/%.slides.html: Codigos/%.ipynb | compiled/notebooks
 	@echo "💻  Convirtiendo notebook: $<"
-	$(NBCONVERT) --output-dir compiled/notebooks $<
+	$(NBCONVERT) $< $@
 	@echo "    → $@"
 
 # ── Directorios ────────────────────────────────────────────────
