@@ -172,11 +172,11 @@ L_q = \frac{0{,}6^2}{0{,}4} = 0{,}90 \text{ clientes}, \quad
 
 \subsection{Paso 1 — Verificación estructural}
 
-\textbf{Prueba degenerada}: se fija $\lambda=0$ (sin llegadas). La simulación debe reportar $N(t)=0$, $W_q=0$, $\rho=0$ exactamente. ✓
+\textbf{Prueba degenerada}: se fija $\lambda=0$ (sin llegadas). La simulación debe reportar $N(t)=0$, $W_q=0$, $\rho=0$ exactamente. $\checkmark$
 
-\textbf{Conservación de entidades}: en una corrida de $T=1000$ min se cuentan 3\,012 llegadas y 3\,012 salidas (sistema vacío al final). ✓
+\textbf{Conservación de entidades}: en una corrida de $T=1000$ min se cuentan 3\,012 llegadas y 3\,012 salidas (sistema vacío al final). $\checkmark$
 
-\textbf{Traza de evento}: el primer cliente llega a $t=0{,}28$, su servicio dura $0{,}19$ min, por lo que sale a $t=0{,}47$. El siguiente cliente llega a $t=0{,}64$ (sistema vacío), espera 0, recibe servicio de $0{,}15$ min. ✓
+\textbf{Traza de evento}: el primer cliente llega a $t=0{,}28$, su servicio dura $0{,}19$ min, por lo que sale a $t=0{,}47$. El siguiente cliente llega a $t=0{,}64$ (sistema vacío), espera 0, recibe servicio de $0{,}15$ min. $\checkmark$
 
 \subsection{Paso 2 — Validación operacional con fórmulas}
 
@@ -218,9 +218,9 @@ El modelo conceptual es una cola $M/E_2/1$. Se implementa la simulación y se ve
 
 \subsection{Verificación estructural}
 
-\textbf{Prueba de tráfico extremo}: con $\lambda=9{,}9$ piezas/h ($\rho=0{,}99$), la cola debe crecer sin límite. En una corrida de $T=500$ h, $L_q$ crece monótonamente y supera 200 piezas. ✓
+\textbf{Prueba de tráfico extremo}: con $\lambda=9{,}9$ piezas/h ($\rho=0{,}99$), la cola debe crecer sin límite. En una corrida de $T=500$ h, $L_q$ crece monótonamente y supera 200 piezas. $\checkmark$
 
-\textbf{Prueba de simplificación}: un servicio $E_2(\mu_f)$ es equivalente a dos servidores exponenciales en tándem interno. Se verifica que la distribución de $S_1+S_2$ tiene media $0{,}2$ h, varianza $0{,}02$ h$^2$ y asimetría $\sqrt{2}/\sqrt{2}=1{,}0$ (asimetría teórica de $E_k$ es $2/\sqrt{k}$). ✓
+\textbf{Prueba de simplificación}: un servicio $E_2(\mu_f)$ es equivalente a dos servidores exponenciales en tándem interno. Se verifica que la distribución de $S_1+S_2$ tiene media $0{,}2$ h, varianza $0{,}02$ h$^2$ y asimetría $\sqrt{2}/\sqrt{2}=1{,}0$ (asimetría teórica de $E_k$ es $2/\sqrt{k}$). $\checkmark$
 
 \subsection{Validación operacional con la fórmula P-K}
 
@@ -244,9 +244,9 @@ El servicio Erlang-2 reduce el tiempo en cola en un 25\% gracias a la menor vari
 \toprule
 \textbf{Métrica} & \textbf{P-K / analítico} & \textbf{Simulado} & \textbf{IC 95\%} & \textbf{¿Contiene ref.?} \\
 \midrule
-$W_q$ (h)    & $1{,}200$ & $1{,}214$ & $[1{,}176;\;1{,}252]$ & Sí ✓ \\
-$L_q$ (pzas) & $9{,}600$ & $9{,}712$ & $[9{,}408;\;10{,}016]$& Sí ✓ \\
-$\rho$       & $0{,}800$ & $0{,}799$ & $[0{,}795;\;0{,}803]$ & Sí ✓ \\
+$W_q$ (h)    & $1{,}200$ & $1{,}214$ & $[1{,}176;\;1{,}252]$ & Sí $\checkmark$ \\
+$L_q$ (pzas) & $9{,}600$ & $9{,}712$ & $[9{,}408;\;10{,}016]$& Sí $\checkmark$ \\
+$\rho$       & $0{,}800$ & $0{,}799$ & $[0{,}795;\;0{,}803]$ & Sí $\checkmark$ \\
 \bottomrule
 \end{tabular}
 \end{center}
