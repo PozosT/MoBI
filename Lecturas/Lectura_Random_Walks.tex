@@ -8,12 +8,14 @@
 \begin{document}
 
 \maketitle
+\tableofcontents
+\newpage
 
 \section{Introducción: La Mecánica del Azar}
 
 En ingeniería, a menudo asumimos que los sistemas son estables a menos que una fuerza actúe sobre ellos. Sin embargo, muchos sistemas (precios de activos, partículas en un fluido, sensores ruidosos) están en constante movimiento debido a perturbaciones aleatorias sucesivas.
 
-Una **Caminata Aleatoria** es un modelo matemático que describe una trayectoria formada por una sucesión de pasos aleatorios. La idea fundamental es simple: la posición futura de un sistema es su posición actual más un choque aleatorio impredecible.
+Una \textbf{Caminata Aleatoria} es un modelo matemático que describe una trayectoria formada por una sucesión de pasos aleatorios. La idea fundamental es simple: la posición futura de un sistema es su posición actual más un choque aleatorio impredecible.
 
 \section{Definición y Propiedades Fundamentales}
 
@@ -25,7 +27,7 @@ Imagine una variable $X_t$ (que podría ser la posición de un robot, el nivel d
 \end{equation}
 
 Donde $Z_t$ es el "paso" o perturbación en el tiempo $t$.
-En el caso más clásico, la **Caminata Aleatoria Simple**, el paso $Z_t$ se comporta como el lanzamiento de una moneda:
+En el caso más clásico, la \textbf{Caminata Aleatoria Simple}, el paso $Z_t$ se comporta como el lanzamiento de una moneda:
 \begin{itemize}
     \item $Z_t = +1$ con probabilidad $p = 0.5$
     \item $Z_t = -1$ con probabilidad $1-p = 0.5$
@@ -34,7 +36,7 @@ En el caso más clásico, la **Caminata Aleatoria Simple**, el paso $Z_t$ se com
 \subsection{La Regla de la Raíz Cuadrada del Tiempo}
 Si la caminata parte de cero ($X_0 = 0$), después de $N$ pasos, la posición es la suma de los $N$ choques: $X_N = \sum_{i=1}^{N} Z_i$.
 
-Aunque el promedio de la posición es 0 (porque los pasos +1 y -1 tienden a cancelarse), la **dispersión** aumenta con el tiempo. La distancia típica a la que se aleja el sistema del origen se mide con la desviación estándar ($\sigma$):
+Aunque el promedio de la posición es 0 (porque los pasos +1 y -1 tienden a cancelarse), la \textbf{dispersión} aumenta con el tiempo. La distancia típica a la que se aleja el sistema del origen se mide con la desviación estándar ($\sigma$):
 
 \begin{equation} \label{eq:sqrt_law}
     \sigma_{X_N} = \sqrt{N}
@@ -67,15 +69,17 @@ Analicemos una trayectoria de 5 pasos partiendo de $X_0 = 0$:
 
 Observe cómo la posición fluctúa. Si repitiéramos esto mil veces, la posición final $X_5$ estaría distribuida alrededor de 0, pero la "mancha" de posibles posiciones se ensancharía con el tiempo.
 
-\subsection{Implementación en Python}
-Simularemos esta caminata simple para visualizar la trayectoria.
+\subsection{Verificación de la Regla de la Raíz del Tiempo}
 
+La traza anterior muestra 5 pasos. La desviación estándar esperada de la posición final es $\sigma_{X_5} = \sqrt{5} \approx 2.236$ pasos. En nuestra escala (pasos de 0.1 mm), eso equivale a $0.1 \times \sqrt{5} \approx 0.224$ mm. El valor observado $|X_5 - X_0| = |0.1 - 0.0| = 0.1$ mm está, como es de esperar, dentro de este rango de dispersión.
+
+La visualización de múltiples trayectorias y la verificación estadística de la regla $\sigma = \sqrt{N}$ se trabajan en el notebook correspondiente del curso.
 
 \section{De la Suma al Producto: Caminatas en Finanzas}
 
 En ingeniería financiera, la caminata aleatoria simple ($X_t = X_{t-1} + Z_t$) tiene un defecto: puede volverse negativa. Los precios de acciones o materias primas no pueden ser negativos.
 
-Para solucionar esto, modificamos la caminata para que sea **multiplicativa** en lugar de aditiva. Esto se conoce como la **Caminata Aleatoria Geométrica**.
+Para solucionar esto, modificamos la caminata para que sea \textbf{multiplicativa} en lugar de aditiva. Esto se conoce como la \textbf{Caminata Aleatoria Geométrica}.
 \begin{itemize}
     \item En lugar de sumar un valor fijo, el precio sube o baja un \textit{porcentaje}.
     \item $P_t = P_{t-1} \times (1 + R_t)$, donde $R_t$ es el retorno aleatorio.
@@ -93,17 +97,44 @@ Modelo discreto:
 $$ S_t = S_{t-1} \cdot e^{(\mu \Delta t + \sigma \sqrt{\Delta t} Z_t)} $$
 Donde $Z_t$ es un número aleatorio normal estándar (el "paso"), $\mu$ es el retorno esperado anual y $\sigma$ es la volatilidad anual.
 
-\subsection{Objetivo de la Simulación}
-Simularemos 10 posibles futuros para una acción durante un año (252 días de trading) para observar el "cono de incertidumbre".
+\subsection{Traza Manual: 5 Días de Cotización}
+
+Usando $S_0 = 100$, $\mu = 0.10$ anual, $\sigma = 0.20$ anual y $\Delta t = 1/252$ día, los cinco primeros pasos con valores $Z_t \sim N(0,1)$ dados:
+
+\begin{center}
+\small
+\begin{tabular}{crrrc}
+\toprule
+\textbf{Día} & $Z_t$ & $\mu \Delta t + \sigma\sqrt{\Delta t}\,Z_t$ & Exponente & $S_t$ \\
+\midrule
+0 & --- & --- & --- & \$100.00 \\
+1 & $+0.83$ & $0.000397 + 0.01050$ & $+0.01090$ & \$101.10 \\
+2 & $-1.24$ & $0.000397 - 0.01567$ & $-0.01527$ & \$99.56 \\
+3 & $+0.41$ & $0.000397 + 0.00518$ & $+0.00558$ & \$100.12 \\
+4 & $+1.65$ & $0.000397 + 0.02086$ & $+0.02126$ & \$102.27 \\
+5 & $-0.60$ & $0.000397 - 0.00758$ & $-0.00718$ & \$101.54 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Después de 5 días, el precio pasó de \$100 a \$101.54. La incertidumbre a 1 año ($N=252$) se estima como $S_0 \cdot e^{\sigma\sqrt{T}} = 100 \cdot e^{0.20} \approx \$122$ para la trayectoria ``alta'' y $100 \cdot e^{-0.20} \approx \$82$ para la ``baja'', formando el cono de incertidumbre. La simulación de múltiples trayectorias completas se trabaja en el notebook del curso.
 
 
 \section{Conclusión}
 
 Las caminatas aleatorias nos enseñan que la complejidad puede surgir de reglas simples.
 \begin{enumerate}
-    \item La acumulación de simples pasos $+1/-1$ genera una dispersión que crece con la raíz del tiempo. 
+    \item La acumulación de simples pasos $+1/-1$ genera una dispersión que crece con la raíz del tiempo.
     \item En ingeniería, utilizamos estas caminatas para modelar errores acumulativos (tolerancias) o la evolución de precios (finanzas).
     \item La simulación es la herramienta que nos permite "lanzar la moneda" miles de veces para predecir rangos de probabilidad, vital para la toma de decisiones bajo riesgo.
+\end{enumerate}
+
+\section*{Referencias}
+\begin{enumerate}[label={[\arabic*]}]
+    \item Ross, S.\,M. (2014). \textit{Introduction to Probability Models}, 11th ed. Academic Press. Cap.~4.
+    \item Lawler, G.\,F. \& Limic, V. (2010). \textit{Random Walk: A Modern Introduction}. Cambridge University Press.
+    \item Hull, J.\,C. (2018). \textit{Options, Futures, and Other Derivatives}, 10th ed. Pearson. Cap.~15.
+    \item Spitzer, F. (2001). \textit{Principles of Random Walk}, 2nd ed. Springer.
 \end{enumerate}
 
 \end{document}

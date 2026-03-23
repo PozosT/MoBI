@@ -8,6 +8,8 @@
 \begin{document}
 
 \maketitle
+\tableofcontents
+\newpage
 
 \begin{abstract}
 \noindent Esta lectura técnica introduce los mecanismos fundamentales para la generación de variables aleatorias en computadoras digitales. Se explora la paradoja de generar números aleatorios mediante algoritmos deterministas (Generadores Congruenciales Lineales) y se detalla cómo transformar estos números uniformes en distribuciones de probabilidad específicas mediante el Método de la Transformada Inversa. El documento integra teoría matemática rigurosa con ejemplos numéricos secuenciales y su implementación computacional en Python.
@@ -131,15 +133,38 @@ Recordemos: $\text{media} = 0.5$.
 
 Estos valores $X_1, X_2, X_3$ son ahora datos de entrada válidos para una simulación de eventos discretos.
 
-\section{Implementación Computacional en Python}
+\section{Resumen: del LCG a la Variada}
 
-A continuación, formalizamos estos conceptos en un script de Python. Se crea una clase que encapsula el generador LCG y métodos para transformadas inversas.
+El recorrido de esta lectura puede sintetizarse en tres pasos sucesivos que forman la columna vertebral de cualquier generador estocástico:
 
+\begin{center}
+\small
+\begin{tabular}{clp{6cm}}
+\toprule
+\textbf{Paso} & \textbf{Operación} & \textbf{Resultado} \\
+\midrule
+1 & LCG: $Z_i = (aZ_{i-1}+c) \bmod m$ & Entero pseudoaleatorio $Z_i \in \{0,\ldots,m-1\}$ \\
+2 & Normalización: $R_i = Z_i/m$ & Número uniforme $R_i \in (0,1)$ \\
+3 & Transformada inversa: $X_i = F^{-1}(R_i)$ & Variada con distribución $F$ deseada \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+En la práctica, librerías como \texttt{numpy} implementan generadores mucho más sofisticados (Mersenne Twister, con período $2^{19937}-1$) y transformadas inversas para decenas de distribuciones. Sin embargo, comprender el LCG y la Transformada Inversa permite entender \emph{por qué} estas herramientas funcionan y cómo diagnosticar sus limitaciones. La implementación computacional completa de estos conceptos se trabaja en el notebook correspondiente del curso.
 
 \section{Conclusión}
 
 Hemos recorrido el camino completo desde la aritmética modular básica hasta la generación de variables estocásticas útiles para la toma de decisiones. Es crucial entender que la calidad de nuestra simulación depende intrínsecamente de la calidad de nuestro generador $U(0,1)$ (el periodo del LCG) y de la precisión analítica de nuestra transformada inversa $F^{-1}(R)$.
 
 \textbf{Nota}: cuando la CDF no tiene una inversa analítica simple (como en la distribución Normal) se aplican otros métodos como el de Aceptación-Rechazo y Box-Muller. Si este tema te interesa, te exhortamos a consultarlos.
+
+\section*{Referencias}
+\begin{enumerate}[label={[\arabic*]}]
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~8.
+    \item Banks, J., Carson, J., Nelson, B., \& Nicol, D. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~8.
+    \item Knuth, D.\,E. (1998). \textit{The Art of Computer Programming, Vol.~2: Seminumerical Algorithms}, 3rd ed. Addison-Wesley. Cap.~3.
+    \item Ross, S.\,M. (2006). \textit{Simulation}, 4th ed. Academic Press. Cap.~5.
+    \item L'Ecuyer, P. (1999). Good parameters and implementations for combined multiple recursive random number generators. \textit{Operations Research}, 47(1), 159--164.
+\end{enumerate}
 
 \end{document}

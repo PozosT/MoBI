@@ -8,6 +8,8 @@
 \begin{document}
 
 \maketitle
+\tableofcontents
+\newpage
 
 \section{Introducción}
 
@@ -46,11 +48,30 @@ Por lo tanto, si lanzamos $N$ puntos totales y contamos que $M$ puntos caen dent
     \pi \approx 4 \times \frac{M}{N}
 \end{equation}
 
-\subsection{Implementación en Python}
-A continuación, se presenta el código para realizar esta simulación.
+\subsection{Estimación Manual con $N=10$ puntos}
 
+La siguiente tabla traza 10 puntos generados con coordenadas $(x, y) \in [-1,1]^2$ y determina si cada uno cae dentro del círculo ($x^2 + y^2 \le 1$):
 
-Al aumentar $N$, la aproximación se vuelve más precisa, convergiendo al valor real de $3.14159\dots$
+\begin{center}
+\small
+\begin{tabular}{cccccc}
+\toprule
+\textbf{Punto} & $x$ & $y$ & $x^2+y^2$ & \textbf{¿Dentro?} & $\hat{\pi}$ acumulado \\
+\midrule
+1  &  0.68 &  0.41 & 0.630 & Sí  & 4.000 \\
+2  & -0.32 &  0.87 & 0.859 & Sí  & 4.000 \\
+3  &  0.95 & -0.27 & 0.975 & Sí  & 4.000 \\
+4  & -0.73 & -0.80 & 1.173 & No  & 3.000 \\
+5  &  0.11 &  0.53 & 0.293 & Sí  & 3.200 \\
+6  &  0.80 &  0.62 & 1.024 & No  & 2.667 \\
+7  & -0.44 & -0.12 & 0.208 & Sí  & 2.857 \\
+8  &  0.29 &  0.94 & 0.968 & Sí  & 3.000 \\
+9  & -0.66 &  0.35 & 0.558 & Sí  & 3.111 \\
+10 &  0.50 & -0.85 & 0.973 & Sí  & 3.200 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Con 8 de 10 puntos dentro del círculo, la estimación es $\hat{\pi} \approx 4 \times (8/10) = 3.20$. Al aumentar $N$, la estimación converge al valor real de $3.14159\dots$ gracias a la Ley de los Grandes Números.
 
 \section{Elementos Estructurales de una Simulación de Monte Carlo}
 
@@ -93,9 +114,26 @@ Finalmente, se recolectan las salidas $Y_1, Y_2, \dots, Y_N$. Dado que la salida
 \end{equation}
 Donde $S_Y$ es la desviación estándar de la muestra de salidas.
 
-\subsection{Implementación de la Arquitectura en Python}
+\subsection{Síntesis de los Cinco Elementos}
 
-A continuación, se presenta un código que abstrae estos elementos en una estructura de clase, demostrando buenas prácticas de programación científica.
+Los cinco elementos descritos conforman la arquitectura universal de cualquier simulación Monte Carlo. Al construir un modelo, el ingeniero debe identificar explícitamente cada componente:
+
+\begin{center}
+\small
+\begin{tabular}{clp{6cm}}
+\toprule
+\textbf{\#} & \textbf{Elemento} & \textbf{Pregunta clave} \\
+\midrule
+1 & Distribuciones de entrada & ¿Qué variables son aleatorias y qué forma tienen? \\
+2 & Generación de $U(0,1)$ & ¿Cómo produzco uniformes independientes y reproducibles? \\
+3 & Regla de muestreo & ¿Cómo transformo $U$ en la distribución deseada? \\
+4 & Función de transferencia & ¿Cuál es la ecuación que conecta entradas y salida? \\
+5 & Análisis de error & ¿Cuántas réplicas necesito para una precisión aceptable? \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La implementación computacional de esta arquitectura se trabaja en detalle en el notebook correspondiente del curso.
 
 
 \section{Ejemplo Aplicado: Análisis de Riesgo en Utilidades}
@@ -119,14 +157,31 @@ La utilidad ($U$) se define como:
 
 El objetivo no es encontrar un solo valor de utilidad, sino entender la distribución de posibles utilidades y la probabilidad de obtener pérdidas (Riesgo).
 
-\subsection{Simulación Numérica}
-Realizaremos 10,000 iteraciones para estimar la utilidad esperada y la probabilidad de pérdida ($U < 0$).
+\subsection{Análisis Analítico de Referencia}
+Antes de recurrir a la simulación, calculemos los valores esperados como punto de referencia. Usando los valores medios de las distribuciones ($\overline{C_v} = (20+30)/2 = 25$, $\overline{D} = 3000$):
+\[ E[U] \approx (50 - 25) \times 3000 - 50{,}000 = 75{,}000 - 50{,}000 = \$25{,}000 \]
 
+El punto de equilibrio se alcanza cuando $U = 0$:
+\[ 0 = (50 - C_v) \cdot D - 50{,}000 \implies (50 - C_v) \cdot D = 50{,}000 \]
+
+Si $C_v = 25$ (valor medio), el punto de equilibrio es $D^* = 50{,}000/25 = 2{,}000$ unidades. Dado que la demanda media es 3{,}000 con $\sigma = 500$, la probabilidad de caer por debajo de 2{,}000 es:
+\[ P(D < 2000) = P\!\left(Z < \frac{2000-3000}{500}\right) = P(Z < -2) \approx 2.3\% \]
+
+La simulación con muchas réplicas refinará esta estimación al considerar también la variabilidad simultánea de $C_v$ y $D$, lo que suele aumentar ligeramente la probabilidad de pérdida.
 
 \subsection{Interpretación}
 A diferencia de un análisis determinista que usaría solo los promedios (Demanda = 3000, Costo = 25), la simulación nos revela la volatilidad. Si obtenemos una probabilidad de pérdida del $5\%$, la gerencia puede decidir si ese riesgo es aceptable o si se deben tomar medidas para reducir los costos fijos o asegurar un precio de venta más alto.
 
 \section{Conclusión}
 La Simulación de Monte Carlo permite transformar la incertidumbre en los inputs en una distribución de probabilidad de los outputs. Es una herramienta poderosa para la toma de decisiones bajo riesgo. Sin embargo, su precisión depende de la calidad de los datos de entrada y de la correcta elección de las distribuciones de probabilidad que modelan las variables estocásticas.
+
+\section*{Referencias}
+\begin{enumerate}[label={[\arabic*]}]
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~2.
+    \item Banks, J., Carson, J., Nelson, B., \& Nicol, D. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~2.
+    \item Rubinstein, R.\,Y. \& Kroese, D.\,P. (2016). \textit{Simulation and the Monte Carlo Method}, 3rd ed. Wiley.
+    \item Glasserman, P. (2004). \textit{Monte Carlo Methods in Financial Engineering}. Springer. Cap.~1.
+    \item Ross, S.\,M. (2014). \textit{Introduction to Probability Models}, 11th ed. Academic Press. Cap.~1.
+\end{enumerate}
 
 \end{document}

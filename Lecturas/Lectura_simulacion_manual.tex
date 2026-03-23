@@ -8,6 +8,8 @@
 \begin{document}
 
 \maketitle
+\tableofcontents
+\newpage
 
 \begin{abstract}
 Esta lectura disecciona la arquitectura interna de un modelo de Simulación de Eventos Discretos (DES). Se explican los mecanismos de avance del tiempo, con énfasis en el enfoque de "Próximo Evento", y se detalla la estructura de la Lista de Eventos Futuros (FEL). Finalmente, se presenta una traza manual completa (Hand Simulation) de un sistema de colas para ilustrar la actualización de variables de estado y contadores estadísticos.
@@ -116,12 +118,41 @@ Para comprender la interacción entre el Reloj, la FEL y las variables de estado
 \textbf{Análisis de la Traza:}
 Observe el paso 4. Ocurren dos eventos simultáneamente en $t=6$. En la lógica computacional, debemos tener reglas de desempate (prioridades). En este caso, procesamos la llegada antes que la salida, pero el orden podría afectar momentáneamente las estadísticas de longitud máxima de cola.
 
-\section{Implementación}
+\section{Extensión de la Traza: Estadísticas Acumuladas}
 
-A continuación, implementaremos un motor de simulación básico (bare-bones) que replica la lógica de la FEL y el avance de tiempo, sin utilizar librerías de simulación externas. Esto demuestra cómo se programa la estructura subyacente.
+La traza presentada en la sección anterior describe la mecánica del avance del tiempo, pero una simulación real también acumula estadísticas. Extendiendo nuestro ejemplo hasta que los 3 clientes han salido ($t = 8$), podemos calcular:
 
+\begin{center}
+\small
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Cliente} & \textbf{Llegada} & \textbf{Inicio servicio} & \textbf{Salida} & \textbf{Espera en cola} \\
+\midrule
+1 & 0 & 0 & 3 & 0 min \\
+2 & 2 & 3 & 6 & 1 min \\
+3 & 6 & 6 & 8 & 0 min \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Métricas de la réplica:}
+\begin{itemize}
+    \item Tiempo promedio en cola: $\bar{W}_q = (0 + 1 + 0)/3 = 0.33$ min
+    \item Utilización del servidor: el servidor estuvo ocupado durante $[0,3] \cup [3,6] \cup [6,8] = 8$ min de los 8 min totales, es decir, $\rho_{est} = 8/8 = 100\%$
+    \item Número máximo en cola: $LQ_{max} = 1$ (instante $t \in [2,3]$)
+\end{itemize}
+
+Estas métricas, calculadas para una sola réplica, son la entrada al análisis estadístico del curso (Módulo 1, Tema 4): se ejecutan múltiples réplicas y se construyen intervalos de confianza para los verdaderos parámetros del sistema.
 
 \section{Conclusión}
 Comprender la manipulación de la FEL es vital. Cuando un software comercial arroja errores o resultados extraños, casi siempre se debe a una mala lógica en la programación de eventos (ej. bucles infinitos de eventos en tiempo cero). La simulación manual, aunque tediosa, revela la contabilidad exacta que valida nuestros modelos computacionales. Es una herramienta valiosa para validar la lógica que hemos usado para crear nuestra simulación.
+
+\section*{Referencias}
+\begin{enumerate}[label={[\arabic*]}]
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~3.
+    \item Banks, J., Carson, J., Nelson, B., \& Nicol, D. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~3.
+    \item Kelton, W.\,D., Sadowski, R.\,P., \& Zupick, N.\,B. (2015). \textit{Simulation with Arena}, 6th ed. McGraw-Hill. Cap.~2.
+    \item Fishman, G.\,S. (2001). \textit{Discrete-Event Simulation: Modeling, Programming, and Analysis}. Springer. Cap.~2.
+\end{enumerate}
 
 \end{document}

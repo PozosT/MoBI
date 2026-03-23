@@ -8,6 +8,8 @@
 \begin{document}
 
 \maketitle
+\tableofcontents
+\newpage
 
 \section{Introducción}
 En la práctica de la ingeniería, una simulación de Monte Carlo no tiene como objetivo generar un único número, sino cuantificar la incertidumbre. Cuando ejecutamos $n$ réplicas de un modelo, obtenemos una muestra de resultados $X_1, X_2, \dots, X_n$. El promedio muestral $\bar{X}$ es nuestro estimador puntual del valor esperado real $\mu$. Sin embargo, debido a la naturaleza estocástica, este promedio variará si volvemos a correr la simulación. 
@@ -51,14 +53,34 @@ Para un nivel de confianza del 95\% ($\alpha = 0.05$):
 \textbf{Resultado:} El costo promedio esperado está entre \textbf{\$1,193.18 y \$1,306.82} con un 95\% de confianza.
 
 \section{Ejemplo 2: Nivel Medio - Análisis de Riesgo en Proyectos}
-Supongamos que el costo total de un proyecto depende de tres variables: mano de obra ($L \sim Triang(10, 15, 20)$), materiales ($M \sim Norm(50, 5)$) y contingencias ($C \sim Unif(5, 15)$). Queremos determinar la precisión de nuestra estimación del costo promedio tras 10,000 iteraciones.
+El costo total de un proyecto es $CT = L + M + C$, donde las variables son:
+\begin{itemize}
+    \item Mano de obra: $L \sim \text{Triangular}(a=10, b=20, \text{moda}=15)$
+    \item Materiales: $M \sim N(\mu=50, \sigma=5)$
+    \item Contingencias: $C \sim U(5, 15)$
+\end{itemize}
+Por la linealidad del valor esperado y la independencia de las variables:
+\[ E[CT] = E[L] + E[M] + E[C] = \frac{10+15+20}{3} + 50 + \frac{5+15}{2} = 15 + 50 + 10 = 75 \text{ (unidades)} \]
+La varianza total (por independencia) es:
+\[ \text{Var}[CT] = \text{Var}[L] + \text{Var}[M] + \text{Var}[C] = \frac{10^2+15^2+20^2-10\cdot15-15\cdot20-10\cdot20}{18} + 25 + \frac{100}{12} \]
+\[ = \frac{100+225+400-150-300-200}{18} + 25 + 8.33 = \frac{75}{18} + 33.33 \approx 4.17 + 33.33 = 37.5 \]
 
-A continuación, se presenta la implementación en Python para calcular el IC y visualizar la distribución.
+Tras $n = 10{,}000$ réplicas, el error estándar del estimador $\bar{CT}$ sería:
+\[ SE = \frac{\sigma_{CT}}{\sqrt{n}} = \frac{\sqrt{37.5}}{\sqrt{10000}} = \frac{6.12}{100} = 0.0612 \text{ unidades} \]
+El IC del 95\% resultante tendría un margen de error de $\pm 1.96 \times 0.0612 \approx \pm 0.12$, es decir, el costo promedio estimado sería $75 \pm 0.12$ con alta precisión. Para reducir el error a la mitad bastarían $n = 2{,}500$ réplicas menos (dado que $SE \propto 1/\sqrt{n}$, duplicar la precisión requiere cuadruplicar el número de réplicas).
 
 
 \section{Interpretación y Errores Comunes}
 Es vital entender que el intervalo de confianza \textbf{no} contiene el 95\% de los datos de los costos (ese sería un intervalo de predicción). El IC del 95\% significa que, si repitiéramos este experimento de simulación 100 veces, en 95 de esas veces el intervalo calculado contendría el verdadero valor medio del sistema.
 
 Si el ancho del intervalo es demasiado grande para la toma de decisiones, el ingeniero tiene una sola vía: \textbf{aumentar el número de réplicas ($n$)}. Dado que el error disminuye con $\sqrt{n}$, para reducir el error a la mitad se requiere cuadruplicar el número de simulaciones.
+
+\section*{Referencias}
+\begin{enumerate}[label={[\arabic*]}]
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~9.
+    \item DeGroot, M.\,H. \& Schervish, M.\,J. (2012). \textit{Probability and Statistics}, 4th ed. Pearson. Cap.~8.
+    \item Banks, J., Carson, J., Nelson, B., \& Nicol, D. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~10.
+    \item Casella, G. \& Berger, R.\,L. (2002). \textit{Statistical Inference}, 2nd ed. Duxbury. Cap.~9.
+\end{enumerate}
 
 \end{document}

@@ -8,11 +8,8 @@
 \begin{document}
 
 \maketitle
-\thispagestyle{empty}
-\setcounter{page}{0}
-
-
-\pagenumbering{arabic}
+\tableofcontents
+\newpage
 
 %========================================================================================
 %   PÁGINA 1: EL PROBLEMA FUNDAMENTAL DEL ANÁLISIS DE SIMULACIÓN
@@ -62,10 +59,30 @@ Esta garantía es la clave que abre la puerta a todo el arsenal de la estadísti
 %========================================================================================
 %   PÁGINA 3: DEMOSTRACIÓN VISUAL DEL TEOREMA DEL LÍMITE CENTRAL
 %========================================================================================
-\section{Demostración Visual del TLC con Código}
-La afirmación del TLC puede parecer abstracta. La mejor manera de internalizarla es viéndola en acción. Vamos a usar un ejemplo extremo: la tirada de un dado de seis caras. La distribución de una sola tirada es una distribución Uniforme Discreta, que es lo más alejada posible de una distribución Normal.
+\section{Demostración del TLC: Dado de Seis Caras}
+La afirmación del TLC puede parecer abstracta. La mejor manera de internalizarla es con un ejemplo extremo: la tirada de un dado de seis caras. La distribución de una sola tirada es una Uniforme Discreta sobre $\{1,2,3,4,5,6\}$ —lo más alejada posible de una Normal— con media $\mu=3.5$ y varianza $\sigma^2 = 35/12 \approx 2.917$.
 
-El siguiente código simula la toma de la media de $n$ tiradas de un dado y grafica la distribución de esta media. Repetiremos el experimento para diferentes valores de $n$.
+Por el TLC, la media de $n$ tiradas satisface:
+\[
+\bar{X}_n \approx N\!\left(3.5,\;\frac{35/12}{n}\right)
+\]
+La siguiente tabla muestra, para distintos valores de $n$, cuán rápido se estrecha la distribución alrededor de $\mu = 3.5$:
+
+\begin{center}
+\small
+\begin{tabular}{cccc}
+\toprule
+$n$ & $E[\bar{X}_n]$ & $\text{DE}[\bar{X}_n] = \sigma/\sqrt{n}$ & $P(3 \le \bar{X}_n \le 4)$ \\
+\midrule
+1  & 3.5 & 1.708 & 33.3\% \\
+5  & 3.5 & 0.764 & 48.5\% \\
+10 & 3.5 & 0.540 & 64.7\% \\
+30 & 3.5 & 0.312 & 89.9\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A medida que $n$ crece, la distribución de $\bar{X}_n$ se concentra progresivamente alrededor de 3.5 y adopta una forma de campana, \emph{independientemente de que la fuente sea uniforme discreta}. La figura a continuación ilustra este fenómeno.
 
 
 % En el documento:
@@ -114,8 +131,24 @@ Este intervalo es la respuesta final de un estudio de simulación. En lugar de d
 %========================================================================================
 %   PÁGINA 5: EJEMPLO DE CÓDIGO: CÁLCULO DE UN INTERVALO DE CONFIANZA
 %========================================================================================
-\section{Ejemplo Práctico: Intervalo de Confianza para una Simulación}
-Vamos a aplicar este conocimiento. Utilizaremos una función que simula una réplica de un sistema de colas M/M/1 y devuelve el tiempo de espera promedio en la cola. Luego, ejecutaremos múltiples réplicas y construiremos un intervalo de confianza del 95\% para la verdadera media del tiempo de espera.
+\section{Ejemplo Práctico: Intervalo de Confianza para una Cola M/M/1}
+
+Consideremos un sistema M/M/1 con tasa de llegadas $\lambda = 4$ clientes/min y tasa de servicio $\mu = 5$ clientes/min, por lo que $\rho = \lambda/\mu = 0.8$. La media teórica del tiempo en cola es:
+\[
+W_q = \frac{\rho}{\mu(1-\rho)} = \frac{0.8}{5(0.2)} = \frac{0.8}{1.0} = 0.8 \text{ minutos}
+\]
+Supongamos que ejecutamos $n = 30$ réplicas independientes de la simulación, cada una observando 500 clientes, y obtenemos los siguientes estadísticos muestrales:
+\[ \bar{Y}_{30} = 0.823 \text{ min}, \qquad S = 0.091 \text{ min} \]
+
+\textbf{Paso 1: Error estándar.}
+\[ SE = \frac{S}{\sqrt{n}} = \frac{0.091}{\sqrt{30}} = \frac{0.091}{5.477} \approx 0.0166 \text{ min} \]
+
+\textbf{Paso 2: Valor crítico.} Para un IC del 95\% con $n = 30$ réplicas, usamos $z_{0.025} = 1.96$ (o $t_{29,0.975} \approx 2.045$ con la $t$ de Student).
+
+\textbf{Paso 3: Intervalo de confianza.}
+\[ IC_{95\%} = 0.823 \pm 1.96 \times 0.0166 = [0.790,\; 0.855] \text{ minutos} \]
+
+\textbf{Interpretación:} Estamos 95\% seguros de que el verdadero tiempo de espera en cola está entre 0.790 y 0.855 minutos. El valor teórico $W_q = 0.8$ \emph{sí} cae dentro del intervalo, lo que valida la simulación. El ancho del IC (0.065 min) cuantifica la incertidumbre de la estimación.
 
 
 
@@ -289,7 +322,7 @@ El TLC no dice nada sobre esta distribución interna. Su poder se manifiesta en 
 %========================================================================================
 %   PÁGINA 7: CONCLUSIÓN: EL TLC COMO HABILITADOR DE LA DECISIÓN
 %========================================================================================
-\section{Conclusiónes}
+\section{Conclusiones}
 
 El Teorema Central del Límite es el motor estadístico que impulsa el análisis de la simulación en la mayoría de los casos. Transforma una colección de resultados de simulación, que son inherentemente aleatorios y variables, en una conclusión estadística sólida y defendible.
 
@@ -301,5 +334,14 @@ Su contribución es doble:
 \end{enumerate}
 
 Cuando un ingeniero utiliza la simulación para comparar dos configuraciones de una línea de producción, no compara simplemente dos números. Compara dos intervalos de confianza. Si los intervalos se solapan significativamente, no hay evidencia estadística para afirmar que una configuración es mejor que la otra. Si no se solapan, la decisión está respaldada por la evidencia estadística. Esta capacidad de comparar sistemas de manera rigurosa es posible casi en su totalidad gracias al poder y la generalidad del Teorema del Límite Central.
+
+\section*{Referencias}
+\begin{enumerate}[label={[\arabic*]}]
+    \item DeGroot, M.\,H. \& Schervish, M.\,J. (2012). \textit{Probability and Statistics}, 4th ed. Pearson. Cap.~6.
+    \item Casella, G. \& Berger, R.\,L. (2002). \textit{Statistical Inference}, 2nd ed. Duxbury. Cap.~5.
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~9.
+    \item Banks, J., Carson, J., Nelson, B., \& Nicol, D. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~10.
+    \item Ross, S.\,M. (2014). \textit{Introduction to Probability Models}, 11th ed. Academic Press. Cap.~8.
+\end{enumerate}
 
 \end{document}
