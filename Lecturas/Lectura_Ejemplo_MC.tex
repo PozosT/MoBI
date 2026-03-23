@@ -49,6 +49,30 @@ T=\frac{\bar X_n-\mu}{s/\sqrt{n}} \approx t_{n-1}.
 Esto habilita intervalos de confianza y pruebas de hipótesis sobre $\mu$ incluso cuando la distribución de $X$ es sesgada, siempre que $n$ sea suficientemente grande
 y no haya varianza infinita.
 
+\section{Datos de la Muestra}
+
+El auditor extrajo una muestra aleatoria de $n = 40$ envíos del registro histórico de los últimos tres años. Los costos (en millones de COP) son:
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{cccccccccc}
+\toprule
+\multicolumn{10}{c}{\textbf{Costo por envío (millones COP)}} \\
+\midrule
+31.4 & 24.2 & 29.5 & 22.8 & 35.1 & 26.9 & 28.6 & 33.0 & 21.5 & 27.4 \\
+30.8 & 25.3 & 32.7 & 23.0 & 28.2 & 27.1 & 31.6 & 23.4 & 29.1 & 24.7 \\
+26.8 & 34.5 & 23.1 & 30.2 & 25.6 & 28.0 & 33.4 & 21.0 & 29.9 & 26.1 \\
+24.4 & 31.2 & 27.7 & 34.0 & 23.5 & 28.4 & 25.0 & 30.5 & 26.3 & 25.2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Los estadísticos de la muestra son:
+\[
+n = 40, \qquad \bar{x} = 27{,}78 \text{ millones COP}, \qquad s = 3{,}76 \text{ millones COP}.
+\]
+
 \section{Preguntas para Aplicación del TLC}
 
 \subsection*{Pregunta 1: Estimación por Intervalo (Auditoría)}
@@ -89,6 +113,36 @@ E \approx z_{0.975}\,\frac{\sigma}{\sqrt{n}}
 n \approx \left(\frac{z_{0.975}\,\sigma}{E}\right)^2,
 \]
 con $z_{0.975}\approx 1.96$. En la práctica se usa una estimación piloto de $\sigma$ (por ejemplo $s$ histórico) y se redondea hacia arriba.
+
+\section{Respuestas de Referencia}
+
+\begin{resultadobox}[Pregunta 1: Intervalo de Confianza del 95\%]
+Con $\bar{x} = 27{,}78$, $s = 3{,}76$, $n = 40$ y $t_{0.975,\,39} \approx 2{,}023$:
+\[
+SE = \frac{3{,}76}{\sqrt{40}} = \frac{3{,}76}{6{,}325} \approx 0{,}595 \text{ M COP}
+\]
+\[
+IC_{95\%} = 27{,}78 \pm 2{,}023 \times 0{,}595 = 27{,}78 \pm 1{,}20 = [26{,}58\text{ M},\; 28{,}98\text{ M}]
+\]
+El presupuesto de 29 millones \textbf{queda fuera} del IC (el límite superior es 28.98 M). Hay evidencia estadística de que el costo promedio real es inferior a 29 M.
+\end{resultadobox}
+
+\begin{resultadobox}[Pregunta 2: Prueba de Hipótesis ($H_0\!: \mu \ge 29$M)]
+\[
+T = \frac{27{,}78 - 29{,}00}{3{,}76/\sqrt{40}} = \frac{-1{,}22}{0{,}595} \approx -2{,}05
+\]
+Valor crítico (cola izquierda, $\alpha=0{,}05$, $df=39$): $t_{0{,}05,\,39} \approx -1{,}685$.
+
+Como $T = -2{,}05 < -1{,}685$, \textbf{se rechaza $H_0$} a nivel $\alpha = 0{,}05$. Los datos respaldan la afirmación del Director de Logística: el costo promedio real parece ser menor a 29 millones. El $p$-valor aproximado es 0{,}024 (menor que 0{,}05, consistente con el rechazo).
+\end{resultadobox}
+
+\begin{resultadobox}[Pregunta 3: Tamaño de Muestra]
+Con margen de error $E = 0{,}5$ M, confianza del 95\% ($z_{0{,}975} = 1{,}96$) y $\sigma \approx s = 3{,}76$ M:
+\[
+n \approx \left(\frac{1{,}96 \times 3{,}76}{0{,}5}\right)^2 = \left(\frac{7{,}37}{0{,}5}\right)^2 = (14{,}74)^2 \approx 217{,}3 \implies n_{\min} = \mathbf{218} \text{ envíos}
+\]
+Monitorear 218 envíos garantiza una precisión de $\pm 0{,}5$ M COP con 95\% de confianza, asumiendo que la variabilidad futura es similar a la observada ($s \approx 3{,}76$ M).
+\end{resultadobox}
 
 \section*{Referencias}
 \begin{enumerate}[label={[\arabic*]}]

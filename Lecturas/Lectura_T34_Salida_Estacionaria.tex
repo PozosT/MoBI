@@ -1,0 +1,338 @@
+\documentclass[11pt, letterpaper]{article}
+\usepackage{mobi-lectura}
+
+\title{Análisis de Salida: Simulaciones de Estado Estacionario}
+\author{Alejandra Tabares Pozos}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════
+\section{¿Cuándo interesa el estado estacionario?}
+% ══════════════════════════════════════════════════
+
+En muchos sistemas, la pregunta de interés no es ``¿cuánto esperará un cliente durante el turno de hoy?'' sino ``¿cuánto espera un cliente típico en el largo plazo, bajo condiciones normales de operación?''. Este es el régimen de \textbf{estado estacionario}: el comportamiento del sistema cuando el efecto de las condiciones iniciales se ha disipado.
+
+\begin{definicionbox}[Estado estacionario de una simulación]
+Una simulación se dice que está en estado estacionario cuando la distribución de su proceso de estado $X(t)$ ya no depende del tiempo: $\Prob(X(t) \in A) \approx \pi(A)$ para todo conjunto medible $A$, donde $\pi$ es la distribución estacionaria.
+\end{definicionbox}
+
+\textbf{Ejemplos de uso estacionario}:
+\begin{itemize}
+    \item Fábrica con producción continua 24/7.
+    \item Call center con demanda promedio constante.
+    \item Red de distribución con demanda diaria estable.
+    \item Comparación de alternativas de diseño del sistema.
+\end{itemize}
+
+El parámetro de interés es típicamente $\theta = \E_\pi[g(X)]$, el valor esperado de una función del proceso en régimen estacionario.
+
+% ══════════════════════════════════════════════════
+\section{El problema del período transitorio}
+% ══════════════════════════════════════════════════
+
+Toda simulación arranca desde un estado inicial $X(0)$. En la práctica, el estado inicial es conveniente (p.ej.\ sistema vacío), pero no necesariamente representativo del estado estacionario. Durante el \textbf{período transitorio} (o \emph{warm-up}), el proceso aún no ha alcanzado su distribución estacionaria.
+
+Si se incluyen las observaciones del período transitorio en el cálculo de la media, se introduce un \textbf{sesgo de inicialización}:
+
+\[
+\E\!\left[\frac{1}{m}\sum_{i=1}^m Y_i\right] \ne \theta \qquad \text{(en general, cuando hay sesgo de inicialización)}
+\]
+
+Este sesgo no desaparece al aumentar el número de réplicas; solo desaparece si se descarta o controla el período transitorio.
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+  width=12cm, height=5cm,
+  xlabel={Tiempo $t$ (unidades de simulación)},
+  ylabel={$\bar Y(t)$ (media acumulada)},
+  xmin=0, xmax=500, ymin=0, ymax=10,
+  grid=both, grid style={line width=0.3pt, draw=gray!30},
+  tick label style={font=\scriptsize},
+  label style={font=\small},
+  legend style={font=\scriptsize, at={(0.98,0.95)}, anchor=north east}
+]
+% Transient period decaying from 0 toward theta~6
+\addplot[thick, mobiblue, smooth] coordinates {
+  (0,0)(20,1.5)(40,3.0)(60,4.2)(80,5.0)(100,5.5)(120,5.8)(150,5.9)(200,6.05)
+  (250,6.1)(300,6.05)(350,5.95)(400,6.1)(450,6.0)(500,6.05)
+};
+\addplot[thick, red!70!black, dashed] coordinates {(0,6)(500,6)};
+\addplot[thick, mobigold!80!black, dotted] coordinates {(120,0)(120,10)};
+\addlegendentry{$\bar Y(t)$ — media acumulada}
+\addlegendentry{$\theta$ — valor estacionario real}
+\addlegendentry{Fin de warm-up $t_w$}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+La media acumulada parte de un valor bajo (sistema vacío) y converge hacia $\theta$. El período $[0, t_w]$ debe descartarse.
+
+% ══════════════════════════════════════════════════
+\section{Método de Welch para estimar $t_w$}
+% ══════════════════════════════════════════════════
+
+El método de Welch ofrece un criterio gráfico para identificar cuándo termina el período transitorio.
+
+\begin{metodobox}[Método de Welch]
+\begin{enumerate}
+    \item Ejecutar $k \ge 5$ réplicas largas, todas desde el mismo estado inicial. Registrar la secuencia de observaciones $Y_{ij}$ (observación $i$ de la réplica $j$).
+    \item Para cada $i$, calcular el promedio entre réplicas: $\bar Y_i = k^{-1}\sum_{j=1}^k Y_{ij}$.
+    \item Suavizar con media móvil de ventana $w$: $\tilde Y_i = (2w+1)^{-1}\sum_{l=-w}^{w}\bar Y_{i+l}$.
+    \item Graficar $\tilde Y_i$ vs.\ $i$ para distintos valores de $w$.
+    \item Elegir $t_w$ como el punto a partir del cual $\tilde Y_i$ se estabiliza visualmente.
+\end{enumerate}
+\end{metodobox}
+
+\begin{notabox}[Elección de $w$]
+Una ventana $w$ muy pequeña no elimina el ruido; una $w$ muy grande oculta el punto de estabilización. Probar $w \in \{n/10,\; n/20\}$ (donde $n$ es la longitud de la serie) y elegir el mínimo $w$ con el que la curva sea claramente estable.
+\end{notabox}
+
+% ══════════════════════════════════════════════════
+\section{Método de Batch Means (medias de lote)}
+% ══════════════════════════════════════════════════
+
+El método de Batch Means es la técnica más común para estimación en estado estacionario. La idea es convertir una larga corrida autocorrelada en un conjunto de lotes aproximadamente independientes.
+
+\subsection{Procedimiento}
+
+\begin{metodobox}[Batch Means]
+\begin{enumerate}
+    \item Hacer un warm-up de longitud $t_w$ (descartar observaciones del transitorio).
+    \item Ejecutar la simulación durante $n = m \cdot b$ observaciones adicionales.
+    \item Dividir en $m$ lotes de $b$ observaciones cada uno:
+    \[
+    \bar Y_j = \frac{1}{b}\sum_{i=(j-1)b+1}^{jb} Y_i, \qquad j = 1,\ldots,m
+    \]
+    \item Tratar $\bar Y_1,\ldots,\bar Y_m$ como i.i.d.\ (válido si $b$ es suficientemente grande para que la autocorrelación entre lotes sea despreciable).
+    \item Calcular IC estándar: $\bar Y_m \pm t_{\alpha/2,m-1}\cdot S_B/\sqrt{m}$, donde $S_B^2 = \frac{1}{m-1}\sum(\bar Y_j - \bar Y_m)^2$.
+\end{enumerate}
+\end{metodobox}
+
+\subsection{Elección de $b$ y $m$}
+
+\begin{itemize}
+    \item $b$ debe ser grande en comparación con el tiempo de correlación de la serie. Una regla práctica: $b \ge 30 / \tau$ donde $\tau$ es el tiempo de correlación estimado (p.ej.\ el rezago donde el autocorrelograma decae por debajo de 0{,}05).
+    \item $m$ determina los grados de libertad del IC; se recomienda $m \ge 20$ (idealmente $m \ge 30$).
+    \item Si $n = m \cdot b$ resulta demasiado largo, se puede reducir $m$ a 10--15 aceptando IC más anchos.
+\end{itemize}
+
+\begin{alertabox}[Error frecuente: lotes demasiado cortos]
+Si $b$ es insuficiente, $\bar Y_j$ y $\bar Y_{j+1}$ siguen estando correlacionados, lo que hace que $S_B^2$ subestime la varianza real y el IC sea demasiado estrecho (falsa precisión). Verificar independencia de lotes con la prueba de Von Neumann o inspeccionando el autocorrelograma de $\{\bar Y_j\}$.
+\end{alertabox}
+
+% ══════════════════════════════════════════════════
+\section{Método de réplicas con calentamiento (\emph{deletion method})}
+% ══════════════════════════════════════════════════
+
+Alternativa al Batch Means: ejecutar $n$ réplicas independientes, descartar las primeras $d$ observaciones de cada réplica (warm-up) y promediar el resto.
+
+\[
+Y_j = \frac{1}{m_j - d}\sum_{i=d+1}^{m_j} Y_{ij}, \qquad j = 1,\ldots,n
+\]
+
+Las $Y_j$ son i.i.d.\ y se aplica la misma inferencia $t$ del Tema 3.3. La ventaja es la simplicidad; la desventaja es el desperdicio de las $n \cdot d$ observaciones del warm-up.
+
+\begin{notabox}[¿Batch Means o réplicas con calentamiento?]
+Batch Means es más eficiente (aprovecha toda la longitud de una corrida larga); las réplicas con calentamiento son más simples de implementar y verificar. Para estudios de comparación con CRN (ver Sección 7), el método de réplicas facilita la sincronización de las corridas.
+\end{notabox}
+
+% ══════════════════════════════════════════════════
+\section{Comparación de dos alternativas}
+% ══════════════════════════════════════════════════
+
+Sea $\theta^{(1)}$ y $\theta^{(2)}$ la métrica de interés para dos configuraciones del sistema (p.ej.\ 2 vs.\ 3 servidores). Se estima la diferencia $\Delta = \theta^{(1)} - \theta^{(2)}$.
+
+\subsection{Muestras independientes}
+
+Si se ejecutan $n_1$ réplicas del sistema 1 y $n_2$ réplicas del sistema 2 con semillas independientes:
+\[
+\hat\Delta = \bar Y_{n_1}^{(1)} - \bar Y_{n_2}^{(2)}, \qquad
+\Var[\hat\Delta] = \frac{\sigma_1^2}{n_1} + \frac{\sigma_2^2}{n_2}
+\]
+
+El IC de $\Delta$ es:
+\[
+\hat\Delta \;\pm\; t_{\alpha/2,\,\nu} \cdot \sqrt{\frac{S_1^2}{n_1} + \frac{S_2^2}{n_2}}
+\]
+
+donde $\nu$ se calcula con la fórmula de Welch-Satterthwaite. Si el IC no contiene 0, hay diferencia significativa.
+
+\subsection{Números aleatorios comunes (CRN)}
+
+Los \textbf{CRN} (Common Random Numbers) son una técnica de reducción de varianza: se usa la \emph{misma} secuencia de números aleatorios en ambas corridas (mismas llegadas, misma asignación de tiempos de servicio). Esto introduce correlación \emph{positiva} entre $Y_j^{(1)}$ y $Y_j^{(2)}$, lo que reduce la varianza del estimador de la diferencia.
+
+\[
+\Delta_j = Y_j^{(1)} - Y_j^{(2)}, \qquad \hat\Delta = \bar\Delta_n = \frac{1}{n}\sum_{j=1}^n\Delta_j
+\]
+\[
+\Var[\hat\Delta] = \frac{\Var[\Delta]}{n} = \frac{\Var[Y^{(1)}] + \Var[Y^{(2)}] - 2\,\text{Cov}(Y^{(1)},Y^{(2)})}{n}
+\]
+
+Con CRN, $\text{Cov}(Y^{(1)},Y^{(2)}) > 0$, lo que reduce $\Var[\hat\Delta]$ y por tanto el semiancho del IC. La reducción de varianza puede ser del 50--90\% si las dos alternativas comparten la mayor parte de la lógica del sistema.
+
+\begin{metodobox}[Implementación de CRN con réplicas pareadas]
+\begin{enumerate}
+    \item Asignar un flujo de números aleatorios distinto a cada proceso estocástico: un flujo para llegadas, otro para servicios tipo A, otro para servicios tipo B, etc.
+    \item En cada réplica $j$, usar los \emph{mismos} flujos para la simulación 1 y la simulación 2.
+    \item Calcular $\Delta_j = Y_j^{(1)} - Y_j^{(2)}$ para cada réplica.
+    \item Aplicar inferencia $t$ sobre la muestra $\{\Delta_j\}$ (prueba de una muestra sobre $H_0: \Delta = 0$).
+\end{enumerate}
+\end{metodobox}
+
+\begin{alertabox}[CRN puede aumentar la varianza si se usa incorrectamente]
+Si los números aleatorios de los dos sistemas no están correctamente sincronizados (mismo número aleatorio para procesos distintos), CRN puede aumentar la varianza en lugar de reducirla. La sincronización requiere que el mismo número aleatorio se use para el mismo ``tipo'' de evento en ambos sistemas.
+\end{alertabox}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo básico: comparar $M/M/1$ y $M/D/1$ con la misma carga}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Se evalúan dos líneas de producción con la misma tasa de llegadas y la misma tasa promedio de servicio, pero con diferente variabilidad:
+\begin{itemize}
+    \item \textbf{Sistema A ($M/M/1$)}: tiempos de servicio exponenciales, $\mu=5$ piezas/min, $\text{CV}_S=1$.
+    \item \textbf{Sistema B ($M/D/1$)}: servicio determinista (robot), $S=0{,}2$ min exactos, $\text{CV}_S=0$.
+\end{itemize}
+Ambos con $\lambda=4$ piezas/min ($\rho=0{,}8$). Se quiere estimar el tiempo en cola de largo plazo y determinar si la diferencia es estadísticamente significativa.
+\end{ejemplobox}
+
+\textbf{Referencias analíticas} (P-K):
+\[
+W_q^A = \frac{\rho}{\mu(1-\rho)} = \frac{0{,}8}{5 \times 0{,}2} = 0{,}80 \text{ min}
+\]
+\[
+W_q^B = \frac{\lambda\E[S^2]}{2(1-\rho)} = \frac{4 \times 0{,}04}{2 \times 0{,}2} = \frac{0{,}16}{0{,}4} = 0{,}40 \text{ min}
+\]
+El servicio determinista reduce el tiempo en cola exactamente a la mitad.
+
+\subsection{Diseño del estudio de simulación}
+
+Para cada réplica: warm-up de 1\,000 piezas (Welch previo indica que el transitorio cae antes de la pieza 500), seguido de 5\,000 piezas para estadísticas. Se ejecutan $n=30$ réplicas con CRN (mismas llegadas en ambos sistemas).
+
+\subsection{Resultados}
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Sistema} & $\bar W_q$ (min) & IC 95\% & Ref.\ analítica \\
+\midrule
+A ($M/M/1$) & $0{,}812$ & $[0{,}783;\;0{,}841]$ & $0{,}800$ ✓ \\
+B ($M/D/1$) & $0{,}404$ & $[0{,}391;\;0{,}417]$ & $0{,}400$ ✓ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Diferencia con CRN} ($\Delta_j = W_q^A_j - W_q^B_j$, $n=30$ réplicas):
+\[
+\bar\Delta = 0{,}408 \text{ min}, \quad S_\Delta = 0{,}061 \text{ min}
+\]
+\[
+IC_{95\%}(\Delta): \quad 0{,}408 \;\pm\; 2{,}045 \times \frac{0{,}061}{\sqrt{30}} = [0{,}385;\; 0{,}431] \text{ min}
+\]
+
+El IC no contiene 0, por lo que la diferencia es estadísticamente significativa. La reducción de varianza de CRN se verifica comparando $S_\Delta = 0{,}061$ con $\sqrt{S_A^2/30 + S_B^2/30} \approx 0{,}089$ (muestras independientes). CRN redujo el semiancho en un 31\%.
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo escalado: comparación de políticas en un call center}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Un call center opera 24/7 con demanda promedio constante. Las llamadas llegan con tasa $\lambda=45$ llamadas/h (proceso de Poisson). El tiempo de atención sigue una distribución \textbf{Log-normal}($\mu_L=1{,}7$, $\sigma_L=0{,}6$), lo que da:
+\[
+\E[S] = e^{1{,}7+0{,}18} = e^{1{,}88} \approx 6{,}55 \text{ min}, \quad
+\text{CV}_S = \sqrt{e^{0{,}36}-1} \approx 0{,}63
+\]
+
+Se comparan dos alternativas de personal:
+\begin{itemize}
+    \item \textbf{Alt. 1}: 6 agentes.
+    \item \textbf{Alt. 2}: 7 agentes.
+\end{itemize}
+
+Métricas de interés en régimen estacionario: $W_q$ (tiempo en cola, min) y $P(W_q>2\text{ min})$ (nivel de servicio).
+\end{ejemplobox}
+
+\subsection{Caracterización del sistema}
+
+La carga total del sistema es:
+\[
+\text{Carga} = \lambda \cdot \E[S] = \frac{45}{60} \times 6{,}55 = 4{,}91 \text{ agentes-equivalentes}
+\]
+
+Utilización teórica: $\rho_1 = 4{,}91/6 = 0{,}82$; $\rho_2 = 4{,}91/7 = 0{,}70$.
+
+No existe solución analítica exacta para $W_q$ en un sistema $M/G/c$ con $c>1$. La aproximación de Allen--Cunneen para $M/G/c$:
+
+\[
+W_q^{(c)} \approx \frac{C(c,\rho)}{c\mu} \cdot \frac{1+\text{CV}_S^2}{2}
+\]
+
+donde $C(c,\rho)$ es la fórmula de Erlang-C. Para Alt. 1 ($c=6$, $\rho=0{,}82$): $C(6,0{,}82) \approx 0{,}70$; la aproximación da $W_q \approx 1{,}9$ min.
+
+\subsection{Diseño del estudio}
+
+\textbf{Warm-up}: método de Welch con 10 réplicas largas ($T=2000$ h). La media móvil con $w=50$ se estabiliza cerca de $t_w=500$ h; se descarta ese período.
+
+\textbf{Fase estacionaria}: $n=40$ réplicas de $T=1500$ h (con los primeros 500 h descartados). Se usa CRN: el mismo flujo de llegadas y el mismo flujo de servicio por agente se sincronizan entre Alt. 1 y Alt. 2.
+
+\subsection{Resultados}
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Métrica} & \textbf{Alt. 1 ($c=6$)} & \textbf{IC 95\%} & \textbf{Alt. 2 ($c=7$)} & \textbf{IC 95\%} \\
+\midrule
+$W_q$ (min)        & $1{,}92$ & $[1{,}78;\;2{,}06]$ & $0{,}41$ & $[0{,}38;\;0{,}44]$ \\
+$P(W_q>2\text{min})$ & $0{,}283$ & $[0{,}261;\;0{,}305]$ & $0{,}039$ & $[0{,}034;\;0{,}044]$ \\
+$\rho$             & $0{,}819$ & $[0{,}815;\;0{,}823]$ & $0{,}702$ & $[0{,}699;\;0{,}705]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Diferencia en $W_q$} con CRN ($n=40$ réplicas pareadas):
+\[
+\bar\Delta_{W_q} = 1{,}51 \text{ min}, \quad IC_{95\%}: [1{,}38;\; 1{,}64] \text{ min}
+\]
+
+El IC no contiene 0; la diferencia es altamente significativa. Agregar un séptimo agente reduce el tiempo en cola en 1{,}51 min en promedio y reduce $P(W_q>2\text{ min})$ del 28\% al 4\%.
+
+\subsection{Eficiencia de CRN}
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Método} & $S_\Delta$ (min) & IC semiancho (min) \\
+\midrule
+Muestras independientes & $0{,}198$ & $0{,}063$ \\
+CRN                     & $0{,}121$ & $0{,}038$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+CRN redujo el semiancho del IC en un 40\%. Equivalentemente, para lograr el mismo IC con muestras independientes se necesitarían $\lceil 40 \times (0{,}198/0{,}121)^2 \rceil = 107$ réplicas.
+
+\begin{resultadobox}[Recomendación al gerente]
+Con 6 agentes, casi el 28\% de las llamadas esperan más de 2 minutos, lo que incumple un estándar típico de nivel de servicio (habitualmente $P(W_q>2\text{ min})\le 0{,}05$). Con 7 agentes, solo el 4\% supera ese umbral. La simulación, con 40 réplicas y CRN, cuantifica esta diferencia con alta precisión y proporciona los intervalos de confianza necesarios para una decisión fundamentada.
+\end{resultadobox}
+
+\begin{notabox}[Resumen metodológico del Módulo 3]
+El proceso completo de un estudio de simulación integra los cuatro temas:
+\begin{enumerate}
+    \item \textbf{T3.1 — Entradas}: ajustar distribuciones a datos (aquí: Log-normal para $S$).
+    \item \textbf{T3.2 — V\&V}: verificar el código y validar contra benchmarks analíticos ($M/G/1$, Allen--Cunneen).
+    \item \textbf{T3.3 — Terminal}: si el estudio fuera sobre un turno específico (horizonte finito).
+    \item \textbf{T3.4 — Estacionario}: para el comportamiento de largo plazo; batch means o réplicas con warm-up; CRN para comparaciones eficientes.
+\end{enumerate}
+Estos pasos no son opcionales: omitir alguno compromete la credibilidad de las conclusiones.
+\end{notabox}
+
+\end{document}

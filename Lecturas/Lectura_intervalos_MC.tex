@@ -1,7 +1,7 @@
 \documentclass[11pt, letterpaper]{article}
 \usepackage{mobi-lectura}
 
-\title{Estimación de Intervalos de Confianza en Simulación de Monte Carlo}
+\title{Diseño de Experimentos de Simulación con Monte Carlo}
 \author{Alejandra Tabares Pozos}
 \date{}
 
@@ -11,30 +11,34 @@
 \tableofcontents
 \newpage
 
-\section{Introducción}
-En la práctica de la ingeniería, una simulación de Monte Carlo no tiene como objetivo generar un único número, sino cuantificar la incertidumbre. Cuando ejecutamos $n$ réplicas de un modelo, obtenemos una muestra de resultados $X_1, X_2, \dots, X_n$. El promedio muestral $\bar{X}$ es nuestro estimador puntual del valor esperado real $\mu$. Sin embargo, debido a la naturaleza estocástica, este promedio variará si volvemos a correr la simulación. 
+\section{Introducción: del Fundamento al Diseño}
 
-Para comunicar resultados con rigor, debemos construir un \textbf{Intervalo de Confianza (IC)}. Este intervalo nos proporciona un rango de valores dentro del cual, con una probabilidad determinada (típicamente 95\%), se encuentra el verdadero parámetro del sistema.
-
-\section{Fundamento Teórico: El Teorema Central del Límite}
-El Teorema Central del Límite (TCL) indica que, para un tamaño de muestra $n$ suficientemente grande, la distribución de la media muestral $\bar{X}$ se aproxima a una distribución Normal, independientemente de la distribución original de los datos.
-
-La varianza del estimador $\bar{X}$ se define como:
+La lectura anterior (El Teorema del Límite Central) estableció el fundamento teórico: la media de $n$ réplicas independientes $\bar{X}_n$ converge en distribución a una Normal, lo que permite construir un intervalo de confianza de la forma:
 \begin{equation}
-Var(\bar{X}) = \frac{\sigma^2}{n}
+\bar{X}_n \;\pm\; t_{n-1,\,1-\alpha/2}\,\frac{S}{\sqrt{n}}
 \end{equation}
+Esta lectura se enfoca en la \textbf{dimensión práctica}: ¿cómo diseñar el experimento de simulación para obtener la precisión requerida? Las preguntas concretas son: ¿cuántas réplicas son suficientes?, ¿cómo sé si mis resultados son lo bastante precisos para tomar una decisión?, y ¿cómo comunico los resultados con rigor estadístico?
 
-Dado que usualmente desconocemos la varianza poblacional $\sigma^2$, utilizamos la varianza muestral $S^2$:
+\section{Fórmula de diseño: número de réplicas}
+
+El ancho del IC depende de $n$: más réplicas $\Rightarrow$ SE más pequeño $\Rightarrow$ IC más angosto. La relación es:
+\[
+\text{Margen de error} = t_{n-1,\,1-\alpha/2}\,\frac{S}{\sqrt{n}} \approx z_{1-\alpha/2}\,\frac{\sigma}{\sqrt{n}}
+\]
+Para garantizar un margen máximo $E$ con confianza $1-\alpha$, despejamos $n$:
 \begin{equation}
-S^2 = \frac{1}{n-1} \sum_{i=1}^{n} (X_i - \bar{X})^2
+n \ge \left(\frac{z_{1-\alpha/2}\,\sigma}{E}\right)^2
 \end{equation}
+En la práctica $\sigma$ es desconocida: se usa una estimación piloto $s$ de una corrida inicial de 10--20 réplicas, y se redondea $n$ hacia arriba.
 
-El intervalo de confianza al $100(1-\alpha)\%$ se calcula como:
-\begin{equation}
-\bar{X} \pm t_{n-1, 1-\alpha/2} \frac{S}{\sqrt{n}}
-\end{equation}
-
-Donde $t_{n-1, 1-\alpha/2}$ es el valor crítico de la distribución t-Student con $n-1$ grados de libertad. Para $n > 30$, este valor suele aproximarse mediante la distribución Normal estándar ($z \approx 1.96$ para un 95\% de confianza).
+\begin{metodobox}[Protocolo de diseño en 4 pasos]
+\begin{enumerate}
+    \item \textbf{Corrida piloto}: ejecutar $n_0 = 10\text{--}20$ réplicas; calcular $\bar{X}_{n_0}$ y $S_{n_0}$.
+    \item \textbf{Determinar $n^*$}: aplicar la fórmula con $\sigma \approx S_{n_0}$ y el margen de error deseado $E$.
+    \item \textbf{Completar réplicas}: si $n^* > n_0$, ejecutar $n^* - n_0$ réplicas adicionales.
+    \item \textbf{Reportar IC}: calcular el IC final con todas las $n^*$ réplicas.
+\end{enumerate}
+\end{metodobox}
 
 \section{Ejemplo 1: Introductorio - Estimación de Costo de Materia Prima}
 Un analista financiero desea estimar el costo promedio de una orden de compra. El precio y la cantidad son aleatorios. Se realizan 50 simulaciones independientes y se obtienen los siguientes estadísticos:

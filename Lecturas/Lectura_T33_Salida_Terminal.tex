@@ -1,0 +1,305 @@
+\documentclass[11pt, letterpaper]{article}
+\usepackage{mobi-lectura}
+
+\title{Análisis de Salida: Simulaciones Terminales}
+\author{Alejandra Tabares Pozos}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════
+\section{Taxonomía de simulaciones por horizonte temporal}
+% ══════════════════════════════════════════════════
+
+Toda simulación de eventos discretos opera bajo uno de dos regímenes:
+
+\begin{definicionbox}[Simulación terminal (horizonte finito)]
+El sistema opera durante un periodo bien definido que termina cuando ocurre un evento natural de cierre: fin del turno, cierre del banco, agotamiento del inventario. Las condiciones iniciales (p.ej.\ sistema vacío al abrir) son parte integral del modelo.
+\end{definicionbox}
+
+\begin{definicionbox}[Simulación de estado estacionario (horizonte infinito)]
+El interés está en el comportamiento a largo plazo del sistema, independiente de las condiciones iniciales. No existe un evento de cierre natural. El problema central es el sesgo de inicialización, tratado en el Tema 3.4.
+\end{definicionbox}
+
+\textbf{Ejemplos}:
+\begin{itemize}
+    \item \textbf{Terminal}: urgencias de 8h--20h, simulación de un día de bolsa, un turno de manufactura.
+    \item \textbf{Estacionaria}: fábrica con producción continua 24/7, red de telecomunicaciones, central de llamadas permanente.
+\end{itemize}
+
+\begin{alertabox}[Error frecuente]
+Modelar un sistema con condiciones iniciales relevantes como si fuera estacionario puede introducir un sesgo grande. En una farmacia que abre con 0 clientes, las primeras horas del día son estadísticamente distintas de las del mediodía, y no deben promediarse con el largo plazo.
+\end{alertabox}
+
+% ══════════════════════════════════════════════════
+\section{El problema estadístico de la salida de simulación}
+% ══════════════════════════════════════════════════
+
+La salida de un simulador es una secuencia de observaciones $Y_1, Y_2, \ldots, Y_m$ (p.ej.\ tiempo de espera del cliente $i$). Estas observaciones tienen dos características que invalidan la estadística clásica:
+
+\begin{enumerate}
+    \item \textbf{Autocorrelación}: el tiempo de espera del cliente $i+1$ depende del estado del sistema después de que el cliente $i$ es atendido. Las observaciones \emph{no son independientes}.
+    \item \textbf{No-estacionariedad}: al inicio, el sistema está vacío; la distribución de $Y_i$ cambia con $i$.
+\end{enumerate}
+
+Por estas razones, el promedio muestral $\bar Y_m = m^{-1}\sum_{i=1}^m Y_i$ de una única corrida \emph{no} puede tratarse como si viniera de $m$ observaciones i.i.d., y la fórmula estándar $S/\sqrt{m}$ subestima el error estándar real.
+
+\textbf{Solución}: el \textbf{método de réplicas independientes}, que genera independencia entre corridas a través de diferentes semillas del generador de números aleatorios.
+
+% ══════════════════════════════════════════════════
+\section{Método de réplicas independientes}
+% ══════════════════════════════════════════════════
+
+Se ejecutan $n$ réplicas de la simulación bajo el \emph{mismo} modelo pero con \emph{diferentes} semillas. Cada réplica produce un único número resumen $Y_j$ de la métrica de interés (p.ej.\ el promedio de los tiempos de espera en esa corrida).
+
+\[
+Y_j = \frac{1}{m_j}\sum_{i=1}^{m_j} W_i^{(j)}, \qquad j = 1, \ldots, n
+\]
+
+donde $m_j$ es el número de observaciones en la réplica $j$ (clientes atendidos en ese turno).
+
+\textbf{Clave}: $Y_1, Y_2, \ldots, Y_n$ \emph{sí son} i.i.d.\ porque las réplicas son independientes entre sí. El análisis estadístico clásico (media, varianza, $t$-student) es aplicable sobre $\{Y_j\}$.
+
+% ══════════════════════════════════════════════════
+\section{Inferencia estadística con réplicas}
+% ══════════════════════════════════════════════════
+
+\subsection{Estimación puntual}
+
+\[
+\hat\theta_n = \bar Y_n = \frac{1}{n}\sum_{j=1}^n Y_j
+\]
+
+Por el TLC, $\bar Y_n \xrightarrow{d} \mathcal{N}(\theta, \sigma^2/n)$ cuando $n$ es suficientemente grande.
+
+\subsection{Intervalo de confianza}
+
+Con varianza desconocida, se usa la distribución $t$ de Student:
+
+\[
+\boxed{IC_{1-\alpha}(\theta) = \bar Y_n \;\pm\; t_{\alpha/2,\,n-1}\cdot\frac{S_n}{\sqrt{n}}}
+\]
+
+donde $S_n^2 = \frac{1}{n-1}\sum_{j=1}^n(Y_j - \bar Y_n)^2$ y la \textbf{semiancho} es $h_n = t_{\alpha/2,n-1}\cdot S_n/\sqrt{n}$.
+
+Para $n \ge 30$ puede usarse el cuantil normal $z_{\alpha/2}$; para $n < 30$, la $t_{n-1}$ es imprescindible.
+
+\subsection{Precisión relativa}
+
+La precisión relativa del estimador es:
+\[
+r_n = \frac{h_n}{|\bar Y_n|} = \frac{t_{\alpha/2,n-1}\cdot S_n}{\sqrt{n}\,|\bar Y_n|}
+\]
+
+Se suele reportar como porcentaje; un objetivo de $r_n \le 0{,}05$ (5\%) es común en estudios de ingeniería.
+
+% ══════════════════════════════════════════════════
+\section{Determinación del número de réplicas}
+% ══════════════════════════════════════════════════
+
+El número mínimo de réplicas para lograr un semiancho $\delta$ (error absoluto) se estima en dos etapas:
+
+\begin{metodobox}[Procedimiento secuencial para $n^*$]
+\begin{enumerate}
+    \item Ejecutar un \textbf{piloto} de $n_0 \ge 10$ réplicas y calcular $S_{n_0}^2$.
+    \item Estimar: $\displaystyle n^* = \max\!\left(n_0,\;\left\lceil\frac{t_{\alpha/2,\,n_0-1}^2 \cdot S_{n_0}^2}{\delta^2}\right\rceil\right)$.
+    \item Ejecutar $n^* - n_0$ réplicas adicionales y recalcular $\bar Y_{n^*}$ y $h_{n^*}$.
+    \item Verificar que $h_{n^*} \le \delta$ (si no, repetir desde el paso 2 con $n_0 \leftarrow n^*$).
+\end{enumerate}
+\end{metodobox}
+
+Para un criterio de \textbf{precisión relativa} $r$, se sustituye $\delta = r\,|\bar Y_{n_0}|$:
+
+\[
+n^* = \left\lceil\frac{t_{\alpha/2,n_0-1}^2 \cdot S_{n_0}^2}{r^2 \cdot \bar Y_{n_0}^2}\right\rceil
+\]
+
+% ══════════════════════════════════════════════════
+\section{Sesgo de inicialización en simulaciones terminales}
+% ══════════════════════════════════════════════════
+
+En muchas simulaciones terminales, las condiciones iniciales son parte del modelo: una farmacia abre con 0 clientes, un almacén inicia el turno con 0 órdenes pendientes. No hay sesgo de inicialización \emph{si esas condiciones son las condiciones reales de inicio del sistema}.
+
+Sin embargo, en algunos casos el sistema puede comenzar en un estado que \emph{no} es el estado inicial real (por ejemplo, si se simula el pico de la tarde pero el sistema ya tiene clientes acumulados desde la mañana). En ese caso:
+
+\begin{itemize}
+    \item \textbf{Opción 1 — Warm-up manual}: hacer correr el modelo hasta que el estado inicial deseado se logre, y luego empezar a recoger estadísticas.
+    \item \textbf{Opción 2 — Estado inicial condicionado}: muestrear el estado inicial de una distribución estacionaria (si se conoce).
+    \item \textbf{Opción 3 — Modelo extendido}: simular desde el inicio del día completo si el horizonte lo permite.
+\end{itemize}
+
+\begin{notabox}[Distinción con estacionario]
+En simulaciones terminales, el problema de sesgo inicial es conceptualmente distinto al de las simulaciones de estado estacionario (Tema 3.4). En la terminal, la condición inicial es parte del problema; en la estacionaria, es un artefacto que hay que eliminar.
+\end{notabox}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo básico: cola $M/G/1$ en una cafetería universitaria}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+La cafetería universitaria opera el turno de almuerzo de 12:00 a 14:00 (2 horas). Los clientes llegan según un proceso de Poisson con $\lambda=15$ clientes/h. El tiempo de atención (pedir + pagar) sigue una distribución Erlang-2 con $\E[S]=3$ min. El sistema inicia cada réplica vacío. Interesa estimar el tiempo promedio de espera en cola $W_q$ con 95\% de confianza y precisión de 0{,}5 min.
+\end{ejemplobox}
+
+\textbf{Parámetros y referencia analítica}:
+\[
+\lambda = \frac{15}{60} = 0{,}25 \text{ cl/min}, \quad
+\E[S] = 3 \text{ min}, \quad
+\mu_{\text{fase}} = \frac{2}{3} \text{ fase/min}
+\]
+\[
+\Var[S] = \frac{2}{\mu_{\text{fase}}^2} = \frac{2}{(2/3)^2} = 4{,}5 \text{ min}^2, \quad
+\E[S^2] = 4{,}5 + 9 = 13{,}5 \text{ min}^2
+\]
+\[
+\rho = 0{,}25 \times 3 = 0{,}75
+\]
+
+\textbf{Referencia P-K} (útil para validación del simulador, no para reemplazarlo):
+\[
+W_q^{\text{P-K}} = \frac{\lambda\E[S^2]}{2(1-\rho)} = \frac{0{,}25 \times 13{,}5}{2 \times 0{,}25} = \frac{3{,}375}{0{,}5} = 6{,}75 \text{ min}
+\]
+
+\subsection{Ejecución del piloto ($n_0 = 15$ réplicas)}
+
+Cada réplica simula las 2 horas de turno. El resumen $Y_j$ es el tiempo promedio en cola de todos los clientes atendidos en esa réplica.
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{cccccccccccccccc}
+\toprule
+$j$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+\midrule
+$Y_j$ & 7{,}1 & 5{,}8 & 6{,}4 & 8{,}3 & 6{,}0 & 7{,}5 & 5{,}4 & 6{,}9 & 7{,}8 & 6{,}2 & 5{,}9 & 8{,}1 & 6{,}7 & 7{,}3 & 6{,}5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\[
+\bar Y_{15} = 6{,}79 \text{ min}, \quad S_{15} = 0{,}85 \text{ min}
+\]
+
+\textbf{IC 95\%} con $t_{0{,}025,14} = 2{,}145$:
+\[
+h_{15} = 2{,}145 \times \frac{0{,}85}{\sqrt{15}} = 2{,}145 \times 0{,}219 = 0{,}47 \text{ min}
+\]
+\[
+IC_{95\%}: \quad [6{,}32;\; 7{,}26] \text{ min}
+\]
+
+\subsection{Determinación de $n^*$ para $\delta = 0{,}5$ min}
+
+\[
+n^* = \left\lceil\frac{(2{,}145)^2 \times (0{,}85)^2}{(0{,}5)^2}\right\rceil = \left\lceil\frac{4{,}60 \times 0{,}72}{0{,}25}\right\rceil = \left\lceil 13{,}2\right\rceil = 14
+\]
+
+Como $14 < n_0 = 15$, las réplicas del piloto son suficientes. El semiancho de $0{,}47$ min ya cumple el criterio $\le 0{,}5$ min.
+
+\subsection{Interpretación}
+
+\begin{resultadobox}[Resultado]
+Con 15 réplicas del turno de almuerzo, el tiempo promedio de espera en cola se estima en $\bar W_q = 6{,}79$ min con IC 95\% $[6{,}32;\; 7{,}26]$ min (semiancho $0{,}47$ min $< 0{,}5$ min). El valor analítico P-K de $6{,}75$ min cae dentro del intervalo, confirmando la validez del simulador.
+\end{resultadobox}
+
+\begin{notabox}[Variabilidad entre réplicas y distribución del turno]
+Nótese que $Y_j$ varía entre $5{,}4$ y $8{,}3$ min, un rango considerable. Esta variabilidad es real: depende de la secuencia aleatoria de llegadas y tiempos de servicio en cada turno. El intervalo de confianza cuantifica esta incertidumbre; no es un error del simulador.
+\end{notabox}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo escalado: urgencias hospitalarias (mañana)}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+El servicio de urgencias de un hospital opera el turno de mañana (7:00--15:00, 8 horas). Los pacientes se clasifican en tres niveles de prioridad al triaje. El sistema tiene 3 médicos (\emph{recursos}), una sala de espera común y una cola con prioridad no expulsiva (non-preemptive). Las distribuciones de servicio son \textbf{no exponenciales}.
+
+\medskip
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lllcc}
+\toprule
+\textbf{Nivel} & \textbf{Fracción} & \textbf{Distribución de $S$} & $\E[S]$ (min) & $\text{CV}_S$ \\
+\midrule
+P1 (urgente)       & 15\% & Exponencial($\mu=0{,}1$)          & 10 & 1{,}00 \\
+P2 (moderado)      & 55\% & Erlang-3($\mu_f=0{,}1$)           & 30 & 0{,}58 \\
+P3 (leve)          & 30\% & Log-normal($\mu_L=3{,}4$, $\sigma_L=0{,}5$) & 35 & 0{,}53 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+Llegadas totales: Poisson con $\lambda=20$ pacientes/h. El sistema inicia vacío. Interesa estimar tres métricas con 95\% de confianza y precisión relativa $\le 5\%$:
+\begin{enumerate}
+    \item $W_q^{P2}$: tiempo de espera promedio de pacientes P2.
+    \item $P(W_q > 30\text{ min} \mid P3)$: fracción de pacientes leves con espera $>30$ min.
+    \item $\rho$: utilización promedio de los médicos.
+\end{enumerate}
+\end{ejemplobox}
+
+\subsection{Configuración del estudio}
+
+\textbf{Tráfico del sistema}. La tasa de llegadas efectiva de cada tipo y su aporte a la carga:
+
+\begin{align*}
+\lambda_{P1} &= 0{,}15 \times 20 = 3{,}0 \text{ pac/h}, & \text{carga}_{P1} &= 3{,}0 \times \tfrac{10}{60} = 0{,}50 \\
+\lambda_{P2} &= 0{,}55 \times 20 = 11{,}0 \text{ pac/h}, & \text{carga}_{P2} &= 11{,}0 \times \tfrac{30}{60} = 5{,}50 \\
+\lambda_{P3} &= 0{,}30 \times 20 = 6{,}0 \text{ pac/h}, & \text{carga}_{P3} &= 6{,}0 \times \tfrac{35}{60} = 3{,}50
+\end{align*}
+
+Carga total = $0{,}50 + 5{,}50 + 3{,}50 = 9{,}50$ pac·médico$^{-1}$h$^{-1}$, con 3 médicos: $\rho = 9{,}50/(3 \times 60) \approx 0{,}79$.
+
+\subsection{Piloto: $n_0 = 10$ réplicas}
+
+Cada réplica simula el turno completo de 8 horas. Resultados del piloto:
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Métrica} & $\bar Y_{10}$ & $S_{10}$ & $\hat r_{10}$ (\%) \\
+\midrule
+$W_q^{P2}$ (min)           & 28{,}4 & 4{,}7  & 5{,}2\% \\
+$P(W_q>30\text{min}\mid P3)$ & 0{,}342 & 0{,}058 & 5{,}3\% \\
+$\rho$                     & 0{,}787 & 0{,}018 & 0{,}7\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Cálculo de $n^*$ para cada métrica (objetivo: $r \le 5\%$)}
+
+\[
+n^*_{W_q^{P2}} = \left\lceil\frac{(2{,}262)^2 \times (4{,}7)^2}{(0{,}05 \times 28{,}4)^2}\right\rceil = \left\lceil\frac{112{,}9}{2{,}02}\right\rceil = \lceil 55{,}9\rceil = 56
+\]
+
+\[
+n^*_{P(W>30)} = \left\lceil\frac{(2{,}262)^2 \times (0{,}058)^2}{(0{,}05 \times 0{,}342)^2}\right\rceil = \left\lceil\frac{0{,}01723}{0{,}000292}\right\rceil = \lceil 59{,}0\rceil = 59
+\]
+
+La métrica más exigente es $P(W_q>30\text{ min}\mid P3)$; se necesitan $n^* = 59$ réplicas para todas las métricas.
+
+\subsection{Resultados con $n=59$ réplicas}
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Métrica} & $\bar Y_{59}$ & IC 95\% & $r$ (\%) & \textbf{Interpretación} \\
+\midrule
+$W_q^{P2}$ (min)             & 29{,}1 & $[27{,}9;\;30{,}3]$ & 4{,}1\% & Espera media: $\sim$29 min \\
+$P(W_q>30\text{ min}\mid P3)$& 0{,}348 & $[0{,}331;\;0{,}365]$ & 4{,}9\% & 35\% de P3 esperan $>$30 min \\
+$\rho$                       & 0{,}789 & $[0{,}784;\;0{,}794]$ & 0{,}3\% & Utilización 78{,}9\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{resultadobox}[Conclusiones del estudio terminal]
+En el turno de mañana, aproximadamente 1 de cada 3 pacientes de nivel P3 espera más de 30 minutos. La utilización del médico del 79\% indica un sistema cercano a la saturación; pequeños incrementos en la demanda ($\lambda$) pueden disparar los tiempos de espera de manera no lineal. Este estudio cuantifica el riesgo de incumplir el objetivo de servicio y provee la base para evaluar la contratación de un cuarto médico (comparación de alternativas, Tema 3.4).
+\end{resultadobox}
+
+\begin{notabox}[No-Markovianidad y análisis de salida]
+El sistema de urgencias modela servicios con distribuciones Erlang-3 y Log-normal, ambas no exponenciales. No existe solución analítica exacta para la distribución del tiempo de espera ni para $P(W_q>30\text{ min})$ bajo prioridades no expulsivas con múltiples servidores y distribuciones mixtas. La simulación es la única herramienta de análisis que permite estimar estas métricas con intervalos de confianza.
+\end{notabox}
+
+\end{document}

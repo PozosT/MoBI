@@ -1,0 +1,383 @@
+\documentclass[11pt, letterpaper]{article}
+\usepackage{mobi-lectura}
+
+\title{Modelado de Entradas:\\Del Dato Observado a la Distribución de Probabilidad}
+\author{Alejandra Tabares Pozos}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════
+\section{Motivación: la distribución importa}
+% ══════════════════════════════════════════════════
+
+Todo modelo de simulación de eventos discretos (SED) está alimentado por distribuciones de probabilidad que caracterizan la aleatoriedad del sistema: tiempos entre llegadas, tiempos de servicio, tiempos de falla, demandas. El \textbf{modelado de entradas} (\emph{input modeling}) es el proceso de transformar datos empíricos en distribuciones parametrizadas que el simulador pueda muestrear. Una distribución mal elegida se propaga como error sistemático a todas las métricas de salida.
+
+Más aún, la distribución elegida determina qué herramientas analíticas están disponibles:
+
+\begin{itemize}
+    \item Cola \textbf{$M/M/1$}: llegadas Poisson, servicio exponencial $\Rightarrow$ solución cerrada exacta.
+    \item Cola \textbf{$M/G/1$}: llegadas Poisson, servicio general $\Rightarrow$ fórmula de Pollaczek--Khinchine.
+    \item Cola \textbf{$G/G/1$}: ambas distribuciones generales $\Rightarrow$ esencialmente solo simulación.
+\end{itemize}
+
+Identificar correctamente las distribuciones puede habilitar análisis analíticos que eviten la simulación, o revelar que la simulación es necesaria.
+
+\begin{alertabox}[Principio GIGO]
+\emph{Garbage In, Garbage Out}: un modelo computacionalmente sofisticado ajustado con distribuciones incorrectas producirá conclusiones erróneas con alta precisión \emph{aparente}. Los errores de modelado de entradas no se cancelan; se amplifican.
+\end{alertabox}
+
+\subsection{El coeficiente de variación como indicador clave}
+
+El \textbf{coeficiente de variación} $\text{CV} = \sigma/\mu$ resume cuán variable es una distribución relativo a su media. Para una cola $M/G/1$ con tráfico $\rho = \lambda\E[S]$, la fórmula de Pollaczek--Khinchine muestra que:
+
+\[
+W_q^{M/G/1} = \underbrace{\frac{\rho}{\mu(1-\rho)}}_{W_q^{M/M/1}} \cdot \frac{1 + \text{CV}_S^2}{2}
+\]
+
+Bajo $\rho = 0{,}8$ y $\E[S]=1$ min (por lo que $W_q^{M/M/1} = 4$ min):
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Distribución de servicio} & \textbf{Notación} & $\text{CV}_S$ & $W_q$ (min) \\
+\midrule
+Determinista                       & $D$              & $0$                  & $2{,}0$ \\
+Erlang-2                           & $E_2$            & $1/\sqrt{2}\approx 0{,}71$ & $3{,}0$ \\
+Exponencial                        & $M$              & $1$                  & $4{,}0$ \\
+Weibull ($k=0{,}8$)                & $G$              & $\approx 1{,}3$      & $5{,}3$ \\
+Hiperexponencial (CV=2)            & $H_2$            & $2$                  & $10{,}0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Ignorar la variabilidad real del servicio puede subestimar o sobreestimar el tiempo en cola por un factor de 2 o más.
+
+% ══════════════════════════════════════════════════
+\section{Proceso metodológico}
+% ══════════════════════════════════════════════════
+
+\begin{metodobox}[Metodología de modelado de entradas — 5 pasos]
+\begin{enumerate}
+    \item \textbf{Recolección de datos}: registrar observaciones del sistema real; verificar homogeneidad temporal e independencia entre observaciones.
+    \item \textbf{Exploración gráfica}: histograma, ECDF y gráfico Q-Q; identificar forma, asimetría, colas y posibles valores atípicos.
+    \item \textbf{Identificación de la familia}: usar el CV, el soporte del dato y el conocimiento del proceso físico para seleccionar distribuciones candidatas.
+    \item \textbf{Estimación de parámetros}: máxima verosimilitud (MLE) o método de momentos.
+    \item \textbf{Prueba de bondad de ajuste}: $\chi^2$ o Kolmogorov--Smirnov; aceptar o rechazar el candidato con nivel de significancia $\alpha$.
+\end{enumerate}
+\end{metodobox}
+
+% ══════════════════════════════════════════════════
+\section{Tipos de datos en sistemas de colas}
+% ══════════════════════════════════════════════════
+
+\begin{itemize}
+    \item \textbf{Tiempos entre llegadas} $A_i = T_i - T_{i-1}$: si son exponenciales, el proceso de llegadas es de Poisson (Markoviano). Verificar si $\text{CV}_A \approx 1$ y si el número de llegadas en intervalos fijos sigue una distribución Poisson.
+    \item \textbf{Tiempos de servicio} $S_i$: determinan si la cola es $M/M/c$, $M/G/c$ o $G/G/c$. El CV es el estadístico más informativo.
+    \item \textbf{Tiempos de falla}: en modelos de confiabilidad, la tasa de falla puede ser creciente (desgaste) o decreciente (mortalidad infantil), lo cual descarta la exponencial.
+    \item \textbf{Tamaños de lote}: cuando llegan grupos de entidades simultáneamente (buses, pedidos por bulk).
+\end{itemize}
+
+\begin{notabox}[Notación de Kendall]
+La notación $A/S/c/K$ describe una cola por sus distribuciones de llegada ($A$) y servicio ($S$), número de servidores ($c$) y capacidad máxima ($K$). Letras estándar: $M$ = exponencial/Poisson, $D$ = determinista, $E_k$ = Erlang-$k$, $H_k$ = hiperexponencial, $G$ = general. Una cola $M/G/1$ tiene llegadas Poisson y servicio arbitrario.
+\end{notabox}
+
+% ══════════════════════════════════════════════════
+\section{Exploración gráfica}
+% ══════════════════════════════════════════════════
+
+\subsection{Histograma}
+
+El histograma divide el rango en $k$ intervalos y estima la densidad empírica en cada uno. Reglas prácticas para $k$:
+\begin{itemize}
+    \item Sturges: $k = \lceil 1 + \log_2 n \rceil$.
+    \item Raíz cuadrada: $k \approx \sqrt{n}$.
+    \item Scott: $h = 3{,}49\,s\,n^{-1/3}$ (anchura óptima bajo normalidad).
+\end{itemize}
+
+El histograma revela asimetría, multimodalidad y colas, pero es sensible a la elección de $k$ con muestras pequeñas.
+
+\subsection{Función de distribución empírica (ECDF)}
+
+La ECDF estima $F(x) = \Prob(X \le x)$ sin suponer ninguna forma paramétrica:
+
+\[
+\hat{F}_n(x) = \frac{1}{n}\sum_{i=1}^{n}\ind{X_i \le x}
+\]
+
+Si los datos se ordenan como $X_{(1)} \le X_{(2)} \le \cdots \le X_{(n)}$, entonces $\hat{F}_n(X_{(i)}) = i/n$. El teorema de Glivenko--Cantelli garantiza $\sup_x|\hat{F}_n(x)-F(x)| \xrightarrow{c.s.} 0$. Superponer la ECDF con la CDF teórica $F(x;\hat\theta)$ permite una inspección visual global del ajuste.
+
+\subsection{Gráfico Q-Q (cuantil--cuantil)}
+
+Compara los cuantiles empíricos con los cuantiles teóricos. Si el ajuste es correcto, los puntos se alinean en la recta $y = x$.
+
+\begin{metodobox}[Construcción del gráfico Q-Q]
+\begin{enumerate}
+    \item Ordenar: $X_{(1)} \le \cdots \le X_{(n)}$.
+    \item Probabilidades de trazado: $p_i = (i-0{,}5)/n$ (fórmula de Hazen).
+    \item Cuantiles teóricos: $q_i = F^{-1}(p_i;\hat\theta)$.
+    \item Graficar $(q_i,\, X_{(i)})$; observar alineación con la diagonal.
+\end{enumerate}
+\end{metodobox}
+
+\textbf{Patrones de desviación}:
+\begin{itemize}
+    \item Puntos \emph{sobre} la diagonal en la cola derecha: datos con colas más pesadas que el modelo.
+    \item Curvatura en ``S'': los datos son más simétricos o menos asimétricos que el modelo.
+    \item Pendiente distinta de 1: parámetro de escala mal estimado.
+\end{itemize}
+
+% ══════════════════════════════════════════════════
+\section{Familias de distribuciones para sistemas de colas}
+% ══════════════════════════════════════════════════
+
+\subsection{Exponencial — base de referencia Markoviana}
+
+$X \sim \text{Exp}(\lambda)$: $f(x) = \lambda e^{-\lambda x}$, $\E[X]=1/\lambda$, $\text{CV}=1$.
+
+\textbf{Propiedad de ausencia de memoria}: $\Prob(X > s+t \mid X > s) = \Prob(X > t)$. Esta propiedad hace que los sistemas con llegadas y servicios exponenciales sean CMTC, tractables analíticamente. Es el único justificativo para el modelo $M/M/c$.
+
+\subsection{Erlang-$k$ — servicio en fases regulares}
+
+$X \sim E_k(\mu)$ es la suma de $k$ exponenciales i.i.d.\ con tasa $\mu$: $X = S_1 + \cdots + S_k$. $\E[X]=k/\mu$, $\text{CV} = 1/\sqrt{k}$.
+
+La Erlang modela servicios con $k$ etapas secuenciales (inspección, diagnóstico, prueba). A mayor $k$, menor variabilidad y, según la fórmula P-K, menor tiempo de espera.
+
+\subsection{Hiperexponencial-$k$ — mezcla de tipos de servicio}
+
+Se genera eligiendo exponencial $i$ con probabilidad $p_i$ y muestreando $X \sim \text{Exp}(\lambda_i)$. $\text{CV} > 1$. Adecuada para poblaciones heterogéneas (reparaciones simples vs.\ complejas).
+
+\subsection{Gamma}
+
+$X \sim \text{Gamma}(\alpha,\beta)$: $\E[X]=\alpha/\beta$, $\text{CV}=1/\sqrt{\alpha}$. La Erlang-$k$ es un caso especial con $\alpha=k \in \mathbb{N}$. El parámetro $\alpha$ no requiere ser entero, lo que da mayor flexibilidad.
+
+\subsection{Weibull — tasa de falla no constante}
+
+$X \sim \text{Weibull}(k,\lambda)$: $f(x) = \frac{k}{\lambda}\bigl(\frac{x}{\lambda}\bigr)^{k-1}e^{-(x/\lambda)^k}$. La tasa de falla (hazard) es $h(x) = \frac{k}{\lambda}(x/\lambda)^{k-1}$:
+
+\begin{itemize}
+    \item $k<1$: tasa decreciente (mortalidad infantil — equipos nuevos).
+    \item $k=1$: tasa constante (exponencial, Markoviano).
+    \item $k>1$: tasa creciente (desgaste — equipos envejecidos).
+\end{itemize}
+
+La Weibull es la distribución estándar para tiempos de falla en ingeniería de confiabilidad y para tiempos de reparación con alta variabilidad.
+
+\subsection{Log-normal — fenómenos multiplicativos}
+
+$X \sim \text{LogNormal}(\mu,\sigma^2)$ si $\ln X \sim \mathcal{N}(\mu,\sigma^2)$. $\E[X] = e^{\mu+\sigma^2/2}$, $\text{CV}=\sqrt{e^{\sigma^2}-1}$. Natural cuando el tiempo de servicio resulta de muchos factores multiplicativos (diagnóstico, negociación, resolución de incidencias).
+
+\subsection{Tabla resumen}
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lllll}
+\toprule
+\textbf{Distribución} & \textbf{Soporte} & $\text{CV}$ & \textbf{Tasa de falla} & \textbf{Uso típico} \\
+\midrule
+Determinista ($D$)      & $\{d\}$        & $0$              & ---         & Procesos automatizados \\
+Erlang-$k$ ($E_k$)      & $(0,\infty)$   & $1/\sqrt{k}$     & Creciente   & Servicio en etapas \\
+Exponencial ($M$)       & $(0,\infty)$   & $1$              & Constante   & Baseline Markoviano \\
+Gamma ($\alpha,\beta$)  & $(0,\infty)$   & $1/\sqrt{\alpha}$& Flexible    & Modelado general \\
+Weibull ($k,\lambda$)   & $(0,\infty)$   & Variable         & Flexible    & Fallas, mantenimiento \\
+Log-normal ($\mu,\sigma$) & $(0,\infty)$ & Variable         & Unimodal    & Actividades humanas \\
+Hiperexponencial        & $(0,\infty)$   & $>1$             & Decreciente & Poblaciones mixtas \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ══════════════════════════════════════════════════
+\section{Estimación de parámetros}
+% ══════════════════════════════════════════════════
+
+\subsection{Máxima verosimilitud (MLE)}
+
+Sea $x_1,\ldots,x_n$ una muestra i.i.d.\ con densidad $f(x;\theta)$. El estimador MLE es:
+
+\[
+\hat\theta = \arg\max_\theta\, \ell(\theta), \qquad \ell(\theta) = \sum_{i=1}^{n}\ln f(x_i;\theta)
+\]
+
+Los MLE son asintóticamente eficientes (mínima varianza) y consistentes. Para distribuciones comunes:
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+\toprule
+\textbf{Distribución} & \textbf{MLE} & \textbf{Forma cerrada} \\
+\midrule
+Exponencial($\lambda$)          & $\hat\lambda = 1/\bar{x}$                          & Sí \\
+Normal($\mu,\sigma^2$)          & $\hat\mu=\bar{x}$,\; $\hat\sigma^2=S^2$            & Sí \\
+Log-normal($\mu,\sigma^2$)      & $\hat\mu=\overline{\ln x}$,\; $\hat\sigma^2=S^2_{\ln x}$ & Sí \\
+Gamma($\alpha,\beta$)           & ec.\ transcendental en $\hat\alpha$ (digamma)       & No \\
+Weibull($k,\lambda$)            & sistema de ecuaciones no lineal                     & No \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Método de momentos (MM)}
+
+Iguala los momentos muestrales $\bar x^{(r)} = n^{-1}\sum x_i^r$ con los momentos teóricos $\E[X^r]$. Para la exponencial: $\hat\lambda=1/\bar x$ (coincide con MLE). Para la Weibull: $\hat k$ y $\hat\lambda$ se obtienen del sistema $\E[X]=\lambda\,\Gamma(1+1/k)$, $\Var[X]=\lambda^2[\Gamma(1+2/k)-\Gamma^2(1+1/k)]$.
+
+\begin{notabox}[Estrategia práctica]
+Estimar siempre con MLE cuando sea factible; usar momentos como valor inicial de la optimización numérica. Si el soporte de los datos incluye cero o hay una masa puntual, considerar distribuciones mixtas o truncadas.
+\end{notabox}
+
+% ══════════════════════════════════════════════════
+\section{Pruebas de bondad de ajuste}
+% ══════════════════════════════════════════════════
+
+Una vez ajustada la distribución, se verifica si los datos son estadísticamente consistentes con $H_0: F = F_0(\cdot;\hat\theta)$.
+
+\subsection{Prueba $\chi^2$}
+
+Agrupa los datos en $k$ celdas con frecuencias observadas $O_j$ y esperadas $E_j = n[F_0(b_j)-F_0(a_j)]$:
+
+\[
+\chi^2 = \sum_{j=1}^{k}\frac{(O_j-E_j)^2}{E_j} \;\xrightarrow{H_0}\; \chi^2_{k-1-p}
+\]
+
+donde $p$ es el número de parámetros estimados. Rechazar $H_0$ si $\chi^2 > \chi^2_{\alpha,\,k-1-p}$.
+
+\textbf{Requisito}: $E_j \ge 5$ en cada celda (fusionar celdas adyacentes si no se cumple).
+
+\subsection{Prueba de Kolmogorov--Smirnov (KS)}
+
+Compara la ECDF con la CDF teórica:
+
+\[
+D_n = \sup_x\bigl|\hat{F}_n(x) - F_0(x;\hat\theta)\bigr| = \max_i\max\!\left(\frac{i}{n}-F_0(X_{(i)}),\;F_0(X_{(i)})-\frac{i-1}{n}\right)
+\]
+
+La prueba KS es más sensible que la $\chi^2$ para distribuciones continuas, pero los valores críticos estándar son anticonservativos cuando $\hat\theta$ se estima de los mismos datos. En ese caso, usar tablas de Lilliefors o la prueba de Anderson--Darling.
+
+\begin{notabox}[¿Cuál prueba elegir?]
+La $\chi^2$ es versátil (discreta y continua) y robusta con parámetros estimados, pero requiere celdas con $E_j\ge5$. La KS es más poderosa para distribuciones continuas pero supone parámetros conocidos. Usar ambas como diagnóstico complementario; el gráfico Q-Q siempre como referencia visual.
+\end{notabox}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo básico: tiempos de atención en una clínica}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Una clínica de medicina general registra los tiempos de atención (en minutos) de 15 pacientes consecutivos. La hipótesis es que los tiempos siguen una distribución exponencial (para modelar el sistema como $M/M/1$). Se quiere verificar esta hipótesis con los datos.
+\end{ejemplobox}
+
+\textbf{Datos observados} (15 tiempos de servicio, en minutos):
+
+\begin{center}\small
+\begin{tabular}{rrrrrrrrrrrrrrr}
+0{,}7 & 0{,}8 & 0{,}9 & 1{,}1 & 1{,}2 & 1{,}5 & 1{,}6 & 1{,}8 & 2{,}1 & 2{,}4 & 2{,}8 & 3{,}1 & 3{,}4 & 4{,}2 & 5{,}6 \\
+\end{tabular}
+\end{center}
+
+\textbf{Estadísticos muestrales}:
+\[
+n=15, \quad \bar{x} = 2{,}21 \text{ min}, \quad s = 1{,}32 \text{ min}, \quad \text{CV} = \frac{s}{\bar{x}} = \frac{1{,}32}{2{,}21} = 0{,}60
+\]
+
+El CV empírico de $0{,}60 < 1$ sugiere que los datos son \emph{más regulares} que la exponencial. Una Erlang-2 ($\text{CV}=0{,}71$) o Gamma podría ajustar mejor.
+
+\textbf{Estimación MLE — Exponencial}: $\hat\lambda = 1/\bar{x} = 1/2{,}21 = 0{,}452$ min$^{-1}$.
+
+\textbf{Prueba $\chi^2$} con $k=3$ intervalos de igual probabilidad ($E_j=5$):
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Celda} & \textbf{Intervalo} & $O_j$ & $E_j$ & $(O_j-E_j)^2/E_j$ \\
+\midrule
+1 & $[0;\;1{,}00)$    & 4 & 5{,}0 & 0{,}20 \\
+2 & $[1{,}00;\;2{,}44)$ & 7 & 5{,}0 & 0{,}80 \\
+3 & $[2{,}44;\;\infty)$ & 4 & 5{,}0 & 0{,}20 \\
+\bottomrule
+\multicolumn{4}{r}{$\chi^2$ observado} & $1{,}20$ \\
+\end{tabular}
+\end{center}
+
+Con $\nu = 3-1-1 = 1$ grado de libertad y $\alpha=0{,}05$, el valor crítico es $\chi^2_{0{,}05,1}=3{,}84$. Como $1{,}20 < 3{,}84$, \textbf{no se rechaza} la hipótesis exponencial.
+
+\begin{alertabox}[Precaución con muestras pequeñas]
+Con $n=15$, la prueba $\chi^2$ tiene muy bajo poder estadístico: casi ninguna distribución sería rechazada. El CV de $0{,}60$ es la señal más informativa. Con más datos, una Gamma o Erlang-2 probablemente ajustaría mejor. Siempre interpretar la prueba junto con el Q-Q plot.
+\end{alertabox}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo escalado: taller de reparación de equipos industriales}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Un taller de mantenimiento atiende equipos industriales que llegan de diferentes líneas de producción. El gerente quiere determinar cuántos técnicos necesita. Durante dos semanas se registran:
+\begin{itemize}
+    \item 30 tiempos entre llegadas sucesivas de equipos.
+    \item 30 tiempos de reparación observados.
+\end{itemize}
+La hipótesis de trabajo es $M/M/1$, pero los datos sugieren algo diferente.
+\end{ejemplobox}
+
+\subsection{Análisis de tiempos entre llegadas}
+
+\textbf{Estadísticos}: $\bar{A}=4{,}8$ h, $s_A=4{,}6$ h, $\text{CV}_A = 0{,}96 \approx 1$.
+
+Un CV cercano a 1 es consistente con la exponencial (proceso de Poisson). La prueba KS con $\hat\lambda=1/4{,}8=0{,}208$ h$^{-1}$ arroja $D_{30}=0{,}09 < D_{0{,}05,30}^{*}=0{,}24$ (valor crítico con parámetros estimados). No se rechaza Poisson.
+
+\textbf{Conclusión de llegadas}: $A \sim \text{Exp}(0{,}208)$, proceso de Poisson con $\lambda=0{,}208$ equipos/h.
+
+\subsection{Análisis de tiempos de reparación}
+
+\textbf{Estadísticos}: $\bar{S}=3{,}6$ h, $s_S=3{,}1$ h, $\text{CV}_S=0{,}86$.
+
+A pesar de que el CV no es muy diferente de 1, el histograma muestra asimetría a la derecha y el Q-Q exponencial exhibe puntos \emph{sobre} la diagonal en la cola superior, indicando cola más pesada. Se prueban dos candidatos:
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Distribución} & \textbf{Parámetros MLE} & $D_{30}$ (KS) & \textbf{¿Rechazada? ($\alpha=5\%$)} \\
+\midrule
+Exponencial & $\hat\lambda=0{,}278$ h$^{-1}$ & $0{,}16$ & No ($<0{,}24$) \\
+Weibull     & $\hat{k}=1{,}28$, $\hat\lambda=3{,}97$ h & $0{,}07$ & No \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Ambas distribuciones pasan la prueba KS, pero la Weibull tiene $D_{30}$ mucho menor. El criterio de información de Akaike (AIC$_{\text{Weibull}}=128{,}3$ vs.\ AIC$_{\text{Exp}}=135{,}7$) también favorece la Weibull. El parámetro $\hat{k}=1{,}28>1$ indica tasa de falla creciente: las reparaciones se vuelven más complicadas a medida que el diagnóstico avanza. Esto es coherente con el proceso físico.
+
+\subsection{Impacto en el modelo de colas}
+
+Con $\lambda=0{,}208$ h$^{-1}$, $\E[S]=3{,}6$ h, $\rho=\lambda\E[S]=0{,}75$:
+
+\[
+\Var[S] = (\text{CV}_S \cdot \E[S])^2 = (0{,}86 \times 3{,}6)^2 = 9{,}59 \;\text{h}^2
+\]
+\[
+\E[S^2] = \Var[S] + (\E[S])^2 = 9{,}59 + 12{,}96 = 22{,}55 \;\text{h}^2
+\]
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Modelo} & \textbf{Fórmula} & $W_q$ \\
+\midrule
+$M/M/1$ (servicio exponencial) & $\dfrac{\rho}{\mu(1-\rho)}$ & $10{,}8$ h \\[10pt]
+$M/G/1$ (servicio Weibull)     & $\dfrac{\lambda\E[S^2]}{2(1-\rho)}$ & $9{,}4$ h \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Usar $M/M/1$ sobreestimaría el tiempo en cola en un 15\%. Para métricas que no tienen expresión cerrada en $M/G/1$ (percentiles, distribución completa del tiempo de espera), se requiere simulación.
+
+\begin{resultadobox}[Conclusión del modelado de entradas]
+El sistema queda caracterizado como $M/G/1$ con llegadas Poisson ($\lambda=0{,}208$ h$^{-1}$) y servicio Weibull ($k=1{,}28$; $\lambda_W=3{,}97$ h). Este modelo se utilizará como entrada de la simulación en los temas siguientes. La elección correcta de distribución reduce el error de predicción del tiempo de espera en $\approx 15\%$ respecto al supuesto Markoviano, y habilita análisis de percentiles y niveles de servicio que requieren simulación.
+\end{resultadobox}
+
+\end{document}

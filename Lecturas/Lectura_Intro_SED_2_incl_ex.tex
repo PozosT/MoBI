@@ -1,7 +1,7 @@
 \documentclass[11pt, letterpaper]{article}
 \usepackage{mobi-lectura}
 
-\title{Simulación de Eventos Discretos: Mecánica, Trazas y Sistemas de Colas}
+\title{Simulación de Eventos Discretos: Mecánica, Trazas y Worldviews}
 \author{Alejandra Tabares Pozos}
 \date{}
 
@@ -422,261 +422,20 @@ $t$ & Acción & Recurso Servidor & Cola \\
 La trayectoria es idéntica a la obtenida con Event-Scheduling: los mismos clientes esperan, las mismas demoras se producen, las mismas métricas resultan. La diferencia está en \emph{cómo se expresa la lógica}: en Event-Scheduling el modelador controla la FEL y escribe rutinas de evento; en Process-Interaction el modelador escribe la ``biografía'' de la entidad y el motor se encarga del resto.
 
 
-% ===================== SECCIÓN 8 =====================
-\section{Simulación de colas en estado estable: el sistema $M/M/2$}
+\section{Conexión con el análisis de estado estable}
 
-Pasamos ahora de los ejemplos manuales con pocos clientes a la simulación de un sistema estocástico completo. Consideremos un sistema $M/M/2$ con tasa de llegadas $\lambda = 5$ clientes/minuto, tasa de servicio $\mu = 3$ por servidor y $c = 2$ servidores idénticos. La intensidad de tráfico es $\rho = \lambda/(c\mu) = 5/6 \approx 0{,}833 < 1$, lo que garantiza estabilidad.
-
-\subsection{Métricas analíticas de referencia}
-
-Para $M/M/c$ se conocen fórmulas cerradas. La probabilidad de estado vacío es $P_0 \approx 0{,}0909$ y la fórmula C de Erlang da la probabilidad de esperar: $C(2, 5/3) \approx 0{,}7576$. Las métricas de estado estable son:
-
-\begin{center}
-\renewcommand{\arraystretch}{1.4}
-\small
-\begin{tabular}{@{}lcc@{}}
-\toprule
-\textbf{Métrica} & \textbf{Fórmula} & \textbf{Valor} \\
-\midrule
-$L_q$ (clientes en cola) & $C(c,\lambda/\mu)\cdot\rho/(1-\rho)$ & 3{,}788 \\
-$L$ (clientes en sistema) & $L_q + \lambda/\mu$ & 5{,}455 \\
-$W_q$ (espera en cola) & $L_q/\lambda$ & 0{,}758 min \\
-$W$ (tiempo en sistema) & $W_q + 1/\mu$ & 1{,}091 min \\
-$\rho$ (utilización) & $\lambda/(c\mu)$ & 0{,}833 \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-Estos valores corresponden al \textbf{estado estable} ($t \to \infty$). La simulación debe converger hacia ellos una vez superado el período transitorio.
-
-\subsection{Ejemplo paso a paso con 10 clientes}
-
-Al simular los primeros 10 clientes con tiempos generados a partir de las distribuciones exponenciales correspondientes, se observa que las esperas crecen progresivamente: los clientes 1 y 2 no esperan (llegan a un sistema vacío), pero a partir del cliente 3 las demoras aumentan de 0{,}03 a 0{,}44 minutos. El sistema está en fase de \emph{llenado} (transitorio). Las métricas parciales en $T = 2$ minutos arrojan $\hat{W}_D = 0{,}579$ y $\hat{W}_{q,D} = 0{,}182$, con errores del 47\% y 76\% respecto a los valores teóricos. Esta discrepancia ilustra de manera contundente por qué no podemos confiar en estimaciones basadas en corridas cortas.
-
-
-% ===================== SECCIÓN 9 =====================
-\section{La Ley de Little}
-
-\begin{teorema}[Ley de Little, 1961]
-En estado estable, para cualquier sistema de colas:
-\[
-\boxed{L = \lambda \cdot W}
-\]
-donde $L$ es el número promedio de entidades en el sistema, $\lambda$ es la tasa de llegada efectiva y $W$ es el tiempo promedio en el sistema.
-\end{teorema}
-
-La ley se aplica a cualquier subsistema: $L_q = \lambda \cdot W_q$ (para la cola) y $L_s = \lambda \cdot W_s$ (para el servicio). Su generalidad es extraordinaria: no depende de la distribución de llegadas, de la distribución de servicio, del número de servidores, de la disciplina de cola ni del orden de servicio. La única condición fundamental es que el sistema esté en estado estable.
-
-\subsection{Tres versiones de Little}
-
-Es crucial distinguir tres versiones de la ley, pues su ámbito de validez difiere:
-
-La \textbf{versión estocástica} $L = \lambda W$ es un resultado límite que requiere estado estable. La \textbf{versión operacional completa}, $\bar{L}(T) = \bar{\lambda}(T) \cdot \bar{W}_A(T)$, donde $\bar{W}_A$ incluye a \emph{todos} los clientes (incluso los que siguen en el sistema al tiempo $T$, con su tiempo parcial), es una \textbf{identidad contable} que se cumple siempre, para todo $T$, incluso en el transitorio. La demostración es inmediata: el área bajo $N(t)$ equivale a la suma de los tiempos individuales en sistema. La \textbf{versión operacional parcial}, $\bar{L}(T) \approx \bar{\lambda}(T) \cdot \bar{W}_D(T)$, que solo promedia sobre clientes que ya completaron servicio, \emph{no} coincide con $\bar{L}$ durante el transitorio porque $\bar{W}_D$ ignora a los clientes aún presentes en el sistema. Esta discrepancia se reduce conforme $T$ crece.
-
-En la práctica, esto significa que si usamos $\bar{W}_D$ como estimador (lo más común), debemos descartar el período transitorio para que la relación de Little sea consistente.
-
-\subsection{Little como herramienta de verificación}
-
-La Ley de Little es una de las herramientas más poderosas para \textbf{validar} un simulador. Si al finalizar una corrida larga las relaciones $\hat{L} \approx \hat{\lambda}\cdot\hat{W}$ y $\hat{L}_q \approx \hat{\lambda}\cdot\hat{W}_q$ no se cumplen razonablemente, algo está mal: el período transitorio no fue eliminado, la simulación fue demasiado corta, hay un bug en el código (contadores mal actualizados), el $\bar{W}$ se calculó solo con completados sin descartar el warm-up, o el sistema es inestable ($\rho \geq 1$).
-
-
-% ===================== SECCIÓN 10 =====================
-\section{El período transitorio y el estado estable}
-
-\subsection{Convergencia al estado estable}
-
-Cuando un sistema estable ($\rho < 1$) arranca desde una condición inicial (típicamente vacío), sus métricas no alcanzan inmediatamente los valores de estado estable. Durante el \textbf{período transitorio} la cola está en fase de llenado, las esperas crecen y las estimaciones están sesgadas.
-
-La Figura~\ref{fig:convergencia} ilustra cómo $\bar{L}(T)$ converge al valor teórico $L^* = 5{,}455$ para nuestro $M/M/2$. Al inicio, la estimación es mucho menor que $L^*$ porque el sistema arranca vacío.
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=13cm, height=5.5cm,
-    xlabel={Tiempo de simulación $T$},
-    ylabel={$\bar{L}(T)$},
-    xmin=0, xmax=100,
-    ymin=0, ymax=9,
-    grid=both, grid style={gray!20},
-    legend pos=north east,
-    legend style={font=\small},
-]
-\addplot[thick, uniandes, domain=0:100, samples=300]
-    {5.4545 + 4*exp(-0.05*x)*cos(deg(0.15*x)) - 5.4545*exp(-0.08*x)};
-\addlegendentry{$\bar{L}(T)$ observado}
-
-\addplot[dashed, black, domain=0:100] {5.4545};
-\addlegendentry{$L^* = 5.455$}
-
-\addplot[dashed, gray!60, domain=0:100] {5.4545 + 0.3};
-\addplot[dashed, gray!60, domain=0:100] {5.4545 - 0.3};
-
-\draw[<->, thick, rojoclaro] (axis cs:0,8.5) -- (axis cs:40,8.5);
-\node[above, font=\small] at (axis cs:20,8.5) {\textcolor{rojoclaro}{\textbf{Transitorio}}};
-
-\draw[<->, thick, verdeoscuro] (axis cs:40,8.5) -- (axis cs:100,8.5);
-\node[above, font=\small] at (axis cs:70,8.5) {\textcolor{verdeoscuro}{\textbf{Estado estable}}};
-\end{axis}
-\end{tikzpicture}
-\caption{Convergencia de $\bar{L}(T)$ al valor teórico para el $M/M/2$ con $\rho = 0.833$.}
-\label{fig:convergencia}
-\end{figure}
-
-\subsection{Efecto de las condiciones iniciales}
-
-La Figura~\ref{fig:condiciones} muestra que si el sistema arranca vacío, $\bar{L}(T)$ subestima $L^*$, y si arranca sobrecargado, la sobreestima. Ambas curvas convergen al mismo valor.
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=13cm, height=5.5cm,
-    xlabel={Tiempo de simulación $T$},
-    ylabel={$\bar{L}(T)$},
-    xmin=0, xmax=80,
-    ymin=0, ymax=12,
-    grid=both, grid style={gray!20},
-    legend pos=north east,
-    legend style={font=\small},
-]
-\addplot[thick, uniandes, domain=0:80, samples=200]
-    {5.4545 - 5*exp(-0.06*x) + 0.5*exp(-0.03*x)*sin(deg(0.2*x))};
-\addlegendentry{Inicio vacío: $N(0)=0$}
-
-\addplot[thick, rojoclaro, domain=0:80, samples=200]
-    {5.4545 + 5*exp(-0.06*x) + 0.5*exp(-0.03*x)*sin(deg(0.2*x))};
-\addlegendentry{Inicio cargado: $N(0)=15$}
-
-\addplot[dashed, black, domain=0:80] {5.4545};
-\addlegendentry{$L^* = 5.455$}
-\end{axis}
-\end{tikzpicture}
-\caption{Efecto de las condiciones iniciales en la convergencia.}
-\label{fig:condiciones}
-\end{figure}
-
-\subsection{Sensibilidad a $\rho$}
-
-A mayor $\rho$, más largo es el transitorio. La Figura~\ref{fig:sensibilidad} compara tres niveles de carga.
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=13cm, height=5.5cm,
-    xlabel={Tiempo de simulación},
-    ylabel={$\bar{L}(T) / L^*$},
-    xmin=0, xmax=150,
-    ymin=0, ymax=1.3,
-    grid=both, grid style={gray!20},
-    legend pos=south east,
-    legend style={font=\small},
-]
-\addplot[thick, verdeoscuro, domain=0:150, samples=200]
-    {1 - exp(-0.15*x)};
-\addlegendentry{$\rho = 0.50$}
-
-\addplot[thick, uniandes, domain=0:150, samples=200]
-    {1 - exp(-0.06*x)};
-\addlegendentry{$\rho = 0.83$}
-
-\addplot[thick, rojoclaro, domain=0:150, samples=200]
-    {1 - exp(-0.02*x)};
-\addlegendentry{$\rho = 0.95$}
-
-\addplot[dashed, black, domain=0:150] {1};
-
-\draw[dashed, verdeoscuro] (axis cs:20,0) -- (axis cs:20,1.3);
-\draw[dashed, uniandes] (axis cs:50,0) -- (axis cs:50,1.3);
-\draw[dashed, rojoclaro] (axis cs:120,0) -- (axis cs:120,1.3);
-
-\node[verdeoscuro, font=\tiny] at (axis cs:20,1.25) {$T_0$};
-\node[uniandes, font=\tiny] at (axis cs:50,1.25) {$T_0$};
-\node[rojoclaro, font=\tiny] at (axis cs:120,1.25) {$T_0$};
-\end{axis}
-\end{tikzpicture}
-\caption{Sistemas muy cargados ($\rho = 0.95$) requieren transitorios mucho más largos.}
-\label{fig:sensibilidad}
-\end{figure}
-
-\subsection{Impacto del truncamiento en la estimación}
-
-La Figura~\ref{fig:truncamiento} muestra cómo la elección de $T_0$ afecta la calidad de la estimación de $L$.
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=13cm, height=5.5cm,
-    xlabel={Tiempo de truncamiento $T_0$},
-    ylabel={$\hat{L}$ estimado (promedio de réplicas)},
-    xmin=0, xmax=60,
-    ymin=4.5, ymax=6.2,
-    grid=both, grid style={gray!20},
-    legend pos=south east,
-    legend style={font=\small},
-]
-\addplot[thick, uniandes, mark=*, mark size=2] coordinates {
-    (0,4.82) (5,4.95) (10,5.12) (15,5.25) (20,5.35)
-    (25,5.40) (30,5.43) (35,5.45) (40,5.44) (45,5.46)
-    (50,5.45) (55,5.44) (60,5.46)
-};
-\addlegendentry{$\hat{L}$ (20 réplicas, $T=1000$)}
-
-\addplot[dashed, rojoclaro, domain=0:60] {5.4545};
-\addlegendentry{$L^* = 5.455$}
-
-\addplot[dashed, gray!50, domain=0:60] {5.4545+0.15};
-\addplot[dashed, gray!50, domain=0:60] {5.4545-0.15};
-
-\end{axis}
-\end{tikzpicture}
-\caption{Sin truncamiento ($T_0=0$), $\hat{L} \approx 4.82$ (sesgo $-12\%$). Con $T_0 = 30$, el sesgo es $< 1\%$.}
-\label{fig:truncamiento}
-\end{figure}
-
-\subsection{Método de Welch}
-
-El procedimiento de Welch es el más utilizado para detectar el transitorio. Consiste en: (1)~ejecutar $R$ réplicas independientes (típicamente $R \geq 10$); (2)~para cada réplica $r$, registrar la trayectoria de interés $Y_r(t)$; (3)~calcular el promedio entre réplicas $\bar{Y}(t) = \frac{1}{R}\sum_r Y_r(t)$; (4)~aplicar una media móvil $\hat{Y}(t) = \frac{1}{2w+1}\sum_{s=t-w}^{t+w}\bar{Y}(s)$ para suavizar; (5)~identificar visualmente el tiempo $T_0$ a partir del cual $\hat{Y}(t)$ se estabiliza.
-
-\subsection{Estrategias para manejar el transitorio}
-
-Existen varias estrategias. El \textbf{truncamiento} (\emph{warm-up deletion}) es la más común: se descarta toda la información de $[0, T_0]$ y se recolectan estadísticas solo en $[T_0, T]$. Una \textbf{corrida larga} consiste en hacer $T$ tan grande que el transitorio sea despreciable respecto al total. El \textbf{inicio inteligente} arranca el sistema con un estado cercano al estable (si se conoce $L^*$ aproximadamente). Las \textbf{réplicas con truncamiento} combinan $R$ réplicas independientes, cada una con su warm-up, para construir intervalos de confianza. Finalmente, el \textbf{método de batch means} divide una única corrida larga en lotes después de $T_0$.
-
-Para el sistema $M/M/2$ con $\rho = 0{,}833$, el transitorio dura entre 20 y 50 unidades de tiempo. Sin truncamiento, la estimación de $L$ tiene un sesgo del $-12\%$; con $T_0 = 30$ minutos, el sesgo se reduce a menos del $1\%$.
-
-
-% ===================== SECCIÓN 11 =====================
-\section{Buenas prácticas en simulación de colas}
-
-A modo de resumen operativo, todo estudio de simulación robusto debe seguir un protocolo sistemático. Primero, \textbf{verificar la estabilidad}: asegurar $\rho < 1$ antes de buscar métricas de estado estable. Segundo, \textbf{detectar el transitorio}: usar el método de Welch u otro procedimiento formal y no asumir un $T_0$ arbitrario. Tercero, \textbf{verificar Little}: comprobar que $\hat{L} \approx \hat{\lambda}\cdot\hat{W}$ como diagnóstico de consistencia. Cuarto, \textbf{usar suficientes réplicas}: un mínimo de $R \geq 10$ para construir intervalos de confianza. Quinto, \textbf{corridas suficientemente largas}: $T \gg T_0$ (al menos $T/T_0 > 10$). Sexto, \textbf{validar contra lo conocido}: si existe solución analítica, comparar. Séptimo, \textbf{reportar incertidumbre}: siempre acompañar estimaciones puntuales con intervalos de confianza.
-
-El riesgo típico en un estudio de simulación no es ``programar mal'', sino \emph{preguntar mal}, \emph{modelar mal la incertidumbre} o \emph{interpretar mal la salida}. La estructura disciplinada que ofrece el enfoque de event-scheduling --- definir estado y FEL con precisión, separar ``avanzar reloj'' de ``cambiar estado'', calcular estadísticas por áreas de forma correcta --- mitiga estos riesgos al obligar al modelador a ser explícito en cada decisión.
-
-
-% ===================== SECCIÓN 12 =====================
-\section{Conclusiones}
-
-La simulación de eventos discretos es una herramienta indispensable cuando los modelos analíticos no alcanzan a capturar la complejidad de un sistema real. Su mecánica interna --- un calendario de eventos, rutinas que actualizan el estado, estadísticas acumuladas por áreas --- es conceptualmente sencilla pero exige rigor en la implementación.
-
-Como vimos en detalle en la Sección~6, el worldview de \textbf{Event-Scheduling} requiere que el modelador controle explícitamente la FEL y ejecute el ciclo Timing $\to$ Update-Stats $\to$ Event-Routine en cada paso. El worldview de \textbf{Process-Interaction} (Sección~7) ofrece una alternativa más legible donde se describe la vida de la entidad; el motor traduce esas instrucciones en eventos. Ambos producen la misma trayectoria y las mismas métricas.
-
-La Ley de Little, $L = \lambda W$, es el resultado más fundamental de la teoría de colas. En su versión operacional completa es una identidad contable que siempre se cumple; en su versión estocástica requiere estado estable, lo que obliga a detectar y eliminar el período transitorio. Como muestran las Figuras~\ref{fig:convergencia}--\ref{fig:truncamiento}, ignorar el transitorio puede producir errores de estimación superiores al 10\%, y a mayor $\rho$ el problema se agrava.
-
-Las métricas del sistema se calculan de dos formas complementarias: promedios en el tiempo (áreas bajo trayectorias) y promedios por entidad (sumas sobre clientes). Dominar ambas perspectivas y saber cuándo cada una es apropiada es esencial para el análisis correcto de la salida de una simulación.
+Las trazas de esta lectura muestran el comportamiento de pocos clientes en un sistema que parte vacío. En la práctica, interesa el comportamiento del sistema \emph{a largo plazo}: la distribución de equilibrio, el efecto del período transitorio y la Ley de Little. Estos temas se estudian en la lectura complementaria \textbf{Sistemas de Colas con SED: Ley de Little, Período Transitorio y Validación}.
 
 \vfill
 
 \section*{Referencias}
 
 \begin{enumerate}[label={[\arabic*]}]
-    \item Banks, J., Carson, J.\,S., Nelson, B.\,L., Nicol, D.\,M. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson.
-    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill.
-    \item Little, J.\,D.\,C. (1961). A proof for the queuing formula: $L = \lambda W$. \textit{Operations Research}, 9(3), 383--387.
-    \item Stidham, S. (1974). A last word on $L = \lambda W$. \textit{Operations Research}, 22(2), 417--421.
-    \item Welch, P.\,D. (1983). The statistical analysis of simulation results. In \textit{The Computer Performance Modeling Handbook}, Academic Press.
-    \item Ross, S.\,M. (2014). \textit{Introduction to Probability Models}, 11th ed. Academic Press.
+    \item Banks, J., Carson, J.\,S., Nelson, B.\,L., Nicol, D.\,M. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~3--4.
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~3.
+    \item Kelton, W.\,D., Sadowski, R.\,P., \& Zupick, N.\,B. (2015). \textit{Simulation with Arena}, 6th ed. McGraw-Hill. Cap.~2.
+    \item Fishman, G.\,S. (2001). \textit{Discrete-Event Simulation: Modeling, Programming, and Analysis}. Springer. Cap.~2.
+    \item Ross, S.\,M. (2014). \textit{Introduction to Probability Models}, 11th ed. Academic Press. Cap.~4.
 \end{enumerate}
 
 \end{document}

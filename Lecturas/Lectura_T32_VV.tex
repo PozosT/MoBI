@@ -1,0 +1,260 @@
+\documentclass[11pt, letterpaper]{article}
+\usepackage{mobi-lectura}
+
+\title{Verificación y Validación de Modelos de Simulación}
+\author{Alejandra Tabares Pozos}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════
+\section{La distinción fundamental: verificar vs.\ validar}
+% ══════════════════════════════════════════════════
+
+Construir un modelo de simulación involucra tres capas: el \textbf{sistema real}, el \textbf{modelo conceptual} (descripción matemática del sistema) y el \textbf{modelo computacional} (implementación en código). Dos preguntas distintas emergen:
+
+\begin{definicionbox}[Verificación]
+\textbf{¿Construimos el modelo correctamente?} La verificación comprueba que el modelo computacional implementa fielmente el modelo conceptual. Es un problema de \emph{ingeniería de software}: ausencia de bugs, lógica correcta, parámetros bien cargados.
+\end{definicionbox}
+
+\begin{definicionbox}[Validación]
+\textbf{¿Construimos el modelo correcto?} La validación comprueba que el modelo conceptual (y por ende el computacional) representa con suficiente fidelidad el sistema real para los propósitos del estudio. Es un problema de \emph{modelado}: ¿captura el comportamiento relevante?
+\end{definicionbox}
+
+Un modelo puede estar verificado (sin bugs) pero no validado (con supuestos incorrectos), y viceversa. Ambos procesos son necesarios.
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, node distance=3.2cm,
+  box/.style={rectangle, draw=mobiblue, fill=mobilightblue, rounded corners=4pt, minimum width=2.8cm, minimum height=1cm, align=center, font=\small\bfseries}]
+  \node[box] (real) {Sistema\\Real};
+  \node[box, right of=real] (conceptual) {Modelo\\Conceptual};
+  \node[box, right of=conceptual] (comp) {Modelo\\Computacional};
+  \draw[->, thick, mobiblue] (real) -- node[above, font=\scriptsize]{Abstracción} (conceptual);
+  \draw[->, thick, mobiblue] (conceptual) -- node[above, font=\scriptsize]{Implementación} (comp);
+  \draw[->, thick, red!70!black, bend right=30] (comp) to node[below, font=\scriptsize\itshape]{Verificación} (conceptual);
+  \draw[->, thick, naranja, bend right=30] (conceptual) to node[below, font=\scriptsize\itshape]{Validación} (real);
+\end{tikzpicture}
+\end{center}
+
+% ══════════════════════════════════════════════════
+\section{Proceso V\&V}
+% ══════════════════════════════════════════════════
+
+\begin{metodobox}[Proceso integrado de V\&V]
+\begin{enumerate}
+    \item \textbf{Validación de cara (face validity)}: ¿es razonable el modelo desde el punto de vista del experto de dominio?
+    \item \textbf{Verificación estructural}: revisión del código, trazas de entidades, pruebas extremas.
+    \item \textbf{Verificación de eventos}: comprobar que cada tipo de evento actualiza el estado correctamente.
+    \item \textbf{Validación operacional}: comparar salidas del modelo con datos históricos o soluciones analíticas conocidas.
+    \item \textbf{Validación estadística}: pruebas de hipótesis que comparan métricas del modelo con métricas del sistema real.
+\end{enumerate}
+\end{metodobox}
+
+% ══════════════════════════════════════════════════
+\section{Técnicas de verificación}
+% ══════════════════════════════════════════════════
+
+\subsection{Revisión estructurada del código}
+
+Un segundo analista revisa el código independientemente del autor. Se verifican:
+\begin{itemize}
+    \item Que cada evento actualice \emph{todos} los contadores de estado relevantes.
+    \item Que la lógica de la cola (FIFO, LIFO, prioridades) coincida con el modelo conceptual.
+    \item Que los contadores de estadísticas (área bajo $N(t)$, tiempos individuales) se actualicen en el momento correcto.
+\end{itemize}
+
+\subsection{Traza de una entidad (entity trace)}
+
+Se ejecuta la simulación con un único cliente y se imprime el estado del sistema en cada evento. Esta traza debe coincidir con el cálculo manual. Por ejemplo, si el primer cliente llega a $t=2{,}1$ y su tiempo de servicio es $1{,}5$, debe salir a $t=3{,}6$.
+
+\subsection{Pruebas con entradas degeneradas}
+
+\begin{itemize}
+    \item \textbf{Sin aleatoriedad}: usar tiempos de llegada y servicio deterministas conocidos. La salida debe ser exactamente calculable a mano.
+    \item \textbf{Tráfico cero} ($\lambda \to 0$): el sistema siempre estará vacío, $W_q \to 0$, $\rho \to 0$.
+    \item \textbf{Tráfico extremo} ($\rho \to 1$): la cola debe crecer sin límite; $W_q$ y $L_q$ deben diverger.
+    \item \textbf{Capacidad infinita vs.\ finita}: al fijar $K$ (capacidad), el flujo de salida debe ser $\le\lambda$ por el rechazo de clientes.
+\end{itemize}
+
+\subsection{Conservación de entidades}
+
+En toda simulación de cola, la identidad:
+\[
+\text{Llegadas totales} = \text{Salidas totales} + \text{Entidades en sistema al final}
+\]
+debe cumplirse exactamente. Si no se cumple, hay un bug en la lógica de eventos.
+
+\subsection{Pruebas de simplificación}
+
+Si el sistema tiene $c$ servidores idénticos con la misma tasa, una simulación de $c$ servidores debería producir resultados estadísticamente equivalentes a $c$ subsistemas independientes de un solo servidor (bajo ciertas condiciones de enrutamiento). Esta consistencia es fácilmente verificable.
+
+% ══════════════════════════════════════════════════
+\section{Técnicas de validación}
+% ══════════════════════════════════════════════════
+
+\subsection{Validación de cara (face validity)}
+
+Presentar el modelo a expertos del dominio (operadores, gerentes) y preguntarles si el comportamiento del modelo es razonable. Esta es la primera línea de defensa. Preguntas clave:
+\begin{itemize}
+    \item ¿Los tiempos de ciclo simulados son similares a los observados informalmente?
+    \item ¿Las situaciones de congestión ocurren en los mismos momentos del día?
+    \item ¿Las métricas de utilización de servidores parecen realistas?
+\end{itemize}
+
+\subsection{Test de Turing}
+
+Un experto del dominio recibe un conjunto de datos reales y un conjunto de datos simulados (mezclados o separados) y debe identificar cuál es cuál. Si no puede distinguirlos, el modelo tiene alta fidelidad operacional.
+
+\subsection{Validación con datos históricos}
+
+Se divide el registro histórico en dos partes: un periodo para \textbf{calibrar} el modelo (ajustar distribuciones y parámetros) y otro para \textbf{validar} (comparar métricas del modelo con las del sistema en ese periodo).
+
+\[
+\text{Error relativo} = \frac{|\hat\theta_{\text{sim}} - \theta_{\text{real}}|}{|\theta_{\text{real}}|} \times 100\%
+\]
+
+Un error relativo por debajo de un umbral predefinido (típicamente 5--10\%) indica validez operacional suficiente para el propósito del estudio.
+
+\subsection{Validación estadística con soluciones analíticas}
+
+Cuando el sistema es suficientemente simple, soluciones analíticas exactas sirven como \textbf{punto de referencia de oro}. Las principales fórmulas de validación son:
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+\toprule
+\textbf{Modelo} & \textbf{Métrica} & \textbf{Fórmula exacta} \\
+\midrule
+$M/M/1$  & $W_q$ (tiempo en cola) & $\dfrac{\rho}{\mu(1-\rho)}$ \\[8pt]
+$M/M/1$  & $L_q$ (clientes en cola)& $\dfrac{\rho^2}{1-\rho}$ \\[8pt]
+$M/M/1$  & $\rho$ (utilización)    & $\lambda/\mu$ \\[8pt]
+$M/G/1$  & $W_q$ (P-K)             & $\dfrac{\lambda\E[S^2]}{2(1-\rho)}$ \\[8pt]
+$M/M/c$  & $\rho$ (utilización)    & $\lambda/(c\mu)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{notabox}[La fórmula de Pollaczek--Khinchine como herramienta de validación]
+La cola $M/G/1$ tiene solución analítica para $W_q$ (y $L_q$ por la ley de Little) pero no para la distribución completa del tiempo de espera. Esto la convierte en una herramienta ideal de validación: podemos verificar el promedio con la fórmula P-K y, si coincide, confiar en que la simulación es correcta para las métricas más complejas (percentiles, probabilidad de espera $>t$).
+\end{notabox}
+
+\subsection{Prueba $t$ para comparar modelo y sistema real}
+
+Si se tienen $n$ observaciones reales de una métrica $\theta$ (p.ej.\ tiempo en sistema promedio), se construye la hipótesis:
+\[
+H_0: \mu_{\text{sim}} = \bar\theta_{\text{real}} \quad \text{vs.} \quad H_1: \mu_{\text{sim}} \ne \bar\theta_{\text{real}}
+\]
+
+Se ejecutan $n_R$ réplicas del simulador, obteniendo $\bar Y_{n_R}$ y $S_{n_R}$. El estadístico de prueba es:
+\[
+t = \frac{\bar Y_{n_R} - \bar\theta_{\text{real}}}{S_{n_R}/\sqrt{n_R}} \sim t_{n_R-1} \quad \text{bajo } H_0
+\]
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo básico: verificación y validación de una cola $M/M/1$}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Se implementa una simulación de cola $M/M/1$ con $\lambda=3$ clientes/min y $\mu=5$ clientes/min ($\rho=0{,}6$). Antes de usar el modelo para análisis de políticas, se aplica el proceso de V\&V.
+\end{ejemplobox}
+
+\textbf{Valores analíticos de referencia}:
+\[
+W_q = \frac{0{,}6}{5 \times 0{,}4} = 0{,}30 \text{ min}, \quad
+L_q = \frac{0{,}6^2}{0{,}4} = 0{,}90 \text{ clientes}, \quad
+\rho = 0{,}60
+\]
+
+\subsection{Paso 1 — Verificación estructural}
+
+\textbf{Prueba degenerada}: se fija $\lambda=0$ (sin llegadas). La simulación debe reportar $N(t)=0$, $W_q=0$, $\rho=0$ exactamente. ✓
+
+\textbf{Conservación de entidades}: en una corrida de $T=1000$ min se cuentan 3\,012 llegadas y 3\,012 salidas (sistema vacío al final). ✓
+
+\textbf{Traza de evento}: el primer cliente llega a $t=0{,}28$, su servicio dura $0{,}19$ min, por lo que sale a $t=0{,}47$. El siguiente cliente llega a $t=0{,}64$ (sistema vacío), espera 0, recibe servicio de $0{,}15$ min. ✓
+
+\subsection{Paso 2 — Validación operacional con fórmulas}
+
+Se ejecutan $n_R=30$ réplicas de $T=2000$ min. Los estadísticos de salida son:
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Métrica} & \textbf{Analítico} & \textbf{Simulado ($\bar Y \pm s$)} & \textbf{Error relativo} \\
+\midrule
+$W_q$ (min) & $0{,}300$ & $0{,}308 \pm 0{,}041$ & $2{,}7\%$ \\
+$L_q$ (clientes) & $0{,}900$ & $0{,}924 \pm 0{,}126$ & $2{,}7\%$ \\
+$\rho$           & $0{,}600$ & $0{,}598 \pm 0{,}006$ & $0{,}3\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+El intervalo de confianza al 95\% para $W_q$ es $[0{,}293;\; 0{,}323]$ min, que contiene el valor analítico $0{,}300$. El modelo está correctamente implementado y validado.
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo escalado: celda de manufactura con servicio Erlang}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Una celda de manufactura recibe piezas que llegan según un proceso de Poisson con $\lambda=8$ piezas/h. El tiempo de procesamiento consiste en dos etapas secuenciales (carga y mecanizado) de duración exponencial con tasa $\mu_{\text{fase}}=10$ operaciones/h cada una, por lo que $S \sim E_2(10)$, con $\E[S]=0{,}2$ h y $\text{CV}_S=1/\sqrt{2}$.
+
+El modelo conceptual es una cola $M/E_2/1$. Se implementa la simulación y se verifica y valida contra la fórmula P-K.
+\end{ejemplobox}
+
+\textbf{Parámetros del sistema}:
+\[
+\E[S] = \frac{2}{10} = 0{,}2 \text{ h}, \quad \Var[S] = \frac{2}{10^2} = 0{,}02 \text{ h}^2, \quad
+\rho = 8 \times 0{,}2 = 0{,}80
+\]
+\[
+\E[S^2] = \Var[S] + (\E[S])^2 = 0{,}02 + 0{,}04 = 0{,}06 \text{ h}^2
+\]
+
+\subsection{Verificación estructural}
+
+\textbf{Prueba de tráfico extremo}: con $\lambda=9{,}9$ piezas/h ($\rho=0{,}99$), la cola debe crecer sin límite. En una corrida de $T=500$ h, $L_q$ crece monótonamente y supera 200 piezas. ✓
+
+\textbf{Prueba de simplificación}: un servicio $E_2(\mu_f)$ es equivalente a dos servidores exponenciales en tándem interno. Se verifica que la distribución de $S_1+S_2$ tiene media $0{,}2$ h, varianza $0{,}02$ h$^2$ y asimetría $\sqrt{2}/\sqrt{2}=1{,}0$ (asimetría teórica de $E_k$ es $2/\sqrt{k}$). ✓
+
+\subsection{Validación operacional con la fórmula P-K}
+
+La fórmula de Pollaczek--Khinchine da:
+\[
+W_q^{\text{P-K}} = \frac{\lambda\E[S^2]}{2(1-\rho)} = \frac{8 \times 0{,}06}{2 \times 0{,}2} = \frac{0{,}48}{0{,}4} = 1{,}20 \text{ h}
+\]
+
+Para comparar: si el servicio fuera exponencial ($M/M/1$, misma $\E[S]$):
+\[
+W_q^{M/M/1} = \frac{\rho}{\mu(1-\rho)} = \frac{0{,}8}{5 \times 0{,}2} = 1{,}60 \text{ h}
+\]
+
+El servicio Erlang-2 reduce el tiempo en cola en un 25\% gracias a la menor variabilidad ($\text{CV}=0{,}71$ vs.\ $1$).
+
+\textbf{Resultados de simulación} ($n_R=50$ réplicas, $T=2000$ h):
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Métrica} & \textbf{P-K / analítico} & \textbf{Simulado} & \textbf{IC 95\%} & \textbf{¿Contiene ref.?} \\
+\midrule
+$W_q$ (h)    & $1{,}200$ & $1{,}214$ & $[1{,}176;\;1{,}252]$ & Sí ✓ \\
+$L_q$ (pzas) & $9{,}600$ & $9{,}712$ & $[9{,}408;\;10{,}016]$& Sí ✓ \\
+$\rho$       & $0{,}800$ & $0{,}799$ & $[0{,}795;\;0{,}803]$ & Sí ✓ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Todos los intervalos de confianza contienen el valor de referencia. El modelo está verificado y validado. Se puede proceder con confianza a usar el simulador para analizar escenarios sin solución analítica cerrada (distribución del tiempo de espera, percentil 90, comparación de políticas de prioridad).
+
+\begin{resultadobox}[Conclusión de V\&V]
+El proceso de verificación confirmó la correcta implementación del modelo (sin pérdida de entidades, eventos bien ordenados, pruebas extremas consistentes). La validación operacional, usando la fórmula P-K como referencia, demostró que el simulador reproduce las métricas analíticas dentro del margen estadístico esperado (error relativo $< 1{,}2\%$). Esto otorga credibilidad para usar el modelo en análisis que exceden las capacidades analíticas: percentiles de tiempo de espera, políticas de prioridad, configuraciones con múltiples colas.
+\end{resultadobox}
+
+\end{document}

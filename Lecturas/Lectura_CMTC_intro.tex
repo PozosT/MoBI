@@ -247,6 +247,41 @@ Acople & no & no & no & no & s\'i (bloqueo) \\\bottomrule
 \end{center}
 \end{notabox}
 
+% ══════════════════════════════════════════════════
+\section{Conexión con el análisis transitorio y estacionario}
+% ══════════════════════════════════════════════════
+
+Una vez construida la matriz $\mat{Q}$, el siguiente tema estudia qué hace el sistema a lo largo del tiempo. Existen dos preguntas naturales:
+
+\begin{enumerate}
+    \item \textbf{Comportamiento transitorio:} ¿cuál es la distribución de $X(t)$ en el instante $t$? La respuesta involucra la \emph{exponencial matricial} $e^{\mat{Q}t}$: si $\vect{\pi}(0)$ es la distribución inicial, entonces
+    \[
+    \vect{\pi}(t) = \vect{\pi}(0)\, e^{\mat{Q}t}.
+    \]
+
+    \item \textbf{Distribución estacionaria $\vect{\pi}^*$:} si la cadena es ergódica, cuando $t\to\infty$ la distribución converge a un límite independiente del estado inicial. Este límite satisface el sistema lineal:
+    \[
+    \boxed{\vect{\pi}^* \mat{Q} = \vect{0}, \qquad \textstyle\sum_i \pi^*_i = 1.}
+    \]
+\end{enumerate}
+
+\textbf{Ejemplo: M/M/1/K del Escenario B} ($\lambda=2$, $\mu=3$, $K=4$).
+
+El sistema $\vect{\pi}^*\mat{Q}=\vect{0}$ produce cinco ecuaciones de balance:
+\begin{align*}
+-2\pi_0 + 3\pi_1 &= 0 & 2\pi_0 - 5\pi_1 + 3\pi_2 &= 0 \\
+2\pi_1 - 5\pi_2 + 3\pi_3 &= 0 & 2\pi_2 - 5\pi_3 + 3\pi_4 &= 0 & 2\pi_3 - 3\pi_4 &= 0
+\end{align*}
+junto con $\sum_{i=0}^4 \pi_i = 1$. Por sustitución progresiva, $\pi_i = \pi_0\,(2/3)^i$. De la normalización:
+\[
+\pi_0\sum_{i=0}^4 (2/3)^i = 1 \implies \pi_0 = \frac{1}{1+\tfrac{2}{3}+\tfrac{4}{9}+\tfrac{8}{27}+\tfrac{16}{81}} \approx 0{,}417.
+\]
+La distribución estacionaria es $(\pi_0,\pi_1,\pi_2,\pi_3,\pi_4) \approx (0{,}417,\;0{,}278,\;0{,}185,\;0{,}123,\;0{,}082)$. Interpretación: el sistema está vacío el 41.7\% del tiempo; la tasa efectiva de llegadas es $\lambda_{\text{ef}} = \lambda(1-\pi_4) \approx 2(0{,}918) = 1{,}836$ clientes/h.
+
+\begin{alertabox}[Para el próximo tema]
+La construcción correcta de $\mat{Q}$ es el prerrequisito indispensable. Un error en las tasas o en las condiciones de borde se propaga directamente a $e^{\mat{Q}t}$ y a $\vect{\pi}^*\mat{Q}=\vect{0}$. Verifique siempre que cada fila de $\mat{Q}$ sume cero antes de continuar.
+\end{alertabox}
+
 \vfill
 
 \section*{Referencias}
