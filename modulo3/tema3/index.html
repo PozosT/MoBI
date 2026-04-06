@@ -41,11 +41,29 @@
     <div class="material-icon icon-lecture"></div>
     <div class="material-info">
      <h3>Análisis de Salida: Simulaciones Terminales</h3>
-     <p>Taxonomía terminal vs. estacionaria. El problema de la autocorrelación intra-réplica. Método de réplicas independientes. Intervalos de confianza t-Student. Procedimiento secuencial para n*. Ejemplo básico: cola M/G/1 con Erlang-2 (turno de almuerzo). Ejemplo escalado: urgencias hospitalarias con servicios Erlang-3 y Log-normal, prioridades no-expulsivas.</p>
+     <p>Autocorrelación y por qué S/√m falla. Método de réplicas independientes. Tipos de métricas (por entidad, en tiempo, proporciones). IC t-Student y cobertura. Procedimiento secuencial para n*. Errores comunes. Tres ejemplos incrementales: banco M/M/1, banco M/E₂/1 con n*, urgencias hospitalarias con prioridades.</p>
      <div class="btn-row">
       <a class="btn btn-primary" href="../../compiled/lecturas/Lectura_T33_Salida_Terminal.pdf" target="_blank"> Ver PDF</a>
      </div>
     </div>
+   </div>
+  </div>
+ </div>
+
+ <div class="section-title"><div class="icon"></div><h2>Notebook</h2></div>
+ <div class="materials-grid">
+  <div class="material-card">
+   <div class="material-card-accent notebook"></div>
+   <div class="material-card-body">
+   <div class="material-icon icon-notebook"></div>
+   <div class="material-info">
+    <h3>Análisis de Salida Terminal: Ejemplos Computacionales</h3>
+    <p>Réplicas independientes con SimPy. Demostración de autocorrelación intra-corrida vs. independencia entre réplicas. Procedimiento secuencial para n*. Urgencias hospitalarias con PriorityResource: 3 médicos, 3 niveles de prioridad, múltiples métricas.</p>
+    <div class="btn-row">
+     <a class="btn btn-colab" href="https://colab.research.google.com/github/PozosT/MoBI/blob/main/Codigos/pres_T3.3_salida_terminal.ipynb" target="_blank">▶ Abrir en Colab</a>
+     <a class="btn btn-slides" href="../../compiled/notebooks/pres_T3.3_salida_terminal.slides.html" target="_blank">▶ Ver presentación</a>
+    </div>
+   </div>
    </div>
   </div>
  </div>

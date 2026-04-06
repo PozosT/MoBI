@@ -41,11 +41,29 @@
     <div class="material-icon icon-lecture"></div>
     <div class="material-info">
      <h3>Análisis de Salida: Simulaciones de Estado Estacionario</h3>
-     <p>Período transitorio y sesgo de inicialización. Método de Welch para determinar warm-up. Batch Means: independencia de lotes y construcción del IC. Réplicas con calentamiento (deletion method). Comparación de sistemas: prueba t de dos muestras y Números Aleatorios Comunes (CRN). Ejemplo básico: M/M/1 vs. M/D/1 a igual carga. Ejemplo escalado: call center con servicio Log-normal, comparación de políticas de personal con CRN.</p>
+     <p>Sesgo de inicialización (no se elimina con réplicas). Método de Welch y alternativas (MSER-5). Batch Means: derivación, Von Neumann, OBM. CRN: derivación de la reducción de varianza, sincronización. Ranking &amp; selection (KN). Tres ejemplos: M/M/1 Batch Means, M/M/1 vs M/D/1 con CRN, call center 6 vs 7 agentes + sensibilidad.</p>
      <div class="btn-row">
       <a class="btn btn-primary" href="../../compiled/lecturas/Lectura_T34_Salida_Estacionaria.pdf" target="_blank"> Ver PDF</a>
      </div>
     </div>
+   </div>
+  </div>
+ </div>
+
+ <div class="section-title"><div class="icon"></div><h2>Notebook</h2></div>
+ <div class="materials-grid">
+  <div class="material-card">
+   <div class="material-card-accent notebook"></div>
+   <div class="material-card-body">
+   <div class="material-icon icon-notebook"></div>
+   <div class="material-info">
+    <h3>Estado Estacionario: Ejemplos Computacionales</h3>
+    <p>Método de Welch y Batch Means con SimPy. Razón de Von Neumann para verificar independencia de lotes. CRN: comparación M/M/1 vs M/D/1 (correlación, eficiencia). Call center Log-normal: 6 vs 7 agentes con CRN y análisis de sensibilidad a λ.</p>
+    <div class="btn-row">
+     <a class="btn btn-colab" href="https://colab.research.google.com/github/PozosT/MoBI/blob/main/Codigos/pres_T3.4_salida_estacionaria.ipynb" target="_blank">▶ Abrir en Colab</a>
+     <a class="btn btn-slides" href="../../compiled/notebooks/pres_T3.4_salida_estacionaria.slides.html" target="_blank">▶ Ver presentación</a>
+    </div>
+   </div>
    </div>
   </div>
  </div>

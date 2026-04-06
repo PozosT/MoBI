@@ -41,16 +41,35 @@ Un modelo puede estar verificado (sin bugs) pero no validado (con supuestos inco
 \end{center}
 
 % ══════════════════════════════════════════════════
-\section{Proceso V\&V}
+\section{Marco de Sargent para V\&V}
 % ══════════════════════════════════════════════════
 
-\begin{metodobox}[Proceso integrado de V\&V]
+Sargent (2013) propone el marco de referencia más citado en la disciplina, que organiza la V\&V en tres tipos de validez:
+
+\begin{enumerate}
+    \item \textbf{Validez conceptual (conceptual validity)}: ¿es razonable la teoría y la estructura del modelo para los propósitos del estudio? Se evalúa revisando los supuestos, las distribuciones de entrada (Tema 3.1) y la lógica de eventos.
+    \item \textbf{Validez computacional (computerized model verification)}: ¿la implementación reproduce fielmente el modelo conceptual? Esto es la verificación.
+    \item \textbf{Validez operacional (operational validity)}: ¿las salidas del modelo computacional coinciden con las del sistema real dentro de un margen aceptable? Esto es la validación propiamente dicha.
+\end{enumerate}
+
+Adicionalmente, la \textbf{validez de datos} cruza las tres capas: los datos usados para construir, calibrar y validar el modelo deben ser suficientes y correctos (Tema 3.1).
+
+\begin{notabox}[V\&V es un proceso continuo]
+La V\&V no es un paso único al final del proyecto. Cada modificación al modelo (nueva distribución, nuevo tipo de evento, cambio de parámetro) requiere re-verificación y potencialmente re-validación. Un modelo validado para un rango de operación puede no ser válido fuera de ese rango.
+\end{notabox}
+
+% ══════════════════════════════════════════════════
+\section{Proceso integrado de V\&V}
+% ══════════════════════════════════════════════════
+
+\begin{metodobox}[Proceso integrado de V\&V — 6 pasos]
 \begin{enumerate}
     \item \textbf{Validación de cara (face validity)}: ¿es razonable el modelo desde el punto de vista del experto de dominio?
     \item \textbf{Verificación estructural}: revisión del código, trazas de entidades, pruebas extremas.
     \item \textbf{Verificación de eventos}: comprobar que cada tipo de evento actualiza el estado correctamente.
     \item \textbf{Validación operacional}: comparar salidas del modelo con datos históricos o soluciones analíticas conocidas.
     \item \textbf{Validación estadística}: pruebas de hipótesis que comparan métricas del modelo con métricas del sistema real.
+    \item \textbf{Análisis de sensibilidad}: verificar que el modelo responde en la dirección y magnitud esperadas ante cambios en los parámetros de entrada.
 \end{enumerate}
 \end{metodobox}
 
@@ -65,11 +84,23 @@ Un segundo analista revisa el código independientemente del autor. Se verifican
     \item Que cada evento actualice \emph{todos} los contadores de estado relevantes.
     \item Que la lógica de la cola (FIFO, LIFO, prioridades) coincida con el modelo conceptual.
     \item Que los contadores de estadísticas (área bajo $N(t)$, tiempos individuales) se actualicen en el momento correcto.
+    \item Que los parámetros de entrada ($\lambda$, $\mu$, $c$, $K$) estén correctamente cargados y no intercambiados.
 \end{itemize}
 
 \subsection{Traza de una entidad (entity trace)}
 
-Se ejecuta la simulación con un único cliente y se imprime el estado del sistema en cada evento. Esta traza debe coincidir con el cálculo manual. Por ejemplo, si el primer cliente llega a $t=2{,}1$ y su tiempo de servicio es $1{,}5$, debe salir a $t=3{,}6$.
+Se ejecuta la simulación con un flujo controlado y se imprime el estado del sistema en cada evento. La traza debe coincidir exactamente con el cálculo manual.
+
+\begin{metodobox}[Formato de tabla de traza]
+Para cada evento, registrar:
+\begin{enumerate}
+    \item Tiempo del evento ($t$).
+    \item Tipo de evento (llegada, inicio de servicio, salida).
+    \item Entidad involucrada (ID del cliente).
+    \item Estado del sistema después del evento: $N(t)$ (número en sistema), estado del servidor, contenido de la cola.
+    \item Contadores actualizados: tiempo de espera acumulado, área bajo $N(t)$.
+\end{enumerate}
+\end{metodobox}
 
 \subsection{Pruebas con entradas degeneradas}
 
@@ -91,6 +122,29 @@ debe cumplirse exactamente. Si no se cumple, hay un bug en la lógica de eventos
 \subsection{Pruebas de simplificación}
 
 Si el sistema tiene $c$ servidores idénticos con la misma tasa, una simulación de $c$ servidores debería producir resultados estadísticamente equivalentes a $c$ subsistemas independientes de un solo servidor (bajo ciertas condiciones de enrutamiento). Esta consistencia es fácilmente verificable.
+
+\subsection{Uso de aserciones en el código}
+
+Las \textbf{aserciones} (assertions) son condiciones que deben ser verdaderas en todo momento durante la ejecución. Son la verificación automatizada más eficiente:
+
+\begin{itemize}
+    \item $N(t) \ge 0$ siempre (el número en sistema no puede ser negativo).
+    \item Si el servidor está libre y la cola no está vacía, se inicia servicio inmediatamente.
+    \item El tiempo del próximo evento es siempre $\ge$ el tiempo actual (no hay viajes al pasado).
+    \item Los tiempos de servicio generados son $> 0$.
+    \item Al finalizar un servicio, el cliente atendido es el correcto según la disciplina de cola.
+\end{itemize}
+
+Una aserción violada detiene la simulación y señala exactamente dónde está el error, lo cual es mucho más eficiente que buscar bugs observando salidas incorrectas.
+
+\subsection{Verificación con semilla determinista}
+
+Fijar la semilla del generador de números aleatorios permite reproducir exactamente la misma corrida. Esto es esencial para:
+\begin{itemize}
+    \item Depurar: si una corrida produce un resultado sospechoso, se puede reproducir y trazar paso a paso.
+    \item Comparar: dos implementaciones del mismo modelo con la misma semilla deben producir resultados idénticos.
+    \item Regresión: después de modificar el código, verificar que las corridas anteriores se reproducen exactamente (si no se cambió la lógica que las afecta).
+\end{itemize}
 
 % ══════════════════════════════════════════════════
 \section{Técnicas de validación}
@@ -143,24 +197,80 @@ $M/M/c$  & $\rho$ (utilización)    & $\lambda/(c\mu)$ \\
 La cola $M/G/1$ tiene solución analítica para $W_q$ (y $L_q$ por la ley de Little) pero no para la distribución completa del tiempo de espera. Esto la convierte en una herramienta ideal de validación: podemos verificar el promedio con la fórmula P-K y, si coincide, confiar en que la simulación es correcta para las métricas más complejas (percentiles, probabilidad de espera $>t$).
 \end{notabox}
 
-\subsection{Prueba $t$ para comparar modelo y sistema real}
+\subsection{Comparación estadística: prueba $t$ e intervalos de confianza}
 
-Si se tienen $n$ observaciones reales de una métrica $\theta$ (p.ej.\ tiempo en sistema promedio), se construye la hipótesis:
+Si se tienen $n_R$ réplicas del simulador, obteniendo promedios $Y_1, \ldots, Y_{n_R}$, y un valor de referencia $\theta_0$ (analítico o del sistema real):
+
+\textbf{Prueba $t$}:
 \[
-H_0: \mu_{\text{sim}} = \bar\theta_{\text{real}} \quad \text{vs.} \quad H_1: \mu_{\text{sim}} \ne \bar\theta_{\text{real}}
+H_0: \mu_{\text{sim}} = \theta_0 \quad \text{vs.} \quad H_1: \mu_{\text{sim}} \ne \theta_0
+\]
+\[
+t = \frac{\bar Y_{n_R} - \theta_0}{S_{n_R}/\sqrt{n_R}} \sim t_{n_R-1} \quad \text{bajo } H_0
 \]
 
-Se ejecutan $n_R$ réplicas del simulador, obteniendo $\bar Y_{n_R}$ y $S_{n_R}$. El estadístico de prueba es:
+Rechazar $H_0$ si $|t| > t_{\alpha/2, n_R-1}$.
+
+\textbf{Enfoque por intervalo de confianza} (equivalente y más informativo):
 \[
-t = \frac{\bar Y_{n_R} - \bar\theta_{\text{real}}}{S_{n_R}/\sqrt{n_R}} \sim t_{n_R-1} \quad \text{bajo } H_0
+IC_{1-\alpha}(\mu_{\text{sim}}) = \bar Y_{n_R} \pm t_{\alpha/2, n_R-1} \cdot \frac{S_{n_R}}{\sqrt{n_R}}
 \]
+
+Si el IC contiene $\theta_0$, el modelo es consistente con la referencia. La ventaja del IC sobre la prueba $t$ es que muestra la \emph{magnitud} de la discrepancia, no solo su significancia.
+
+\begin{alertabox}[Significancia estadística vs.\ significancia práctica]
+Con muchas réplicas, una diferencia de $0{,}01$ min entre el modelo y la referencia puede ser estadísticamente significativa (IC estrecho que no contiene $\theta_0$) pero prácticamente irrelevante. Siempre evaluar si la discrepancia tiene consecuencias operativas. Un modelo con error relativo $< 5\%$ es generalmente aceptable para toma de decisiones.
+\end{alertabox}
 
 % ══════════════════════════════════════════════════
-\section{Ejemplo básico: verificación y validación de una cola $M/M/1$}
+\section{Análisis de sensibilidad como herramienta de validación}
+% ══════════════════════════════════════════════════
+
+El análisis de sensibilidad verifica que el modelo responde \emph{en la dirección correcta} y \emph{con magnitud razonable} ante cambios en los parámetros de entrada. Es una prueba de ``sentido común cuantitativo''.
+
+\begin{metodobox}[Procedimiento de análisis de sensibilidad]
+\begin{enumerate}
+    \item Seleccionar los parámetros clave del modelo (p.ej.\ $\lambda$, $\mu$, $c$).
+    \item Definir un rango de variación: típicamente $\pm 10\%$ o $\pm 20\%$ alrededor del valor base.
+    \item Para cada variación, ejecutar $n_R$ réplicas y registrar la métrica de salida.
+    \item Verificar:
+    \begin{itemize}
+        \item \textbf{Dirección}: si $\lambda$ aumenta, $W_q$ debe aumentar (para $\rho < 1$).
+        \item \textbf{Magnitud}: la respuesta debe ser coherente con la teoría de colas (no lineal cerca de $\rho \to 1$).
+        \item \textbf{Monotonía}: si $c$ aumenta (más servidores), $W_q$ debe disminuir.
+    \end{itemize}
+    \item Si alguna dirección es incorrecta, hay un \textbf{error en el modelo}.
+\end{enumerate}
+\end{metodobox}
+
+El análisis de sensibilidad no solo valida; también identifica qué parámetros tienen mayor impacto en la salida, lo que orienta dónde invertir más esfuerzo en el modelado de entradas (Tema 3.1).
+
+% ══════════════════════════════════════════════════
+\section{Credibilidad y documentación del modelo}
+% ══════════════════════════════════════════════════
+
+Un modelo de simulación solo es útil si quienes toman decisiones \emph{confían} en él. La credibilidad se construye con:
+
+\begin{itemize}
+    \item \textbf{Documentación del modelo conceptual}: supuestos, distribuciones elegidas (con justificación del Tema 3.1), simplificaciones y su justificación.
+    \item \textbf{Registro de V\&V}: todas las pruebas realizadas, sus resultados, y las acciones correctivas tomadas. Un informe de V\&V típico incluye:
+    \begin{enumerate}
+        \item Descripción del modelo y sus supuestos.
+        \item Pruebas de verificación realizadas (trazas, conservación, degeneradas).
+        \item Comparaciones con soluciones analíticas (tablas de IC).
+        \item Resultados de validación con datos históricos (si disponibles).
+        \item Análisis de sensibilidad.
+        \item Limitaciones conocidas del modelo.
+    \end{enumerate}
+    \item \textbf{Participación de stakeholders}: involucrar a los expertos de dominio en el proceso de V\&V aumenta la confianza en los resultados.
+\end{itemize}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo básico: verificación de una cola $M/M/1$}
 % ══════════════════════════════════════════════════
 
 \begin{ejemplobox}[Sistema]
-Se implementa una simulación de cola $M/M/1$ con $\lambda=3$ clientes/min y $\mu=5$ clientes/min ($\rho=0{,}6$). Antes de usar el modelo para análisis de políticas, se aplica el proceso de V\&V.
+Se implementa una simulación de cola $M/M/1$ con $\lambda=3$ clientes/min y $\mu=5$ clientes/min ($\rho=0{,}6$). Antes de usar el modelo para análisis de políticas, se aplica la verificación estructural.
 \end{ejemplobox}
 
 \textbf{Valores analíticos de referencia}:
@@ -170,41 +280,110 @@ L_q = \frac{0{,}6^2}{0{,}4} = 0{,}90 \text{ clientes}, \quad
 \rho = 0{,}60
 \]
 
-\subsection{Paso 1 — Verificación estructural}
+\subsection{Prueba degenerada}
 
-\textbf{Prueba degenerada}: se fija $\lambda=0$ (sin llegadas). La simulación debe reportar $N(t)=0$, $W_q=0$, $\rho=0$ exactamente. $\checkmark$
+Se fija $\lambda=0$ (sin llegadas). La simulación reporta $N(t)=0$, $W_q=0$, $\rho=0$ exactamente durante $T=1000$ min. $\checkmark$
 
-\textbf{Conservación de entidades}: en una corrida de $T=1000$ min se cuentan 3\,012 llegadas y 3\,012 salidas (sistema vacío al final). $\checkmark$
+\subsection{Conservación de entidades}
 
-\textbf{Traza de evento}: el primer cliente llega a $t=0{,}28$, su servicio dura $0{,}19$ min, por lo que sale a $t=0{,}47$. El siguiente cliente llega a $t=0{,}64$ (sistema vacío), espera 0, recibe servicio de $0{,}15$ min. $\checkmark$
+En una corrida de $T=1000$ min se cuentan 3\,012 llegadas y 3\,012 salidas (sistema vacío al final). La identidad $3012 = 3012 + 0$ se cumple. $\checkmark$
 
-\subsection{Paso 2 — Validación operacional con fórmulas}
+\subsection{Traza de eventos}
 
-Se ejecutan $n_R=30$ réplicas de $T=2000$ min. Los estadísticos de salida son:
+Se ejecuta con semilla fija y se registran los primeros 6 eventos:
 
 \begin{center}\small
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lccc}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{cccccccc}
 \toprule
-\textbf{Métrica} & \textbf{Analítico} & \textbf{Simulado ($\bar Y \pm s$)} & \textbf{Error relativo} \\
+\textbf{Evento} & $t$ (min) & \textbf{Tipo} & \textbf{Cliente} & \textbf{Servidor} & $N(t)$ & \textbf{Cola} & $W_q$ cliente \\
 \midrule
-$W_q$ (min) & $0{,}300$ & $0{,}308 \pm 0{,}041$ & $2{,}7\%$ \\
-$L_q$ (clientes) & $0{,}900$ & $0{,}924 \pm 0{,}126$ & $2{,}7\%$ \\
-$\rho$           & $0{,}600$ & $0{,}598 \pm 0{,}006$ & $0{,}3\%$ \\
+1 & $0{,}28$ & Llegada  & C1 & Libre $\to$ Ocup. & 1 & $\emptyset$ & --- \\
+2 & $0{,}47$ & Salida   & C1 & Ocup. $\to$ Libre  & 0 & $\emptyset$ & $0{,}00$ \\
+3 & $0{,}64$ & Llegada  & C2 & Libre $\to$ Ocup. & 1 & $\emptyset$ & --- \\
+4 & $0{,}79$ & Salida   & C2 & Ocup. $\to$ Libre  & 0 & $\emptyset$ & $0{,}00$ \\
+5 & $0{,}91$ & Llegada  & C3 & Libre $\to$ Ocup. & 1 & $\emptyset$ & --- \\
+6 & $0{,}98$ & Llegada  & C4 & Ocupado           & 2 & $\{$C4$\}$ & --- \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-El intervalo de confianza al 95\% para $W_q$ es $[0{,}293;\; 0{,}323]$ min, que contiene el valor analítico $0{,}300$. El modelo está correctamente implementado y validado.
+\textbf{Verificación manual}: C1 llega a $t=0{,}28$; su tiempo de servicio generado es $0{,}19$ min, así que sale a $t=0{,}28+0{,}19=0{,}47$. $\checkmark$. C2 llega a $t=0{,}64$ con servidor libre, servicio de $0{,}15$ min, sale a $t=0{,}79$. $\checkmark$. C4 llega a $t=0{,}98$ con servidor ocupado (C3 aún en servicio), entra a la cola. $\checkmark$
+
+\subsection{Prueba de tráfico extremo}
+
+Con $\lambda=4{,}99$ y $\mu=5$ ($\rho=0{,}998$), la cola crece sin límite: $L_q$ supera 500 clientes en $T=5000$ min. $\checkmark$
+
+\begin{resultadobox}[Resultado de la verificación]
+Todas las pruebas de verificación pasan: conservación de entidades, traza manual consistente, pruebas degeneradas correctas, y comportamiento extremo coherente. El código implementa fielmente el modelo conceptual $M/M/1$. Procedemos a la validación en el ejemplo intermedio.
+\end{resultadobox}
 
 % ══════════════════════════════════════════════════
-\section{Ejemplo escalado: celda de manufactura con servicio Erlang}
+\section{Ejemplo intermedio: validación del $M/M/1$ y detección de un error}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Continuando con el mismo sistema $M/M/1$ ($\lambda=3$, $\mu=5$), ahora se ejecutan réplicas para \textbf{validar} contra las fórmulas analíticas. Además, se muestra qué ocurre cuando el código tiene un bug sutil: el programador accidentalmente usó $\mu=4$ en lugar de $\mu=5$ en la generación de tiempos de servicio.
+\end{ejemplobox}
+
+\subsection{Validación del modelo correcto ($\mu=5$)}
+
+Se ejecutan $n_R=30$ réplicas de $T=2000$ min:
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Métrica} & \textbf{Analítico} & $\bar Y_{30}$ & $S_{30}$ & \textbf{IC 95\%} & \textbf{Error rel.} \\
+\midrule
+$W_q$ (min) & $0{,}300$ & $0{,}308$ & $0{,}041$ & $[0{,}293;\; 0{,}323]$ & $2{,}7\%$ \\
+$L_q$ (cl.)  & $0{,}900$ & $0{,}924$ & $0{,}126$ & $[0{,}877;\; 0{,}971]$ & $2{,}7\%$ \\
+$\rho$       & $0{,}600$ & $0{,}598$ & $0{,}006$ & $[0{,}596;\; 0{,}600]$ & $0{,}3\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Todos los IC contienen el valor analítico. El modelo está \textbf{validado}.
+
+\subsection{Detección de un bug: $\mu=4$ en vez de $\mu=5$}
+
+Supongamos que el programador, por un error de transcripción, codificó la tasa de servicio como $\mu=4$ en lugar de $\mu=5$. Esto da $\rho_{\text{real}} = 3/4 = 0{,}75$ en vez de $0{,}60$. El analítico incorrecto sería:
+\[
+W_q^{\text{bug}} = \frac{0{,}75}{4 \times 0{,}25} = 0{,}75 \text{ min} \quad \text{(vs.\ } 0{,}30 \text{ min esperado)}
+\]
+
+Las 30 réplicas con el bug producen:
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Métrica} & \textbf{Ref. ($\mu=5$)} & $\bar Y_{30}$ & \textbf{IC 95\%} & \textbf{¿Contiene ref.?} & \textbf{Diagnóstico} \\
+\midrule
+$W_q$ (min) & $0{,}300$ & $0{,}762$ & $[0{,}701;\; 0{,}823]$ & \textbf{No} & Bug detectado \\
+$\rho$       & $0{,}600$ & $0{,}749$ & $[0{,}745;\; 0{,}753]$ & \textbf{No} & $\mu$ incorrecto \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+El IC de $W_q$ no contiene $0{,}300$, y el de $\rho$ no contiene $0{,}600$. La validación \textbf{detecta el error}. Nótese que $\hat\rho \approx 0{,}75 = 3/4$, lo que apunta directamente a que la tasa de servicio es 4 en lugar de 5.
+
+\begin{alertabox}[La validación detecta errores que la verificación puede no encontrar]
+La verificación (trazas, conservación, pruebas degeneradas) habría pasado perfectamente con $\mu=4$: el código funciona correctamente, solo que con el parámetro equivocado. Es la comparación con la referencia analítica la que revela la discrepancia. Esto muestra por qué \textbf{ambos procesos} (verificación y validación) son necesarios.
+\end{alertabox}
+
+\begin{resultadobox}[Resultado del ejemplo intermedio]
+La validación contra fórmulas analíticas es la herramienta más poderosa para detectar errores de parametrización. En el modelo correcto ($\mu=5$), los IC al 95\% contienen todos los valores de referencia (error relativo $< 3\%$). Con el bug ($\mu=4$), el IC de $\rho$ apunta inmediatamente al parámetro incorrecto. Este ejemplo muestra que la validación no es un trámite burocrático: es una herramienta de depuración esencial.
+\end{resultadobox}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo escalado: celda de manufactura $M/E_2/1$ con análisis de sensibilidad}
 % ══════════════════════════════════════════════════
 
 \begin{ejemplobox}[Sistema]
 Una celda de manufactura recibe piezas que llegan según un proceso de Poisson con $\lambda=8$ piezas/h. El tiempo de procesamiento consiste en dos etapas secuenciales (carga y mecanizado) de duración exponencial con tasa $\mu_{\text{fase}}=10$ operaciones/h cada una, por lo que $S \sim E_2(10)$, con $\E[S]=0{,}2$ h y $\text{CV}_S=1/\sqrt{2}$.
 
-El modelo conceptual es una cola $M/E_2/1$. Se implementa la simulación y se verifica y valida contra la fórmula P-K.
+El modelo conceptual es una cola $M/E_2/1$. Se aplica el proceso completo de V\&V, incluyendo verificación, validación contra la fórmula P-K, y análisis de sensibilidad.
 \end{ejemplobox}
 
 \textbf{Parámetros del sistema}:
@@ -218,9 +397,11 @@ El modelo conceptual es una cola $M/E_2/1$. Se implementa la simulación y se ve
 
 \subsection{Verificación estructural}
 
-\textbf{Prueba de tráfico extremo}: con $\lambda=9{,}9$ piezas/h ($\rho=0{,}99$), la cola debe crecer sin límite. En una corrida de $T=500$ h, $L_q$ crece monótonamente y supera 200 piezas. $\checkmark$
+\textbf{Prueba de tráfico extremo}: con $\lambda=9{,}9$ piezas/h ($\rho=0{,}99$), la cola crece sin límite. En una corrida de $T=500$ h, $L_q$ crece monótonamente y supera 200 piezas. $\checkmark$
 
-\textbf{Prueba de simplificación}: un servicio $E_2(\mu_f)$ es equivalente a dos servidores exponenciales en tándem interno. Se verifica que la distribución de $S_1+S_2$ tiene media $0{,}2$ h, varianza $0{,}02$ h$^2$ y asimetría $\sqrt{2}/\sqrt{2}=1{,}0$ (asimetría teórica de $E_k$ es $2/\sqrt{k}$). $\checkmark$
+\textbf{Prueba de simplificación}: un servicio $E_2(\mu_f)$ es equivalente a dos fases exponenciales en serie. Se verifica que la distribución de $S_1+S_2$ tiene media $0{,}2$ h, varianza $0{,}02$ h$^2$ y asimetría $2/\sqrt{2} \approx 1{,}41$ (valor teórico de la Erlang-2). $\checkmark$
+
+\textbf{Conservación}: en $T=2000$ h con $\lambda=8$, se esperan $\approx 16\,000$ llegadas. La simulación registra $16\,023$ llegadas y $16\,023$ salidas (sistema vacío al final). $\checkmark$
 
 \subsection{Validación operacional con la fórmula P-K}
 
@@ -251,10 +432,51 @@ $\rho$       & $0{,}800$ & $0{,}799$ & $[0{,}795;\;0{,}803]$ & Sí $\checkmark$ 
 \end{tabular}
 \end{center}
 
-Todos los intervalos de confianza contienen el valor de referencia. El modelo está verificado y validado. Se puede proceder con confianza a usar el simulador para analizar escenarios sin solución analítica cerrada (distribución del tiempo de espera, percentil 90, comparación de políticas de prioridad).
+Todos los IC contienen el valor de referencia. El modelo está validado.
+
+\subsection{Análisis de sensibilidad}
+
+Se varía $\lambda$ en $\pm 10\%$ y $\pm 20\%$ alrededor del valor base ($\lambda_0 = 8$):
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{ccccc}
+\toprule
+$\lambda$ & $\rho$ & $W_q^{\text{P-K}}$ (h) & $\bar W_q^{\text{sim}}$ (h) & \textbf{Dirección} \\
+\midrule
+$6{,}4$ ($-20\%$) & $0{,}64$ & $0{,}53$ & $0{,}55$ & $\checkmark$ \\
+$7{,}2$ ($-10\%$) & $0{,}72$ & $0{,}77$ & $0{,}79$ & $\checkmark$ \\
+$8{,}0$ (base)    & $0{,}80$ & $1{,}20$ & $1{,}21$ & --- \\
+$8{,}8$ ($+10\%$) & $0{,}88$ & $2{,}20$ & $2{,}24$ & $\checkmark$ \\
+$9{,}6$ ($+20\%$) & $0{,}96$ & $7{,}20$ & $7{,}45$ & $\checkmark$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Observaciones}:
+\begin{itemize}
+    \item La \textbf{dirección} es correcta en todos los casos: $W_q$ aumenta con $\lambda$. $\checkmark$
+    \item La \textbf{no-linealidad} es correcta: un aumento del 20\% en $\lambda$ (de 8 a 9{,}6) produce un aumento del 500\% en $W_q$ (de 1{,}2 a 7{,}2 h). Esto es consistente con la teoría de colas: cerca de la saturación ($\rho \to 1$), el sistema es extremadamente sensible. $\checkmark$
+    \item Todos los valores simulados caen dentro del 4\% del valor P-K. $\checkmark$
+\end{itemize}
 
 \begin{resultadobox}[Conclusión de V\&V]
-El proceso de verificación confirmó la correcta implementación del modelo (sin pérdida de entidades, eventos bien ordenados, pruebas extremas consistentes). La validación operacional, usando la fórmula P-K como referencia, demostró que el simulador reproduce las métricas analíticas dentro del margen estadístico esperado (error relativo $< 1{,}2\%$). Esto otorga credibilidad para usar el modelo en análisis que exceden las capacidades analíticas: percentiles de tiempo de espera, políticas de prioridad, configuraciones con múltiples colas.
+El proceso de verificación confirmó la correcta implementación del modelo (conservación de entidades, trazas correctas, pruebas extremas consistentes). La validación operacional demostró que el simulador reproduce las métricas analíticas dentro del margen estadístico esperado (error relativo $< 1{,}2\%$). El análisis de sensibilidad confirmó que el modelo responde correcta y coherentemente ante variaciones de $\lambda$.
+
+Esto otorga credibilidad para usar el modelo en análisis que exceden las capacidades analíticas: percentiles de tiempo de espera, políticas de prioridad, configuraciones con múltiples colas.
 \end{resultadobox}
+
+% ══════════════════════════════════════════════════
+\section*{Referencias}
+% ══════════════════════════════════════════════════
+
+\begin{enumerate}[label={[\arabic*]}]
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~5 y 10.
+    \item Sargent, R.\,G. (2013). Verification and validation of simulation models. \textit{Journal of Simulation}, 7(1), 12--24.
+    \item Banks, J., Carson, J.\,S., Nelson, B.\,L. \& Nicol, D.\,M. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~10.
+    \item Balci, O. (1998). Verification, validation, and testing. En \textit{Handbook of Simulation}. Wiley. Cap.~10.
+    \item Kelton, W.\,D., Sadowski, R.\,P. \& Zupick, N.\,B. (2015). \textit{Simulation with Arena}, 6th ed. McGraw-Hill. Cap.~10.
+    \item Schlesinger, S. et al. (1979). Terminology for model credibility. \textit{Simulation}, 32(3), 103--104.
+\end{enumerate}
 
 \end{document}

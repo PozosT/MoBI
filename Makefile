@@ -29,7 +29,11 @@ NB_SRC = Codigos/Pensamiento_Sistemico_Simulacion.ipynb \
          Codigos/CTMC_intro.ipynb \
          Codigos/CTMC_transitorio.ipynb \
          Codigos/CTMC_estacionario.ipynb \
-         Codigos/Random_Walks.ipynb
+         Codigos/Random_Walks.ipynb \
+         Codigos/pres_T3.1_entradas.ipynb \
+         Codigos/pres_T3.2_VV.ipynb \
+         Codigos/pres_T3.3_salida_terminal.ipynb \
+         Codigos/pres_T3.4_salida_estacionaria.ipynb
 
 NB_HTML  = $(patsubst Codigos/%.ipynb, compiled/notebooks/%.slides.html, $(NB_SRC))
 
@@ -53,8 +57,8 @@ notebooks: $(NB_HTML)
 
 compiled/lecturas/%.pdf: Lecturas/%.tex | compiled/lecturas
 	@echo "📖  Compilando lectura: $<"
-	$(PDFLATEX) compiled/lecturas $< > /dev/null 2>&1 || \
-	$(PDFLATEX) compiled/lecturas $< > /dev/null 2>&1
+	cd Lecturas && $(PDFLATEX) ../compiled/lecturas $*.tex > /dev/null 2>&1 || \
+	               $(PDFLATEX) ../compiled/lecturas $*.tex > /dev/null 2>&1
 	@echo "    → $@"
 
 compiled/presentaciones/%.pdf: Presentaciones/%.tex | compiled/presentaciones

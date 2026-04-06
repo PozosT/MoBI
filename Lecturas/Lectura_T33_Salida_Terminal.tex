@@ -27,9 +27,11 @@ El interés está en el comportamiento a largo plazo del sistema, independiente 
 
 \textbf{Ejemplos}:
 \begin{itemize}
-    \item \textbf{Terminal}: urgencias de 8h--20h, simulación de un día de bolsa, un turno de manufactura.
+    \item \textbf{Terminal}: urgencias de 8h--20h, simulación de un día de bolsa, un turno de manufactura, un periodo de exámenes.
     \item \textbf{Estacionaria}: fábrica con producción continua 24/7, red de telecomunicaciones, central de llamadas permanente.
 \end{itemize}
+
+La elección del régimen determina completamente el método de análisis estadístico: en la simulación terminal usamos \textbf{réplicas independientes}; en la estacionaria, \textbf{batch means} o réplicas con calentamiento (Tema 3.4).
 
 \begin{alertabox}[Error frecuente]
 Modelar un sistema con condiciones iniciales relevantes como si fuera estacionario puede introducir un sesgo grande. En una farmacia que abre con 0 clientes, las primeras horas del día son estadísticamente distintas de las del mediodía, y no deben promediarse con el largo plazo.
@@ -48,13 +50,33 @@ La salida de un simulador es una secuencia de observaciones $Y_1, Y_2, \ldots, Y
 
 Por estas razones, el promedio muestral $\bar Y_m = m^{-1}\sum_{i=1}^m Y_i$ de una única corrida \emph{no} puede tratarse como si viniera de $m$ observaciones i.i.d., y la fórmula estándar $S/\sqrt{m}$ subestima el error estándar real.
 
-\textbf{Solución}: el \textbf{método de réplicas independientes}, que genera independencia entre corridas a través de diferentes semillas del generador de números aleatorios.
+\subsection{¿Por qué la autocorrelación importa?}
+
+Para un proceso estacionario con autocorrelación $\rho(k) = \text{Corr}(Y_i, Y_{i+k})$, la varianza de la media muestral es:
+
+\[
+\Var[\bar Y_m] = \frac{\sigma^2}{m}\left[1 + 2\sum_{k=1}^{m-1}\left(1-\frac{k}{m}\right)\rho(k)\right]
+\]
+
+Si las observaciones fueran independientes ($\rho(k)=0$ para todo $k$), tendríamos $\Var[\bar Y_m] = \sigma^2/m$. Pero en colas con tráfico moderado a alto, la autocorrelación es \textbf{positiva} (un cliente que espera mucho indica congestión, y el siguiente también esperará), por lo que:
+
+\[
+\Var[\bar Y_m] \gg \frac{\sigma^2}{m}
+\]
+
+Usar $S^2/m$ como estimador de $\Var[\bar Y_m]$ subestimaría la varianza real, produciendo intervalos de confianza \textbf{demasiado estrechos} (falsa precisión).
+
+\begin{alertabox}[Consecuencia práctica]
+Si se usa $S/\sqrt{m}$ dentro de una sola corrida para construir un IC al 95\%, la cobertura real puede ser del 50--70\% en lugar de 95\%. Esto significa que las conclusiones basadas en ese IC son poco confiables.
+\end{alertabox}
 
 % ══════════════════════════════════════════════════
 \section{Método de réplicas independientes}
 % ══════════════════════════════════════════════════
 
-Se ejecutan $n$ réplicas de la simulación bajo el \emph{mismo} modelo pero con \emph{diferentes} semillas. Cada réplica produce un único número resumen $Y_j$ de la métrica de interés (p.ej.\ el promedio de los tiempos de espera en esa corrida).
+\textbf{Solución}: el método de réplicas independientes genera independencia entre corridas a través de diferentes semillas del generador de números aleatorios.
+
+Se ejecutan $n$ réplicas de la simulación bajo el \emph{mismo} modelo pero con \emph{diferentes} semillas. Cada réplica produce un único número resumen $Y_j$ de la métrica de interés.
 
 \[
 Y_j = \frac{1}{m_j}\sum_{i=1}^{m_j} W_i^{(j)}, \qquad j = 1, \ldots, n
@@ -62,7 +84,34 @@ Y_j = \frac{1}{m_j}\sum_{i=1}^{m_j} W_i^{(j)}, \qquad j = 1, \ldots, n
 
 donde $m_j$ es el número de observaciones en la réplica $j$ (clientes atendidos en ese turno).
 
-\textbf{Clave}: $Y_1, Y_2, \ldots, Y_n$ \emph{sí son} i.i.d.\ porque las réplicas son independientes entre sí. El análisis estadístico clásico (media, varianza, $t$-student) es aplicable sobre $\{Y_j\}$.
+\begin{definicionbox}[Independencia entre réplicas]
+$Y_1, Y_2, \ldots, Y_n$ \emph{son} i.i.d.\ porque cada réplica usa una semilla diferente del generador de números aleatorios. El estado del sistema al inicio de cada réplica es el mismo (p.ej.\ sistema vacío), y la única fuente de variabilidad entre réplicas es la secuencia de números aleatorios.
+\end{definicionbox}
+
+Como $\{Y_j\}$ son i.i.d., el análisis estadístico clásico (media, varianza, $t$-Student) es directamente aplicable.
+
+\subsection{Tipos de métricas y cómo calcular $Y_j$}
+
+Dependiendo de la métrica de interés, el resumen $Y_j$ de cada réplica se calcula de forma diferente:
+
+\begin{itemize}
+    \item \textbf{Métricas por entidad} (tiempo de espera promedio, tiempo en sistema promedio):
+    \[
+    Y_j = \frac{1}{m_j}\sum_{i=1}^{m_j} W_i^{(j)}
+    \]
+    donde $W_i^{(j)}$ es el tiempo de espera del cliente $i$ en la réplica $j$.
+
+    \item \textbf{Métricas promediadas en el tiempo} (número promedio en cola, utilización):
+    \[
+    Y_j = \frac{1}{T}\int_0^T N^{(j)}(t)\,dt = \frac{1}{T}\sum_{\text{intervalos}} N_k \cdot \Delta t_k
+    \]
+    donde $T$ es la duración del turno y $N^{(j)}(t)$ es el número en cola en la réplica $j$.
+
+    \item \textbf{Métricas de proporción} (fracción de clientes con espera $> c$ minutos):
+    \[
+    Y_j = \frac{1}{m_j}\sum_{i=1}^{m_j}\ind{W_i^{(j)} > c}
+    \]
+\end{itemize}
 
 % ══════════════════════════════════════════════════
 \section{Inferencia estadística con réplicas}
@@ -87,6 +136,14 @@ Con varianza desconocida, se usa la distribución $t$ de Student:
 donde $S_n^2 = \frac{1}{n-1}\sum_{j=1}^n(Y_j - \bar Y_n)^2$ y la \textbf{semiancho} es $h_n = t_{\alpha/2,n-1}\cdot S_n/\sqrt{n}$.
 
 Para $n \ge 30$ puede usarse el cuantil normal $z_{\alpha/2}$; para $n < 30$, la $t_{n-1}$ es imprescindible.
+
+\subsection{Interpretación correcta de la cobertura}
+
+\begin{definicionbox}[Probabilidad de cobertura]
+Un intervalo de confianza al $100(1-\alpha)\%$ \textbf{no} significa que ``hay una probabilidad $1-\alpha$ de que $\theta$ esté en el intervalo''. $\theta$ es un valor fijo (desconocido). Lo correcto es: si repitiéramos todo el experimento (las $n$ réplicas) muchas veces, el $100(1-\alpha)\%$ de los intervalos construidos contendrían $\theta$.
+\end{definicionbox}
+
+En la práctica, esto significa que si un colega repite el estudio con sus propias $n$ réplicas, su IC será diferente del nuestro, pero ambos tienen la misma probabilidad de contener el verdadero $\theta$.
 
 \subsection{Precisión relativa}
 
@@ -118,6 +175,10 @@ Para un criterio de \textbf{precisión relativa} $r$, se sustituye $\delta = r\,
 n^* = \left\lceil\frac{t_{\alpha/2,n_0-1}^2 \cdot S_{n_0}^2}{r^2 \cdot \bar Y_{n_0}^2}\right\rceil
 \]
 
+\begin{notabox}[¿Por qué no fijar $n$ desde el inicio?]
+El procedimiento secuencial es necesario porque $\sigma^2$ es desconocida antes de simular. El piloto proporciona una estimación $S_{n_0}^2$ que permite calcular $n^*$. Si se sobreestima $n^*$, se desperdicia tiempo de cómputo; si se subestima, el IC será más ancho de lo deseado. El paso 4 (verificación) protege contra la subestimación.
+\end{notabox}
+
 % ══════════════════════════════════════════════════
 \section{Sesgo de inicialización en simulaciones terminales}
 % ══════════════════════════════════════════════════
@@ -137,35 +198,93 @@ En simulaciones terminales, el problema de sesgo inicial es conceptualmente dist
 \end{notabox}
 
 % ══════════════════════════════════════════════════
-\section{Ejemplo básico: cola $M/G/1$ en una cafetería universitaria}
+\section{Errores comunes en análisis de salida}
+% ══════════════════════════════════════════════════
+
+\begin{enumerate}
+    \item \textbf{Usar una sola corrida larga y tratar cada observación como independiente}: produce ICs demasiado estrechos por la autocorrelación. Solución: usar réplicas.
+
+    \item \textbf{No hacer suficientes réplicas}: con $n=3$ o $n=5$ réplicas, la distribución $t_{n-1}$ tiene colas muy pesadas y los ICs son extremadamente anchos. Con $n<10$, el IC es poco informativo.
+
+    \item \textbf{Confundir precisión con exactitud}: un IC estrecho (alta precisión) no implica que el modelo sea correcto (alta exactitud). Si el modelo tiene un error sistemático (falla de validación, Tema 3.2), un IC estrecho simplemente confirma con alta confianza un valor incorrecto.
+
+    \item \textbf{Reportar solo la media sin IC}: el promedio simulado sin intervalo de confianza no permite evaluar la calidad del estimador. Siempre reportar $\bar Y \pm h$ o el IC completo.
+
+    \item \textbf{Ignorar la variabilidad entre réplicas}: dos réplicas pueden dar $W_q = 3$ min y $W_q = 12$ min. Esto no indica un bug; es variabilidad natural del sistema estocástico. El IC la cuantifica correctamente.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo básico: ventanilla bancaria $M/M/1$ terminal}
 % ══════════════════════════════════════════════════
 
 \begin{ejemplobox}[Sistema]
-La cafetería universitaria opera el turno de almuerzo de 12:00 a 14:00 (2 horas). Los clientes llegan según un proceso de Poisson con $\lambda=15$ clientes/h. El tiempo de atención (pedir + pagar) sigue una distribución Erlang-2 con $\E[S]=3$ min. El sistema inicia cada réplica vacío. Interesa estimar el tiempo promedio de espera en cola $W_q$ con 95\% de confianza y precisión de 0{,}5 min.
+Una ventanilla de banco opera el turno de mañana (9:00--13:00, 4 horas). Los clientes llegan según un proceso de Poisson con $\lambda=2$ clientes/min. El tiempo de servicio es exponencial con $\mu=3$ clientes/min. El sistema inicia vacío cada mañana. Se quiere estimar el tiempo promedio de espera en cola $W_q$ con 95\% de confianza.
 \end{ejemplobox}
 
-\textbf{Parámetros y referencia analítica}:
+\textbf{Referencia analítica} ($M/M/1$ en estado estacionario, para validación):
 \[
-\lambda = \frac{15}{60} = 0{,}25 \text{ cl/min}, \quad
-\E[S] = 3 \text{ min}, \quad
-\mu_{\text{fase}} = \frac{2}{3} \text{ fase/min}
-\]
-\[
-\Var[S] = \frac{2}{\mu_{\text{fase}}^2} = \frac{2}{(2/3)^2} = 4{,}5 \text{ min}^2, \quad
-\E[S^2] = 4{,}5 + 9 = 13{,}5 \text{ min}^2
-\]
-\[
-\rho = 0{,}25 \times 3 = 0{,}75
+\rho = \frac{2}{3} = 0{,}667, \qquad W_q^{M/M/1} = \frac{\rho}{\mu(1-\rho)} = \frac{0{,}667}{3 \times 0{,}333} = 0{,}667 \text{ min}
 \]
 
-\textbf{Referencia P-K} (útil para validación del simulador, no para reemplazarlo):
+\textbf{Nota}: la simulación terminal incluirá el transitorio inicial (sistema vacío), por lo que $\bar W_q$ será algo menor que $0{,}667$.
+
+\subsection{Ejecución de $n=10$ réplicas}
+
+Cada réplica simula las 4 horas de turno. $Y_j$ es el promedio de $W_q$ de todos los clientes atendidos en esa réplica.
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{ccccccccccc}
+\toprule
+$j$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 \\
+\midrule
+$Y_j$ (min) & 0{,}58 & 0{,}71 & 0{,}49 & 0{,}82 & 0{,}63 & 0{,}55 & 0{,}74 & 0{,}61 & 0{,}68 & 0{,}52 \\
+$m_j$ (clientes) & 478 & 492 & 486 & 501 & 489 & 475 & 495 & 483 & 490 & 481 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Estadísticos}:
 \[
-W_q^{\text{P-K}} = \frac{\lambda\E[S^2]}{2(1-\rho)} = \frac{0{,}25 \times 13{,}5}{2 \times 0{,}25} = \frac{3{,}375}{0{,}5} = 6{,}75 \text{ min}
+\bar Y_{10} = \frac{0{,}58 + 0{,}71 + \cdots + 0{,}52}{10} = 0{,}633 \text{ min}
+\]
+\[
+S_{10}^2 = \frac{1}{9}\sum_{j=1}^{10}(Y_j - 0{,}633)^2 = 0{,}01116 \quad \Rightarrow \quad S_{10} = 0{,}1057 \text{ min}
 \]
 
-\subsection{Ejecución del piloto ($n_0 = 15$ réplicas)}
+\textbf{IC 95\%} con $t_{0{,}025,9} = 2{,}262$:
+\[
+h_{10} = 2{,}262 \times \frac{0{,}1057}{\sqrt{10}} = 2{,}262 \times 0{,}0334 = 0{,}076 \text{ min}
+\]
+\[
+\boxed{IC_{95\%}: \quad [0{,}557;\; 0{,}709] \text{ min}}
+\]
 
-Cada réplica simula las 2 horas de turno. El resumen $Y_j$ es el tiempo promedio en cola de todos los clientes atendidos en esa réplica.
+El valor estacionario de $0{,}667$ cae dentro del intervalo. La media observada ($0{,}633$) es ligeramente menor, lo cual es coherente: el período transitorio inicial (sistema vacío) ``baja'' el promedio del turno.
+
+\begin{resultadobox}[Resultado del ejemplo básico]
+Con 10 réplicas del turno de 4 horas, el tiempo promedio de espera se estima en $\bar W_q = 0{,}633$ min $\approx 38$ segundos, con IC 95\% $[0{,}557;\; 0{,}709]$ min. La precisión relativa es $r_{10} = 0{,}076/0{,}633 = 12\%$, que puede ser insuficiente para toma de decisiones. En el ejemplo intermedio mejoraremos la precisión.
+\end{resultadobox}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo intermedio: banco con servicio Erlang y cálculo de $n^*$}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Se modifica el sistema del ejemplo básico: el banco mantiene las mismas llegadas ($\lambda=2$ cl/min) pero el servicio ahora es Erlang-2 (dos etapas de atención), con la misma media $\E[S]=1/3$ min pero $\text{CV}_S = 1/\sqrt{2} \approx 0{,}71$. El modelo es $M/E_2/1$ terminal con turno de 4 horas. Se quiere estimar $W_q$ con precisión absoluta $\delta = 0{,}05$ min al 95\%.
+\end{ejemplobox}
+
+\textbf{Referencia P-K} (estacionaria):
+\[
+\E[S^2] = \Var[S] + (\E[S])^2 = \frac{2}{9^2} + \frac{1}{9} = 0{,}0247 + 0{,}1111 = 0{,}1358 \text{ min}^2
+\]
+\[
+W_q^{\text{P-K}} = \frac{2 \times 0{,}1358}{2 \times (1-2/3)} = \frac{0{,}2716}{0{,}6667} = 0{,}407 \text{ min}
+\]
+
+El servicio Erlang-2 reduce $W_q$ respecto al $M/M/1$: $0{,}407$ vs.\ $0{,}667$ min (reducción del 39\%), consistente con la fórmula P-K.
+
+\subsection{Piloto: $n_0 = 15$ réplicas}
 
 \begin{center}\small
 \renewcommand{\arraystretch}{1.15}
@@ -173,47 +292,61 @@ Cada réplica simula las 2 horas de turno. El resumen $Y_j$ es el tiempo promedi
 \toprule
 $j$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
 \midrule
-$Y_j$ & 7{,}1 & 5{,}8 & 6{,}4 & 8{,}3 & 6{,}0 & 7{,}5 & 5{,}4 & 6{,}9 & 7{,}8 & 6{,}2 & 5{,}9 & 8{,}1 & 6{,}7 & 7{,}3 & 6{,}5 \\
+$Y_j$ & 0{,}38 & 0{,}41 & 0{,}35 & 0{,}44 & 0{,}39 & 0{,}36 & 0{,}42 & 0{,}40 & 0{,}37 & 0{,}43 & 0{,}38 & 0{,}41 & 0{,}36 & 0{,}39 & 0{,}40 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \[
-\bar Y_{15} = 6{,}79 \text{ min}, \quad S_{15} = 0{,}85 \text{ min}
+\bar Y_{15} = 0{,}393 \text{ min}, \quad S_{15} = 0{,}027 \text{ min}
 \]
 
 \textbf{IC 95\%} con $t_{0{,}025,14} = 2{,}145$:
 \[
-h_{15} = 2{,}145 \times \frac{0{,}85}{\sqrt{15}} = 2{,}145 \times 0{,}219 = 0{,}47 \text{ min}
+h_{15} = 2{,}145 \times \frac{0{,}027}{\sqrt{15}} = 2{,}145 \times 0{,}00697 = 0{,}015 \text{ min}
 \]
 \[
-IC_{95\%}: \quad [6{,}32;\; 7{,}26] \text{ min}
+IC_{95\%}: \quad [0{,}378;\; 0{,}408] \text{ min}
 \]
 
-\subsection{Determinación de $n^*$ para $\delta = 0{,}5$ min}
+\subsection{Determinación de $n^*$ para $\delta = 0{,}05$ min}
 
 \[
-n^* = \left\lceil\frac{(2{,}145)^2 \times (0{,}85)^2}{(0{,}5)^2}\right\rceil = \left\lceil\frac{4{,}60 \times 0{,}72}{0{,}25}\right\rceil = \left\lceil 13{,}2\right\rceil = 14
+n^* = \left\lceil\frac{(2{,}145)^2 \times (0{,}027)^2}{(0{,}05)^2}\right\rceil = \left\lceil\frac{4{,}601 \times 0{,}000729}{0{,}0025}\right\rceil = \left\lceil 1{,}34 \right\rceil = 2
 \]
 
-Como $14 < n_0 = 15$, las réplicas del piloto son suficientes. El semiancho de $0{,}47$ min ya cumple el criterio $\le 0{,}5$ min.
+Como $2 < n_0 = 15$, las réplicas del piloto son más que suficientes. De hecho, el semiancho actual ($0{,}015$ min) ya cumple holgadamente $\delta = 0{,}05$ min.
 
-\subsection{Interpretación}
-
-\begin{resultadobox}[Resultado]
-Con 15 réplicas del turno de almuerzo, el tiempo promedio de espera en cola se estima en $\bar W_q = 6{,}79$ min con IC 95\% $[6{,}32;\; 7{,}26]$ min (semiancho $0{,}47$ min $< 0{,}5$ min). El valor analítico P-K de $6{,}75$ min cae dentro del intervalo, confirmando la validez del simulador.
-\end{resultadobox}
-
-\begin{notabox}[Variabilidad entre réplicas y distribución del turno]
-Nótese que $Y_j$ varía entre $5{,}4$ y $8{,}3$ min, un rango considerable. Esta variabilidad es real: depende de la secuencia aleatoria de llegadas y tiempos de servicio en cada turno. El intervalo de confianza cuantifica esta incertidumbre; no es un error del simulador.
+\begin{notabox}[Comparación con el ejemplo básico]
+El sistema $M/E_2/1$ tiene menor variabilidad entre réplicas ($S_{15}=0{,}027$) que el $M/M/1$ ($S_{10}=0{,}106$). Esto es coherente: la variabilidad del servicio (CV $= 0{,}71$ vs.\ $1$) se transmite a la variabilidad entre réplicas. Distribuciones de servicio menos variables producen estimadores más precisos con menos réplicas.
 \end{notabox}
+
+\subsection{Comparación de modelos}
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Sistema} & $\bar W_q$ (min) & IC 95\% & $S_n$ (min) & Ref.\ P-K \\
+\midrule
+$M/M/1$ (ej.\ básico, $n=10$)  & $0{,}633$ & $[0{,}557;\;0{,}709]$ & $0{,}106$ & $0{,}667$ $\checkmark$ \\
+$M/E_2/1$ (ej.\ intermedio, $n=15$) & $0{,}393$ & $[0{,}378;\;0{,}408]$ & $0{,}027$ & $0{,}407$ $\checkmark$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Ambos IC contienen el valor P-K estacionario, y el sistema Erlang tiene espera 38\% menor, como predice la teoría.
+
+\begin{resultadobox}[Resultado del ejemplo intermedio]
+Con 15 réplicas, $\bar W_q = 0{,}393$ min con IC $[0{,}378;\; 0{,}408]$ min. La precisión ($h=0{,}015$ min) excede ampliamente el objetivo de $\delta=0{,}05$ min, gracias a la baja variabilidad del servicio Erlang-2. El procedimiento secuencial muestra que incluso $n=2$ réplicas bastarían para este objetivo, pero más réplicas dan ICs más estrechos y más confiables.
+\end{resultadobox}
 
 % ══════════════════════════════════════════════════
 \section{Ejemplo escalado: urgencias hospitalarias (mañana)}
 % ══════════════════════════════════════════════════
 
 \begin{ejemplobox}[Sistema]
-El servicio de urgencias de un hospital opera el turno de mañana (7:00--15:00, 8 horas). Los pacientes se clasifican en tres niveles de prioridad al triaje. El sistema tiene 3 médicos (\emph{recursos}), una sala de espera común y una cola con prioridad no expulsiva (non-preemptive). Las distribuciones de servicio son \textbf{no exponenciales}.
+El servicio de urgencias de un hospital opera el turno de mañana (7:00--15:00, 8 horas). Los pacientes se clasifican en tres niveles de prioridad al triaje. El sistema tiene 3 médicos (\emph{recursos}), una sala de espera común y una cola con prioridad no expulsiva (non-preemptive). Las distribuciones de servicio son \textbf{no exponenciales}, determinadas en el modelado de entradas (Tema 3.1).
 
 \medskip
 \begin{center}\small
@@ -238,6 +371,8 @@ Llegadas totales: Poisson con $\lambda=20$ pacientes/h. El sistema inicia vacío
 \end{enumerate}
 \end{ejemplobox}
 
+A diferencia de los ejemplos anteriores, \textbf{no existe solución analítica} para este sistema: tiene múltiples servidores, prioridades no expulsivas, y distribuciones de servicio heterogéneas (Exponencial, Erlang-3 y Log-normal). La simulación es la única herramienta disponible.
+
 \subsection{Configuración del estudio}
 
 \textbf{Tráfico del sistema}. La tasa de llegadas efectiva de cada tipo y su aporte a la carga:
@@ -248,7 +383,7 @@ Llegadas totales: Poisson con $\lambda=20$ pacientes/h. El sistema inicia vacío
 \lambda_{P3} &= 0{,}30 \times 20 = 6{,}0 \text{ pac/h}, & \text{carga}_{P3} &= 6{,}0 \times \tfrac{35}{60} = 3{,}50
 \end{align*}
 
-Carga total = $0{,}50 + 5{,}50 + 3{,}50 = 9{,}50$ pac·médico$^{-1}$h$^{-1}$, con 3 médicos: $\rho = 9{,}50/(3 \times 60) \approx 0{,}79$.
+Carga total = $0{,}50 + 5{,}50 + 3{,}50 = 9{,}50$ pac$\cdot$médico$^{-1}$h$^{-1}$, con 3 médicos trabajando 60 min/h: $\rho = 9{,}50/(3 \times 60/60) \approx 0{,}79$.
 
 \subsection{Piloto: $n_0 = 10$ réplicas}
 
@@ -267,7 +402,11 @@ $\rho$                     & 0{,}787 & 0{,}018 & 0{,}7\% \\
 \end{tabular}
 \end{center}
 
+Las dos primeras métricas están ligeramente fuera del objetivo ($r > 5\%$). La utilización ya cumple holgadamente.
+
 \subsection{Cálculo de $n^*$ para cada métrica (objetivo: $r \le 5\%$)}
+
+Con $t_{0{,}025,9} = 2{,}262$:
 
 \[
 n^*_{W_q^{P2}} = \left\lceil\frac{(2{,}262)^2 \times (4{,}7)^2}{(0{,}05 \times 28{,}4)^2}\right\rceil = \left\lceil\frac{112{,}9}{2{,}02}\right\rceil = \lceil 55{,}9\rceil = 56
@@ -277,7 +416,7 @@ n^*_{W_q^{P2}} = \left\lceil\frac{(2{,}262)^2 \times (4{,}7)^2}{(0{,}05 \times 2
 n^*_{P(W>30)} = \left\lceil\frac{(2{,}262)^2 \times (0{,}058)^2}{(0{,}05 \times 0{,}342)^2}\right\rceil = \left\lceil\frac{0{,}01723}{0{,}000292}\right\rceil = \lceil 59{,}0\rceil = 59
 \]
 
-La métrica más exigente es $P(W_q>30\text{ min}\mid P3)$; se necesitan $n^* = 59$ réplicas para todas las métricas.
+La métrica más exigente es $P(W_q>30\text{ min}\mid P3)$; se necesitan $n^* = 59$ réplicas para todas las métricas simultáneamente.
 
 \subsection{Resultados con $n=59$ réplicas}
 
@@ -294,12 +433,36 @@ $\rho$                       & 0{,}789 & $[0{,}784;\;0{,}794]$ & 0{,}3\% & Utili
 \end{tabular}
 \end{center}
 
+\subsection{Análisis de resultados}
+
+\begin{itemize}
+    \item Los pacientes P2 (moderados) esperan en promedio $\sim$29 minutos, lo que puede exceder estándares de atención hospitalaria.
+    \item Más de un tercio (35\%) de los pacientes P3 esperan más de 30 minutos.
+    \item La utilización del 79\% indica un sistema cercano a la saturación. Pequeños incrementos en la demanda producen aumentos desproporcionados en las esperas (no-linealidad característica de colas, vista en el análisis de sensibilidad del Tema 3.2).
+    \item Todas las métricas cumplen el criterio de precisión relativa $r \le 5\%$.
+\end{itemize}
+
 \begin{resultadobox}[Conclusiones del estudio terminal]
-En el turno de mañana, aproximadamente 1 de cada 3 pacientes de nivel P3 espera más de 30 minutos. La utilización del médico del 79\% indica un sistema cercano a la saturación; pequeños incrementos en la demanda ($\lambda$) pueden disparar los tiempos de espera de manera no lineal. Este estudio cuantifica el riesgo de incumplir el objetivo de servicio y provee la base para evaluar la contratación de un cuarto médico (comparación de alternativas, Tema 3.4).
+En el turno de mañana, aproximadamente 1 de cada 3 pacientes de nivel P3 espera más de 30 minutos. Este resultado provee la base para evaluar la contratación de un cuarto médico (comparación de alternativas, Tema 3.4).
+
+El procedimiento secuencial determinó que 59 réplicas son necesarias para alcanzar la precisión deseada en todas las métricas simultáneamente, y los resultados finales cumplen los criterios de calidad estadística.
 \end{resultadobox}
 
-\begin{notabox}[No-Markovianidad y análisis de salida]
-El sistema de urgencias modela servicios con distribuciones Erlang-3 y Log-normal, ambas no exponenciales. No existe solución analítica exacta para la distribución del tiempo de espera ni para $P(W_q>30\text{ min})$ bajo prioridades no expulsivas con múltiples servidores y distribuciones mixtas. La simulación es la única herramienta de análisis que permite estimar estas métricas con intervalos de confianza.
+\begin{notabox}[No-Markovianidad y necesidad de simulación]
+El sistema de urgencias modela servicios con distribuciones Erlang-3 y Log-normal, ambas no exponenciales. No existe solución analítica exacta para la distribución del tiempo de espera ni para $P(W_q>30\text{ min})$ bajo prioridades no expulsivas con múltiples servidores y distribuciones mixtas. La simulación, combinada con el método de réplicas independientes, es la única herramienta que permite estimar estas métricas con intervalos de confianza rigurosos.
 \end{notabox}
+
+% ══════════════════════════════════════════════════
+\section*{Referencias}
+% ══════════════════════════════════════════════════
+
+\begin{enumerate}[label={[\arabic*]}]
+    \item Law, A.\,M. (2015). \textit{Simulation Modeling and Analysis}, 5th ed. McGraw-Hill. Cap.~7 y 9.
+    \item Banks, J., Carson, J.\,S., Nelson, B.\,L. \& Nicol, D.\,M. (2014). \textit{Discrete-Event System Simulation}, 5th ed. Pearson. Cap.~11.
+    \item Alexopoulos, C. (2006). Statistical analysis of simulation output. En \textit{Handbook of Industrial Engineering}, 3rd ed. Wiley.
+    \item Nelson, B.\,L. (2013). \textit{Foundations and Methods of Stochastic Simulation}. Springer. Cap.~8.
+    \item Kelton, W.\,D. (2006). Statistical issues in simulation. \textit{Proceedings of the Winter Simulation Conference}.
+    \item Goldsman, D. \& Nelson, B.\,L. (1998). Comparing systems via simulation. En \textit{Handbook of Simulation}. Wiley.
+\end{enumerate}
 
 \end{document}
