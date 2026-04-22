@@ -1,0 +1,1672 @@
+\documentclass[aspectratio=1610, 10pt]{beamer}
+\usepackage{mobi-beamer}
+
+% ── Estilo común para pgfplots ───────────────────────────────
+\pgfplotsset{
+  every axis/.append style={
+    font=\scriptsize,
+    label style={font=\scriptsize},
+    title style={font=\footnotesize\bfseries},
+    tick label style={font=\scriptsize},
+    legend style={font=\scriptsize, draw=mobiblue!30, fill=white, fill opacity=0.9, text opacity=1},
+    grid=both, grid style={mobiblue!10, very thin},
+    major grid style={mobiblue!20},
+    axis line style={mobiblue!70},
+    tick style={mobiblue!70}
+  }
+}
+
+\title[T3.1 Modelado de Entradas]{%
+  Modelado de Entradas\\[2pt]
+  \large Del dato observado a la distribución de probabilidad}
+\subtitle{T3.1 · Modelado de Sistemas bajo Incertidumbre}
+\author{Alejandra Tabares Pozos}
+\institute{Universidad de los Andes · Ingeniería Industrial}
+\date{2026}
+
+\begin{document}
+
+\begin{frame}\titlepage\end{frame}
+
+% ═════════════════════════════════════════════════════════════
+% PARTE 1 — MOTIVACIÓN: ENTRAMOS CON UN PROBLEMA DE COLAS
+% ═════════════════════════════════════════════════════════════
+
+\begin{frame}{El problema que nos motiva}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{situacionbox}[Banco — ventanilla única]
+        \footnotesize
+        Durante una hora registramos \textbf{15 tiempos de atención} (minutos):
+        \vspace{2pt}
+        \begin{center}\scriptsize
+          $0{,}7\; 0{,}8\; 0{,}9\; 1{,}1\; 1{,}2\; 1{,}5\; 1{,}6\; 1{,}8$\\
+          $2{,}1\; 2{,}4\; 2{,}8\; 3{,}1\; 3{,}4\; 4{,}2\; 5{,}6$
+        \end{center}
+      \end{situacionbox}
+
+      \vspace{4pt}
+      \textbf{Pregunta clave.} ¿Podemos modelar la ventanilla como $M/M/1$
+      (llegadas Poisson + servicio exponencial)?
+
+      \vspace{4pt}
+      Si la respuesta es \emph{sí}, tenemos fórmulas cerradas.
+      Si es \emph{no}, necesitamos $M/G/1$ o simular.
+
+      \vspace{4pt}
+      \emph{Todo el tema gira en torno a esta pregunta.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.5cm,
+          xlabel={Tiempo de servicio (min)}, ylabel={Frecuencia},
+          xmin=0, xmax=6, ymin=0, ymax=4, ybar, bar width=7pt,
+          xtick={0,1,2,3,4,5,6}]
+          \addplot[fill=mobiblue!70, draw=mobiblue] coordinates {
+            (0.5,1) (1.0,2) (1.5,2) (2.0,2) (2.5,2) (3.0,2) (3.5,1) (4.5,1) (5.5,1)
+          };
+        \end{axis}
+      \end{tikzpicture}
+      \begin{center}\scriptsize
+        Histograma de los 15 tiempos.\\
+        $\bar x = 2{,}21$, $s = 1{,}40$, $\mathrm{CV} = 0{,}63$.
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── ¿Por qué importa qué distribución uso? ───────────────────
+\begin{frame}{¿Por qué importa la distribución que elijamos?}
+  \textbf{Fórmula de Pollaczek--Khinchine} para $M/G/1$ con tráfico $\rho=\lambda\,\E[S]$:
+  \[
+    W_q^{M/G/1} \;=\; W_q^{M/M/1}\cdot\frac{1+\mathrm{CV}_S^{\,2}}{2}
+  \]
+  Fijando $\rho=0{,}8$, $\E[S]=1$ min (por lo que $W_q^{M/M/1}=4$ min), el servicio es el mismo
+  \emph{en promedio}, cambia solo su forma:
+
+  \begin{center}
+    \begin{tikzpicture}
+      \begin{axis}[width=10cm, height=3.8cm, xbar, bar width=8pt,
+        xlabel={$W_q$ (min)}, xmin=0, xmax=11,
+        symbolic y coords={Determinista, Erlang-2, Exponencial, Weibull, Hiperexp},
+        ytick=data, nodes near coords, nodes near coords style={font=\tiny},
+        enlarge y limits=0.15]
+        \addplot[fill=mobigold!70, draw=mobigold!90] coordinates {
+          (2.0,Determinista)
+          (3.0,Erlang-2)
+          (4.0,Exponencial)
+          (5.3,Weibull)
+          (10.0,Hiperexp)
+        };
+      \end{axis}
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{alertabox}[Moraleja]
+    La misma media puede producir tiempos en cola que varían en un factor de \textbf{5}.
+    Asumir exponencial ``porque es fácil'' es el error más caro del modelado.
+  \end{alertabox}
+\end{frame}
+
+% ═════════════════════════════════════════════════════════════
+% PARTE 2 — METODOLOGÍA
+% ═════════════════════════════════════════════════════════════
+
+\begin{frame}{Ruta de trabajo — 5 pasos}
+  \begin{center}
+    \begin{tikzpicture}[node distance=3pt,
+      box/.style={rectangle, rounded corners=3pt, draw=mobiblue, thick,
+        fill=mobilightblue, minimum height=1.0cm, minimum width=2.2cm,
+        align=center, font=\scriptsize},
+      arr/.style={-Stealth, thick, mobiblue}]
+      \node[box] (p1) {1. Recolección\\y limpieza};
+      \node[box, right=of p1] (p2) {2. Exploración\\gráfica};
+      \node[box, right=of p2] (p3) {3. Elegir\\familia};
+      \node[box, right=of p3] (p4) {4. Estimar\\parámetros};
+      \node[box, right=of p4] (p5) {5. Bondad\\de ajuste};
+      \draw[arr] (p1)--(p2);
+      \draw[arr] (p2)--(p3);
+      \draw[arr] (p3)--(p4);
+      \draw[arr] (p4)--(p5);
+      \draw[arr, dashed, bend left=25, draw=princetonorange]
+        (p5.north) to node[above, font=\tiny, text=princetonorange]
+        {si se rechaza, volver a 3} (p3.north);
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{6pt}
+  \begin{itemize}\small\itemsep2pt
+    \item \textbf{Paso 1}: ¿son independientes? ¿hay tendencia?
+    \item \textbf{Paso 2}: histograma, función de distribución empírica, gráfico Q-Q.
+    \item \textbf{Paso 3}: el coeficiente de variación y el proceso físico sugieren candidatas.
+    \item \textbf{Paso 4}: máxima verosimilitud (MLE) sobre cada candidata.
+    \item \textbf{Paso 5}: chi-cuadrado, Kolmogorov--Smirnov, Anderson--Darling + gráfico Q-Q.
+  \end{itemize}
+\end{frame}
+
+% ═════════════════════════════════════════════════════════════
+% PARTE 3 — LAS DISTRIBUCIONES (CADA UNA CON SU FIGURA)
+% ═════════════════════════════════════════════════════════════
+
+\begin{frame}{Exponencial: el punto de partida}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5cm,
+          xlabel={$x$}, ylabel={$f(x)$},
+          xmin=0, xmax=6, ymin=0, ymax=2.1,
+          legend pos=north east]
+          \addplot[thick, mobiblue, domain=0:6, samples=120]
+            {2*exp(-2*x)};
+          \addlegendentry{$\lambda=2$}
+          \addplot[thick, mobigold, domain=0:6, samples=120]
+            {1*exp(-1*x)};
+          \addlegendentry{$\lambda=1$}
+          \addplot[thick, princetonorange, domain=0:6, samples=120]
+            {0.5*exp(-0.5*x)};
+          \addlegendentry{$\lambda=0{,}5$}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \footnotesize
+      $X \sim \mathrm{Exp}(\lambda)$
+      \[
+        f(x) = \lambda e^{-\lambda x},\; x\ge 0
+      \]
+      \[
+        \E[X]=\tfrac{1}{\lambda},\quad \mathrm{CV}=1
+      \]
+
+      \vspace{4pt}
+      \begin{notabox}[Propiedad clave — sin memoria]
+        $\Prob(X>s+t\mid X>s)=\Prob(X>t)$. Es el \emph{único}
+        justificativo para usar $M/M/c$.
+      \end{notabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Erlang-k ─────────────────────────────────────────────────
+\begin{frame}{Erlang-$k$: servicio en etapas regulares}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5cm,
+          xlabel={$x$}, ylabel={$f(x)$},
+          xmin=0, xmax=6, ymin=0, ymax=1.1,
+          legend pos=north east]
+          \addplot[thick, mobiblue, domain=0:6, samples=150]
+            {exp(-x)};
+          \addlegendentry{$k=1$ (=Exp)}
+          \addplot[thick, mobigold, domain=0:6, samples=150]
+            {x*exp(-x)};
+          \addlegendentry{$k=2$, $\mu=1$}
+          \addplot[thick, princetonorange, domain=0:6, samples=150]
+            {x^2*exp(-x)/2};
+          \addlegendentry{$k=3$, $\mu=1$}
+          \addplot[thick, deepgreen, domain=0:6, samples=150]
+            {x^4*exp(-x)/24};
+          \addlegendentry{$k=5$, $\mu=1$}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \footnotesize
+      $X = S_1+\cdots+S_k$, $S_i\sim\mathrm{Exp}(\mu)$ i.i.d.
+      \[
+        f(x)=\frac{\mu^k x^{k-1}e^{-\mu x}}{(k-1)!}
+      \]
+      \[
+        \E[X]=\tfrac{k}{\mu},\quad \mathrm{CV}=\tfrac{1}{\sqrt{k}}
+      \]
+
+      \vspace{4pt}
+      \begin{notabox}[Interpretación física]
+        Servicio con $k$ etapas sucesivas: a más etapas,
+        \emph{menor variabilidad} ($\mathrm{CV}<1$).
+      \end{notabox}
+      \emph{Ejemplo:} trámite bancario (saludo, transacción, despedida) $\Rightarrow$ $k=3$.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Gamma ────────────────────────────────────────────────────
+\begin{frame}{Gamma: la Erlang con parámetro continuo}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5cm,
+          xlabel={$x$}, ylabel={$f(x)$},
+          xmin=0, xmax=6, ymin=0, ymax=1.2,
+          legend pos=north east]
+          % Gamma(alpha=0.8, beta=1): beta*x^(alpha-1)*exp(-beta*x)/Gamma(alpha)
+          % Para alpha=0.8, Gamma(0.8) ~ 1.1642
+          \addplot[thick, mobiblue, domain=0.05:6, samples=150]
+            {x^(-0.2)*exp(-x)/1.1642};
+          \addlegendentry{$\alpha=0{,}8$}
+          \addplot[thick, mobigold, domain=0:6, samples=150]
+            {exp(-x)};
+          \addlegendentry{$\alpha=1$}
+          \addplot[thick, princetonorange, domain=0:6, samples=150]
+            {x^1.5*exp(-x)/1.3293};
+          \addlegendentry{$\alpha=2{,}5$}
+          \addplot[thick, deepgreen, domain=0:6, samples=150]
+            {x^4*exp(-x)/24};
+          \addlegendentry{$\alpha=5$}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \footnotesize
+      $X\sim\mathrm{Gamma}(\alpha,\beta)$
+      \[
+        f(x)=\frac{\beta^\alpha x^{\alpha-1}e^{-\beta x}}{\Gamma(\alpha)}
+      \]
+      \[
+        \E[X]=\tfrac{\alpha}{\beta},\quad \mathrm{CV}=\tfrac{1}{\sqrt{\alpha}}
+      \]
+
+      \vspace{4pt}
+      \begin{notabox}[Relación con Erlang]
+        Erlang-$k$ es Gamma con $\alpha=k\in\mathbb{N}$.
+        Gamma permite $\alpha\in\mathbb{R}^+$: más flexible.
+      \end{notabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Weibull ──────────────────────────────────────────────────
+\begin{frame}{Weibull: la distribución de las fallas}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.5cm,
+          title={Densidad $f(x)$},
+          xlabel={$x$}, ylabel={$f(x)$},
+          xmin=0, xmax=4, ymin=0, ymax=2.5,
+          legend pos=north east]
+          % Weibull: (k/lam)*(x/lam)^(k-1)*exp(-(x/lam)^k), lam=1
+          \addplot[thick, mobiblue, domain=0.05:4, samples=150]
+            {0.5*(x)^(-0.5)*exp(-x^0.5)};
+          \addlegendentry{$k=0{,}5$}
+          \addplot[thick, mobigold, domain=0:4, samples=150]
+            {exp(-x)};
+          \addlegendentry{$k=1$}
+          \addplot[thick, princetonorange, domain=0:4, samples=150]
+            {1.5*x^0.5*exp(-x^1.5)};
+          \addlegendentry{$k=1{,}5$}
+          \addplot[thick, deepgreen, domain=0:4, samples=150]
+            {3*x^2*exp(-x^3)};
+          \addlegendentry{$k=3$}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.5cm,
+          title={Tasa de falla (hazard) $h(x)=(k/\lambda)(x/\lambda)^{k-1}$},
+          xlabel={$x$}, ylabel={$h(x)$},
+          xmin=0, xmax=4, ymin=0, ymax=4,
+          legend pos=north west]
+          \addplot[thick, mobiblue, domain=0.05:4, samples=120]
+            {0.5*x^(-0.5)};
+          \addlegendentry{$k=0{,}5$: decrec.}
+          \addplot[thick, mobigold, domain=0:4, samples=20]{1};
+          \addlegendentry{$k=1$: constante}
+          \addplot[thick, princetonorange, domain=0:4, samples=100]
+            {1.5*x^0.5};
+          \addlegendentry{$k=1{,}5$: crec.}
+          \addplot[thick, deepgreen, domain=0:4, samples=100]
+            {3*x^2};
+          \addlegendentry{$k=3$: crec.}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \footnotesize
+  $k<1$: \emph{mortalidad infantil} (equipos nuevos defectuosos) · $k=1$: exponencial (sin memoria) ·
+  $k>1$: \emph{desgaste} (equipos envejecen). La tasa de falla es lo que caracteriza la Weibull.
+\end{frame}
+
+% ── Log-normal ───────────────────────────────────────────────
+\begin{frame}{Log-normal: fenómenos multiplicativos}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5cm,
+          xlabel={$x$}, ylabel={$f(x)$},
+          xmin=0, xmax=6, ymin=0, ymax=1.2,
+          legend pos=north east]
+          % LogN(mu=0, sigma): 1/(x*sigma*sqrt(2pi))*exp(-(ln x)^2/(2 sigma^2))
+          \addplot[thick, mobiblue, domain=0.05:6, samples=200]
+            {1/(x*0.25*sqrt(2*pi))*exp(-(ln(x))^2/(2*0.0625))};
+          \addlegendentry{$\sigma=0{,}25$}
+          \addplot[thick, mobigold, domain=0.05:6, samples=200]
+            {1/(x*0.5*sqrt(2*pi))*exp(-(ln(x))^2/(2*0.25))};
+          \addlegendentry{$\sigma=0{,}5$}
+          \addplot[thick, princetonorange, domain=0.05:6, samples=200]
+            {1/(x*1.0*sqrt(2*pi))*exp(-(ln(x))^2/(2*1.0))};
+          \addlegendentry{$\sigma=1$}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \footnotesize
+      $X\sim\mathrm{LogN}(\mu,\sigma^2)$ si $\ln X\sim\mathcal{N}(\mu,\sigma^2)$.
+      \[
+        \E[X]=e^{\mu+\sigma^2/2}
+      \]
+      \[
+        \mathrm{CV}=\sqrt{e^{\sigma^2}-1}
+      \]
+
+      \vspace{4pt}
+      \begin{notabox}[Cuándo aparece]
+        Cuando el tiempo total es producto de muchos factores (diagnóstico +
+        negociación + resolución): por el teorema central del límite,
+        el \emph{logaritmo} es normal.
+      \end{notabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Hiperexponencial ─────────────────────────────────────────
+\begin{frame}{Hiperexponencial: mezcla de poblaciones}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5cm,
+          xlabel={$x$}, ylabel={$f(x)$},
+          xmin=0, xmax=10, ymin=0, ymax=1.2,
+          legend pos=north east]
+          % H2: p*lam1*e^{-lam1 x} + (1-p)*lam2*e^{-lam2 x}
+          % Ej: p=0.8, lam1=2 (rápido), lam2=0.2 (lento) → CV ≈ 2
+          \addplot[thick, mobiblue, domain=0:10, samples=200]
+            {0.8*2*exp(-2*x) + 0.2*0.2*exp(-0.2*x)};
+          \addlegendentry{Mezcla 80/20}
+          \addplot[thick, mobigold!70, dashed, domain=0:10, samples=200]
+            {2*exp(-2*x)};
+          \addlegendentry{Rápido ($\lambda=2$)}
+          \addplot[thick, princetonorange!70, dashed, domain=0:10, samples=200]
+            {0.2*exp(-0.2*x)};
+          \addlegendentry{Lento ($\lambda=0{,}2$)}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \footnotesize
+      \[
+        f(x)=\sum_{i=1}^{k} p_i\,\lambda_i e^{-\lambda_i x}
+      \]
+      con $\sum p_i = 1$. \\
+      Siempre $\mathrm{CV}>1$ si $\lambda_i$'s difieren.
+
+      \vspace{4pt}
+      \begin{notabox}[Ejemplo de taller]
+        $80\%$ de las reparaciones son rápidas (30 min);
+        $20\%$ son complejas (5 h). Una sola exponencial no captura esta heterogeneidad.
+      \end{notabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Tabla resumen y guía por CV ──────────────────────────────
+\begin{frame}{Tabla comparativa y guía por coeficiente de variación}
+  \begin{center}\scriptsize
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabular}{lccll}
+      \toprule
+      \textbf{Distribución} & $\mathrm{CV}$ & \textbf{Tasa de falla} & \textbf{Ejemplo físico} \\
+      \midrule
+      Determinista ($D$)        & $0$               & ---         & Línea automatizada, proceso fijo \\
+      Erlang-$k$ ($E_k$)        & $1/\sqrt{k}$      & Creciente   & Servicio con $k$ etapas sucesivas \\
+      Exponencial ($M$)         & $1$               & Constante   & Sin memoria, $M/M/c$ \\
+      Gamma $(\alpha,\beta)$    & $1/\sqrt{\alpha}$ & Flexible    & Modelado general \\
+      Weibull $(k,\lambda)$     & variable          & Flexible    & Tiempos de falla, reparaciones \\
+      Log-normal                & variable          & Unimodal    & Actividades humanas multiplicativas \\
+      Hiperexp ($H_k$)          & $>1$              & Decreciente & Poblaciones mixtas (simples + complejas) \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{6pt}
+  \begin{metodobox}[Guía rápida de primera elección por $\mathrm{CV}$]
+    \small
+    \begin{tabular}{p{2cm}p{3cm}p{9cm}}
+      $\mathrm{CV}=0$ & Determinista & No hay variabilidad\\
+      $\mathrm{CV}<1$ & Erlang-$k$ con $k\approx 1/\mathrm{CV}^2$, o Gamma & Servicio regular\\
+      $\mathrm{CV}\approx 1$ & Exponencial & Baseline Markoviano\\
+      $\mathrm{CV}>1$ & Hiperexp, Weibull ($k<1$), Log-normal & Heterogeneidad, colas pesadas\\
+    \end{tabular}
+  \end{metodobox}
+  \vspace{2pt}
+  \small De nuestros datos del banco: $\mathrm{CV}=0{,}63 \Rightarrow$ primera candidata
+  \textbf{Erlang-$k$ con $k\approx 1/0{,}63^2 \approx 2{,}5$}.
+\end{frame}
+
+% ═════════════════════════════════════════════════════════════
+% PARTE 4 — EXPLORACIÓN GRÁFICA
+% ═════════════════════════════════════════════════════════════
+
+
+\begin{frame}
+\frametitle{Construcción de un Histograma}
+Un histograma es la representación gráfica de la distribución de un conjunto de datos continuos.
+
+\vspace{0.3cm}
+\textbf{Pasos para su construcción:}
+\begin{itemize}
+    \item \textbf{Definir el rango:} Restar el valor mínimo del valor máximo ($R = x_{max} - x_{min}$).
+    \item \textbf{Elegir el número de intervalos ($k$):} Se puede usar la Regla de Sturges: $k = 1 + 3.322 \log_{10}(n)$.
+    \item \textbf{Calcular la amplitud ($w$):} Dividir el rango entre el número de intervalos ($w = R/k$).
+    \item \textbf{Calcular frecuencias:} Contar cuántos datos caen dentro de cada intervalo (clase).
+    \item \textbf{Graficar:} Dibujar barras adyacentes donde la base es el intervalo y la altura es la frecuencia (absoluta o relativa).
+\end{itemize}
+\end{frame}
+
+% --- DIAPOSITIVA 4: HISTOGRAMA EXPONENCIAL ---
+\begin{frame}
+\frametitle{Histograma de Datos Empíricos (Exponencial)}
+A continuación se muestra un histograma generado con datos que siguen una distribución exponencial ($\lambda = 0.5$).
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=9cm, height=6cm,
+    ymin=0, ymax=60,
+    xmin=0, xmax=10,
+    xlabel={Intervalos de clase},
+    ylabel={Frecuencia absoluta},
+    ybar interval, % Estilo de histograma
+    xticklabel={[\pgfmathprintnumber\tick, \pgfmathprintnumber\nexttick)},
+    xtick={0,2,4,6,8,10},
+    nodes near coords, % Muestra el valor sobre la barra
+    every node near coord/.append style={font=\tiny},
+    axis lines=left,
+    grid=vertical,
+    ]
+    % Datos empíricos simulados (Frecuencias por clase)
+    \addplot[fill=blue!40, draw=blue!70] coordinates {
+        (0, 55)
+        (2, 28)
+        (4, 14)
+        (6, 7)
+        (8, 3)
+        (10, 0) % El último punto define el cierre del intervalo
+    };
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\small
+\textbf{Nota:} Se observa el decaimiento característico: las clases iniciales tienen la mayor concentración de frecuencias.
+\end{frame}
+
+\begin{frame}{Histograma: ¿cuántos intervalos?}
+  La misma muestra de $n=80$, tres elecciones de $k$:
+
+  \begin{center}
+    \begin{tikzpicture}
+      \begin{axis}[width=5cm, height=3.8cm, title={$k=4$ (muy pocos)},
+        xlabel={$x$}, ylabel={densidad}, xmin=0, xmax=8, ymin=0, ymax=0.45,
+        ybar interval]
+        \addplot[fill=mobiblue!30, draw=mobiblue] coordinates
+          {(0,0.33) (2,0.38) (4,0.06) (6,0.03) (8,0)};
+      \end{axis}
+    \end{tikzpicture}%
+    \hspace{-0.2cm}
+    \begin{tikzpicture}
+      \begin{axis}[width=5cm, height=3.8cm, title={$k=10$ (óptimo)},
+        xlabel={$x$}, xmin=0, xmax=8, ymin=0, ymax=0.45,
+        ybar interval]
+        \addplot[fill=mobigold!50, draw=mobigold] coordinates
+          {(0.17,0.12) (0.88,0.32) (1.60,0.37) (2.31,0.30) (3.03,0.16)
+           (3.74,0.04) (4.46,0.05) (5.17,0.02) (5.89,0.00) (6.60,0.04) (7.32,0)};
+      \end{axis}
+    \end{tikzpicture}%
+    \hspace{-0.2cm}
+    \begin{tikzpicture}
+      \begin{axis}[width=5cm, height=3.8cm, title={$k=30$ (demasiados)},
+        xlabel={$x$}, xmin=0, xmax=8, ymin=0, ymax=0.8,
+        ybar interval]
+        \addplot[fill=princetonorange!40, draw=princetonorange] coordinates
+          {(0.17,0.42) (0.41,0.00) (0.65,0.42) (0.89,0.42) (1.13,0.84)
+           (1.37,0.42) (1.61,0.84) (1.85,0.00) (2.09,0.42) (2.33,0.42)
+           (2.57,0.42) (2.81,0.42) (3.05,0.00) (3.29,0.00) (3.53,0.00)
+           (3.77,0.00) (4.01,0.42) (4.25,0.00) (4.49,0.00) (4.73,0.42)
+           (4.97,0.00) (5.21,0.00) (5.45,0.00) (5.69,0.00) (5.93,0.00)
+           (6.17,0.00) (6.41,0.00) (6.65,0.42) (6.89,0.00) (7.13,0.00) (7.32,0)};
+      \end{axis}
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{metodobox}[Reglas prácticas para el número de intervalos $k$]
+    \small
+    $k = \lceil 1+\log_2 n\rceil$ (Sturges) $\cdot$
+    $k\approx \sqrt{n}$ (raíz cuadrada) $\cdot$
+    $h = 3{,}49\,s\,n^{-1/3}$ (Scott, ancho óptimo bajo normalidad).
+  \end{metodobox}
+
+  \small Con pocos intervalos se ocultan las colas; con demasiados, el ruido domina.
+  El histograma es la \emph{primera impresión}, no el diagnóstico final.
+\end{frame}
+
+% ── ECDF vs CDF ──────────────────────────────────────────────
+\begin{frame}{Función de distribución empírica frente a la teórica}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5.5cm,
+          xlabel={$x$ (min)}, ylabel={$F(x)$},
+          xmin=0, xmax=6, ymin=0, ymax=1.05,
+          legend pos=south east]
+          % ECDF en escalera (15 datos del banco)
+          \addplot[const plot, thick, mobiblue, mark=none] coordinates {
+            (0,0) (0.70,0) (0.70,0.067) (0.80,0.067) (0.80,0.133)
+            (0.90,0.133) (0.90,0.200) (1.10,0.200) (1.10,0.267)
+            (1.20,0.267) (1.20,0.333) (1.50,0.333) (1.50,0.400)
+            (1.60,0.400) (1.60,0.467) (1.80,0.467) (1.80,0.533)
+            (2.10,0.533) (2.10,0.600) (2.40,0.600) (2.40,0.667)
+            (2.80,0.667) (2.80,0.733) (3.10,0.733) (3.10,0.800)
+            (3.40,0.800) (3.40,0.867) (4.20,0.867) (4.20,0.933)
+            (5.60,0.933) (5.60,1.000) (6,1.000)
+          };
+          \addlegendentry{$\hat F_n(x)$ empírica}
+          % CDF exp(lambda=0.452)
+          \addplot[thick, princetonorange, domain=0:6, samples=120]
+            {1-exp(-0.4518*x)};
+          \addlegendentry{$F_0(x)=1-e^{-\hat\lambda x}$}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \footnotesize
+      \[
+        \hat F_n(x) \;=\; \frac{1}{n}\sum_{i=1}^{n}\mathbf{1}\{X_i\le x\}
+      \]
+
+      \vspace{2pt}
+      \textbf{Glivenko--Cantelli}: $\sup_x|\hat F_n - F|\to 0$ uniformemente.
+
+      \vspace{4pt}
+      En el gráfico vemos que la escalera \emph{sube más rápido} al inicio que la
+      exponencial teórica: los datos tienen pocos valores pequeños y muchos medianos.
+
+      \vspace{4pt}
+      \begin{notabox}[Lectura]
+        La distancia máxima vertical entre la empírica y la teórica es la base de
+        la prueba de Kolmogorov--Smirnov (próximas láminas).
+      \end{notabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Construcción de un Gráfico Q-Q (Q-Q Plot)}
+Un gráfico Q-Q es una herramienta visual para evaluar si un conjunto de datos sigue una distribución teórica específica (como la distribución Normal).
+
+\vspace{0.3cm}
+\textbf{Pasos para su construcción:}
+\begin{enumerate}
+    \item \textbf{Ordenar los datos empíricos:} De menor a mayor, obteniendo los estadísticos de orden: 
+    $$x_{(1)} \leq x_{(2)} \leq \dots \leq x_{(n)}$$
+    
+    \item \textbf{Calcular proporciones (probabilidades acumuladas):} Para cada dato en la posición $i$, se estima la proporción de datos por debajo de él. Una fórmula común es:
+    $$p_i = \frac{i - 0.5}{n}$$
+    
+    \item \textbf{Obtener cuantiles teóricos:} Se utiliza la función de distribución acumulada inversa $F^{-1}$ de la distribución teórica evaluada para encontrar el valor esperado:
+    $$q_i = F^{-1}(p_i)$$
+    
+    \item \textbf{Graficar:} Se representan en un plano cartesiano los cuantiles teóricos $(q_i)$ en el eje X frente a los datos ordenados $(x_{(i)})$ en el eje Y.
+\end{enumerate}
+
+\begin{block}{Interpretación}
+Si los datos empíricos provienen de la distribución teórica asumida, los puntos graficados se alinearán aproximadamente sobre una línea recta.
+\end{block}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Cálculo Manual: Q-Q Plot Exponencial}
+Supongamos que tenemos $n=3$ datos: $\{2.1, 0.5, 1.2\}$ y queremos compararlos con una distribución \textbf{Exponencial} ($\lambda = 1$).
+
+\vspace{0.2cm}
+\textbf{1. Función Cuantil (Inversa de la CDF):}
+Para la exponencial $F(x) = 1 - e^{-\lambda x}$, su inversa es:
+$$q_i = F^{-1}(p_i) = -\frac{\ln(1 - p_i)}{\lambda}$$
+
+\textbf{2. Tabla de Cálculos ($p_i = \frac{i - 0.5}{3}$):}
+\begin{center}
+\small
+\begin{tabular}{ccccc}
+\toprule
+$i$ & $x_{(i)}$ (Ordenados) & $p_i$ & Operación & $q_i$ (Teórico) \\ \midrule
+1 & 0.5 & 0.167 & $-\ln(1-0.167)$ & \textbf{0.182} \\
+2 & 1.2 & 0.500 & $-\ln(1-0.500)$ & \textbf{0.693} \\
+3 & 2.1 & 0.833 & $-\ln(1-0.833)$ & \textbf{1.791} \\ \bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{3. Coordenadas a graficar $(q_i, x_{(i)})$:}
+Los puntos en el plano serán: $(0.182, 0.5)$, $(0.693, 1.2)$ y $(1.791, 2.1)$.
+\end{frame}
+
+
+
+% ── Q-Q plot: BUENO ──────────────────────────────────────────
+\begin{frame}{Gráfico Q-Q: ajuste bueno}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5.5cm,
+          xlabel={Cuantil teórico},
+          ylabel={Cuantil empírico},
+          xmin=0, xmax=5, ymin=0, ymax=5,
+          title={Datos realmente exponenciales}]
+          \addplot[only marks, mark=*, mark size=1pt, mobiblue] coordinates {
+            (0.01,0.02) (0.03,0.03) (0.05,0.05) (0.07,0.06) (0.09,0.07)
+            (0.12,0.10) (0.14,0.13) (0.16,0.15) (0.19,0.17) (0.21,0.17)
+            (0.24,0.19) (0.26,0.20) (0.29,0.20) (0.31,0.20) (0.34,0.22)
+            (0.37,0.24) (0.40,0.30) (0.43,0.34) (0.46,0.35) (0.49,0.36)
+            (0.53,0.36) (0.56,0.37) (0.60,0.46) (0.63,0.47) (0.67,0.57)
+            (0.71,0.58) (0.76,0.61) (0.80,0.68) (0.84,0.72) (0.89,0.73)
+            (0.94,0.74) (0.99,0.79) (1.05,0.90) (1.11,0.91) (1.17,0.92)
+            (1.24,0.94) (1.31,0.95) (1.39,1.09) (1.47,1.15) (1.56,1.23)
+            (1.66,1.32) (1.77,1.54) (1.90,1.65) (2.04,1.79) (2.21,2.01)
+            (2.41,2.40) (2.66,2.97) (3.00,3.01) (3.51,3.37) (4.61,3.50)
+          };
+          \addplot[thick, princetonorange, domain=0:5] {x};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \footnotesize
+      \textbf{Construcción} (datos ordenados $X_{(1)}\le\cdots\le X_{(n)}$):
+      \begin{enumerate}\small\itemsep1pt
+        \item $p_i = (i-0{,}5)/n$
+        \item $q_i = F^{-1}(p_i;\hat\theta)$
+        \item Graficar $(q_i, X_{(i)})$
+      \end{enumerate}
+
+      \vspace{4pt}
+      \textbf{Lectura:} los puntos caen sobre la recta $y=x$
+      (salvo ruido en las colas).
+
+      \vspace{2pt}
+      Es el \emph{mejor} diagnóstico visual cuando las pruebas formales dan números
+      contradictorios.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Q-Q plot: colas pesadas ──────────────────────────────────
+\begin{frame}{Gráfico Q-Q: cola derecha más pesada que la exponencial}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5.5cm,
+          xlabel={Cuantil teórico (exponencial)},
+          ylabel={Cuantil empírico},
+          xmin=0, xmax=10, ymin=0, ymax=10,
+          title={Datos Log-normal graficados como exponenciales}]
+          \addplot[only marks, mark=*, mark size=1pt, mobiblue] coordinates {
+            (0.02,0.10) (0.05,0.13) (0.08,0.16) (0.12,0.17) (0.15,0.18)
+            (0.19,0.19) (0.23,0.22) (0.26,0.23) (0.30,0.23) (0.34,0.30)
+            (0.38,0.45) (0.42,0.47) (0.47,0.48) (0.51,0.52) (0.55,0.54)
+            (0.60,0.59) (0.65,0.63) (0.70,0.66) (0.75,0.67) (0.80,0.68)
+            (0.85,0.72) (0.91,0.77) (0.97,0.78) (1.03,0.84) (1.09,0.84)
+            (1.15,0.96) (1.22,1.00) (1.29,1.00) (1.36,1.03) (1.44,1.13)
+            (1.52,1.17) (1.61,1.31) (1.70,1.32) (1.79,1.47) (1.89,1.50)
+            (2.00,1.66) (2.12,1.71) (2.24,1.74) (2.38,1.76) (2.52,1.82)
+            (2.69,2.32) (2.87,2.77) (3.07,2.86) (3.30,2.92) (3.57,4.31)
+            (3.89,5.21) (4.30,5.42) (4.84,5.85) (5.67,7.61) (7.45,9.46)
+          };
+          \addplot[thick, princetonorange, domain=0:10] {x};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \footnotesize
+      \textbf{Síntoma:} los puntos en la parte derecha quedan \emph{por encima}
+      de la diagonal.
+
+      \vspace{4pt}
+      La cola real es \emph{más pesada} que la del modelo exponencial:
+      hay observaciones grandes más frecuentes de lo que predice la exponencial.
+
+      \vspace{4pt}
+      \begin{alertabox}[Diagnóstico]
+        Si el Q-Q muestra este patrón, probar
+        Log-normal, Weibull con $k<1$ o Hiperexponencial.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Q-Q plot: curvatura S (Erlang como exp) ──────────────────
+\begin{frame}{Gráfico Q-Q: curvatura en ``S''}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5.5cm,
+          xlabel={Cuantil teórico (exponencial)},
+          ylabel={Cuantil empírico},
+          xmin=0, xmax=4.5, ymin=0, ymax=4.5,
+          title={Datos Erlang-3 graficados como exponenciales}]
+          \addplot[only marks, mark=*, mark size=1pt, mobiblue] coordinates {
+            (0.01,0.22) (0.03,0.25) (0.05,0.28) (0.07,0.28) (0.09,0.35)
+            (0.11,0.39) (0.13,0.41) (0.15,0.42) (0.18,0.43) (0.20,0.43)
+            (0.22,0.43) (0.25,0.49) (0.27,0.50) (0.30,0.51) (0.33,0.57)
+            (0.35,0.57) (0.38,0.58) (0.41,0.63) (0.44,0.65) (0.47,0.65)
+            (0.50,0.67) (0.53,0.73) (0.57,0.73) (0.60,0.74) (0.64,0.78)
+            (0.68,0.80) (0.72,0.88) (0.76,0.92) (0.80,0.93) (0.85,0.94)
+            (0.90,0.94) (0.95,1.07) (1.00,1.11) (1.05,1.14) (1.11,1.21)
+            (1.18,1.25) (1.25,1.25) (1.32,1.28) (1.40,1.32) (1.48,1.35)
+            (1.58,1.35) (1.69,1.61) (1.80,1.62) (1.94,1.63) (2.10,1.72)
+            (2.29,1.80) (2.53,1.81) (2.85,2.05) (3.33,2.22) (4.38,2.66)
+          };
+          \addplot[thick, princetonorange, domain=0:4.5] {x};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \footnotesize
+      \textbf{Síntoma:} a la izquierda los puntos están \emph{por encima} de la diagonal;
+      a la derecha, \emph{por debajo}.
+
+      \vspace{4pt}
+      La exponencial tiene demasiados valores muy pequeños y muy grandes;
+      los datos reales son \emph{más concentrados} alrededor de la media
+      ($\mathrm{CV}<1$).
+
+      \vspace{4pt}
+      \begin{alertabox}[Diagnóstico]
+        Probar Erlang-$k$ (con $k\approx 1/\mathrm{CV}^2$) o Gamma.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ═════════════════════════════════════════════════════════════
+% PARTE 5 — INDEPENDENCIA (ANTES DE CUALQUIER AJUSTE)
+% ═════════════════════════════════════════════════════════════
+
+
+% --- DIAPOSITIVA 1: CONCEPTO ---
+\begin{frame}
+\frametitle{¿Qué es la Independencia Temporal?}
+En el análisis de datos secuenciales o series de tiempo, la \textbf{independencia temporal} implica que el valor de una variable en el instante $t$ no está influenciado por sus valores en instantes anteriores ($t-1, t-2, \dots$).
+
+\vspace{0.3cm}
+\textbf{¿Por qué es importante?}
+\begin{itemize}
+    \item Muchos modelos estadísticos asumen que los errores o los datos son independientes e idénticamente distribuidos (i.i.d.).
+    \item Si hay dependencia, las varianzas estimadas pueden ser sesgadas, lo que invalida pruebas de hipótesis convencionales.
+    \item La dependencia temporal se conoce comúnmente como \textbf{autocorrelación} o correlación serial.
+\end{itemize}
+\end{frame}
+
+% --- DIAPOSITIVA 2: PEARSON LAGUEADO ---
+\begin{frame}
+\frametitle{Prueba de Pearson Lagueada (Autocorrelación)}
+Para medir la dependencia temporal, adaptamos el coeficiente de correlación de Pearson clásico. En lugar de comparar dos variables distintas ($X$ e $Y$), comparamos la misma variable consigo misma, pero desfasada en el tiempo (lagueada).
+
+\vspace{0.3cm}
+\textbf{Coeficiente de Autocorrelación de Muestra de orden $k$ ($r_k$):}
+Mide la relación lineal entre las observaciones separadas por $k$ periodos de tiempo:
+
+$$r_k = \frac{\sum_{t=k+1}^n (Y_t - \bar{Y})(Y_{t-k} - \bar{Y})}{\sum_{t=1}^n (Y_t - \bar{Y})^2}$$
+
+\vspace{0.2cm}
+\textit{Donde:}
+\begin{itemize}
+    \item $n$ es el número total de observaciones.
+    \item $\bar{Y}$ es la media muestral de toda la serie.
+    \item $k$ es el "lag" o rezago (ej. $k=1$ compara $Y_t$ con $Y_{t-1}$).
+\end{itemize}
+\end{frame}
+
+% --- DIAPOSITIVA 3: PRUEBA DE HIPÓTESIS ---
+\begin{frame}
+\frametitle{Prueba de Hipótesis para Independencia}
+Para verificar si el coeficiente $r_k$ es estadísticamente diferente de cero, planteamos una prueba de hipótesis.
+
+\vspace{0.2cm}
+\textbf{1. Hipótesis:}
+\begin{itemize}
+    \item $H_0: \rho_k = 0$ (Independencia temporal en el rezago $k$).
+    \item $H_1: \rho_k \neq 0$ (Existe autocorrelación en el rezago $k$).
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{2. Estadístico de Prueba:}
+Si la serie es verdaderamente independiente y el tamaño de muestra $n$ es grande, los coeficientes $r_k$ se distribuyen aproximadamente como una Normal con media $0$ y varianza $1/n$. 
+$$r_k \sim N\left(0, \frac{1}{n}\right)$$
+
+\textbf{3. Criterio (Bandas de Confianza):}
+Rechazamos $H_0$ (es decir, hay dependencia temporal) si $|r_k|$ es mayor que el valor crítico. Al **95\%** de confianza, este límite es aproximadamente:
+$$\text{Límites} = \pm \frac{1.96}{\sqrt{n}}$$
+\end{frame}
+
+% --- DIAPOSITIVA 4: EL CORRELOGRAMA ---
+\begin{frame}
+\frametitle{El Correlograma (Función de Autocorrelación - ACF)}
+El \textbf{correlograma} es la representación gráfica de los coeficientes $r_k$ para distintos rezagos ($k$). 
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=9cm, height=5.5cm,
+    ymin=-0.5, ymax=1.1,
+    xmin=0, xmax=10,
+    xlabel={Rezago (Lag $k$)},
+    ylabel={Autocorrelación ($r_k$)},
+    ycomb, % Crea líneas verticales desde el eje X
+    mark=*, % Añade un círculo al final de la línea
+    xtick={1,2,3,4,5,6,7,8,9},
+    axis lines=left,
+    grid=horizontal,
+    ]
+    
+    % Límites de confianza (ej: +/- 0.3 para un n simulado)
+    \addplot[dashed, red, domain=0:10, thick] {0.3};
+    \addplot[dashed, red, domain=0:10, thick] {-0.3};
+    
+    % Datos genéricos simulados de autocorrelación
+    \addplot[blue, thick] coordinates {
+        (1, 0.8)
+        (2, 0.5)
+        (3, 0.25)
+        (4, 0.1)
+        (5, -0.05)
+        (6, -0.15)
+        (7, -0.02)
+        (8, 0.05)
+        (9, 0.01)
+    };
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+
+
+\small
+\textbf{Interpretación:} Si la "barra" sobresale de las líneas punteadas rojas (bandas de confianza), rechazamos la independencia temporal para ese rezago. En este ejemplo genérico, hay dependencia en los rezagos 1 y 2.
+\end{frame}
+
+
+
+
+\begin{frame}{Independencia — cómo se ven los datos cuando la cumplen}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \centering \textbf{Serie de tiempo: $X_i$ vs. $i$}
+
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.2cm,
+          xlabel={$i$}, ylabel={$X_i$}, xmin=0, xmax=41, ymin=0, ymax=4]
+          \addplot[mark=*, mark size=1pt, mobiblue, thin] coordinates {
+            (1,1.50) (2,0.27) (3,1.74) (4,3.37) (5,3.60) (6,0.60)
+            (7,0.94) (8,1.49) (9,1.03) (10,1.28) (11,0.04) (12,0.35)
+            (13,0.06) (14,1.95) (15,0.47) (16,1.14) (17,0.30) (18,0.43)
+            (19,0.01) (20,0.44) (21,2.98) (22,0.25) (23,0.38) (24,2.50)
+            (25,0.03) (26,0.07) (27,0.99) (28,2.07) (29,0.01) (30,1.37)
+            (31,1.68) (32,0.08) (33,1.07) (34,0.71) (35,0.65) (36,3.11)
+            (37,0.00) (38,0.28) (39,1.25) (40,0.39)
+          };
+        \end{axis}
+      \end{tikzpicture}
+      \vspace{-4pt}
+      {\footnotesize\emph{Nube sin estructura; sin tendencia ni ciclos.}}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering \textbf{Dispersión $(X_i, X_{i+1})$}
+
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.2cm,
+          xlabel={$X_i$}, ylabel={$X_{i+1}$}, xmin=0, xmax=4, ymin=0, ymax=4]
+          \addplot[only marks, mark=*, mark size=1pt, mobiblue] coordinates {
+            (1.50,0.27) (0.27,1.74) (1.74,3.37) (3.37,3.60) (3.60,0.60)
+            (0.60,0.94) (0.94,1.49) (1.49,1.03) (1.03,1.28) (1.28,0.04)
+            (0.04,0.35) (0.35,0.06) (0.06,1.95) (1.95,0.47) (0.47,1.14)
+            (1.14,0.30) (0.30,0.43) (0.43,0.01) (0.01,0.44) (0.44,2.98)
+            (2.98,0.25) (0.25,0.38) (0.38,2.50) (2.50,0.03) (0.03,0.07)
+            (0.07,0.99) (0.99,2.07) (2.07,0.01) (0.01,1.37) (1.37,1.68)
+            (1.68,0.08) (0.08,1.07) (1.07,0.71) (0.71,0.65) (0.65,3.11)
+            (3.11,0.00) (0.00,0.28) (0.28,1.25) (1.25,0.39)
+          };
+        \end{axis}
+      \end{tikzpicture}
+      \vspace{-4pt}
+      {\footnotesize\emph{Nube sin patrón; $\hat\rho_1 = -0{,}02$.}}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \begin{notabox}[Criterio de independencia — autocorrelación lag-1]
+    \small
+    $\hat\rho_1 = \dfrac{\sum_{i=1}^{n-1}(X_i-\bar X)(X_{i+1}-\bar X)}{\sum(X_i-\bar X)^2}$.
+    Bajo independencia, $|\hat\rho_1|<2/\sqrt{n}$. Para $n=40$: umbral $=0{,}32$.
+    Aquí $|{-0{,}02}|<0{,}32$ $\Rightarrow$ \textbf{no rechazamos independencia}.
+  \end{notabox}
+\end{frame}
+
+% ── Independencia violada ────────────────────────────────────
+\begin{frame}{Independencia — cómo se ven cuando la violan}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \centering \textbf{Serie de tiempo: $X_i$ vs. $i$}
+
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.2cm,
+          xlabel={$i$}, ylabel={$X_i$}, xmin=0, xmax=41, ymin=0, ymax=2.5]
+          \addplot[mark=*, mark size=1pt, princetonorange, thin] coordinates {
+            (1,1.00) (2,1.09) (3,1.21) (4,1.20) (5,0.21) (6,0.45)
+            (7,0.05) (8,0.17) (9,0.06) (10,0.79) (11,0.78) (12,0.87)
+            (13,0.40) (14,0.86) (15,0.84) (16,1.23) (17,1.65) (18,1.99)
+            (19,1.77) (20,0.76) (21,0.26) (22,0.84) (23,1.42) (24,2.05)
+            (25,1.67) (26,1.13) (27,1.62) (28,2.01) (29,1.92) (30,1.83)
+            (31,1.08) (32,1.01) (33,1.73) (34,1.21) (35,0.99) (36,0.97)
+            (37,0.86) (38,0.05) (39,0.05) (40,0.05)
+          };
+        \end{axis}
+      \end{tikzpicture}
+      \vspace{-4pt}
+      {\footnotesize\emph{Rachas largas arriba/abajo; valores vecinos se parecen.}}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering \textbf{Dispersión $(X_i, X_{i+1})$}
+
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.2cm,
+          xlabel={$X_i$}, ylabel={$X_{i+1}$}, xmin=0, xmax=2.5, ymin=0, ymax=2.5]
+          \addplot[only marks, mark=*, mark size=1pt, princetonorange] coordinates {
+            (1.00,1.09) (1.09,1.21) (1.21,1.20) (1.20,0.21) (0.21,0.45)
+            (0.45,0.05) (0.05,0.17) (0.17,0.06) (0.06,0.79) (0.79,0.78)
+            (0.78,0.87) (0.87,0.40) (0.40,0.86) (0.86,0.84) (0.84,1.23)
+            (1.23,1.65) (1.65,1.99) (1.99,1.77) (1.77,0.76) (0.76,0.26)
+            (0.26,0.84) (0.84,1.42) (1.42,2.05) (2.05,1.67) (1.67,1.13)
+            (1.13,1.62) (1.62,2.01) (2.01,1.92) (1.92,1.83) (1.83,1.08)
+            (1.08,1.01) (1.01,1.73) (1.73,1.21) (1.21,0.99) (0.99,0.97)
+            (0.97,0.86) (0.86,0.05) (0.05,0.05) (0.05,0.05)
+          };
+          \addplot[thick, mobiblue, dashed, domain=0:2.5] {x};
+        \end{axis}
+      \end{tikzpicture}
+      \vspace{-4pt}
+      {\footnotesize\emph{Alineación clara a lo largo de la diagonal; $\hat\rho_1 = 0{,}70$.}}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \begin{alertabox}[Independencia violada]
+    \small
+    $|\hat\rho_1|=0{,}70 > 2/\sqrt{40}=0{,}32$ $\Rightarrow$ \textbf{se rechaza independencia.}
+    \emph{Ajustar una distribución ignorando esto invalida los MLE y todas las pruebas de bondad.}
+    Posibles causas: fatiga del operador, lotes similares, retroalimentación. Remedios:
+    submuestrear, modelar como proceso autoregresivo, o separar por régimen.
+  \end{alertabox}
+\end{frame}
+
+% ── Prueba de rachas con ejemplo manual ──────────────────────
+\begin{frame}{Prueba de rachas (runs test) — ejemplo a mano}
+  Sobre la mediana $\tilde X$, codificar ``$+$'' si $X_i>\tilde X$, ``$-$'' si no.
+  Contar $R=$ número de rachas (secuencias consecutivas del mismo signo).
+
+  \begin{center}\small
+    Serie ejemplo ($n=10$):
+    $\;1{,}2\;|\;0{,}8\;|\;0{,}5\;|\;1{,}5\;|\;0{,}9\;|\;1{,}4\;|\;0{,}6\;|\;1{,}7\;|\;0{,}7\;|\;1{,}3$,
+    \quad mediana $\tilde X = 1{,}05$\\[3pt]
+    Signos: $\;+\; -\; -\; +\; -\; +\; -\; +\; -\; +$ \\[3pt]
+    Rachas: $|+|--|+|-|+|-|+|-|+|\;\Rightarrow\; R = 9$
+  \end{center}
+
+  \begin{block}{Distribución asintótica bajo independencia}
+    \[
+      \E[R]=\tfrac{2n_+ n_-}{n}+1,\qquad \Var[R]=\tfrac{2n_+n_-(2n_+n_- - n)}{n^2(n-1)},
+      \qquad Z=\frac{R-\E[R]}{\sqrt{\Var[R]}}
+    \]
+  \end{block}
+
+  \footnotesize
+  Con $n_+=n_-=5$, $n=10$: $\E[R]=6$, $\Var[R]\approx 2{,}22$, $Z=(9-6)/\sqrt{2{,}22}=2{,}01$.
+  \emph{Muchas rachas} $\Rightarrow$ los signos alternan más de lo esperado; posible
+  \emph{negativa} autocorrelación o ciclicidad.
+  A nivel $\alpha=0{,}05$ el umbral bilateral es $|Z|>1{,}96$: aquí se rechaza independencia.
+\end{frame}
+
+% ═════════════════════════════════════════════════════════════
+% PARTE 6 — PRUEBAS DE BONDAD DE AJUSTE SOBRE LOS 15 DATOS
+% ═════════════════════════════════════════════════════════════
+
+\begin{frame}{Regresamos al banco — planteamos $H_0$}
+  \begin{situacionbox}[Hipótesis a probar]
+    $H_0$: los 15 tiempos del banco vienen de $\mathrm{Exp}(\hat\lambda)$
+    con $\hat\lambda = 1/\bar x = 1/2{,}213 = 0{,}452$ min$^{-1}$.
+  \end{situacionbox}
+
+  Vamos a aplicar \textbf{las tres pruebas clásicas} sobre la misma muestra:
+
+  \begin{enumerate}\small
+    \item $\chi^2$ de Pearson — compara frecuencias observadas y esperadas por celdas.
+    \item Kolmogorov--Smirnov — máxima distancia vertical entre ECDF y CDF teórica.
+    \item Anderson--Darling — discrepancias ponderadas, especialmente en las colas.
+  \end{enumerate}
+
+  \vspace{4pt}
+  Veremos paso a paso cómo se calcula \emph{cada} estadístico y por qué pueden dar
+  conclusiones distintas.
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Prueba Chi-cuadrado de Bondad de Ajuste}
+La prueba $\chi^2$ (Chi-cuadrado) evalúa estadísticamente si una muestra empírica se ajusta a una distribución teórica propuesta.
+
+\vspace{0.2cm}
+\textbf{1. Planteamiento de Hipótesis:}
+\begin{itemize}
+    \item $H_0$: Los datos se ajustan a la distribución teórica.
+    \item $H_1$: Los datos \textbf{no} se ajustan a la distribución teórica.
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{2. Estadístico de Prueba:}
+Compara la frecuencia observada ($O_i$) en el histograma empírico con la frecuencia esperada ($E_i$) bajo la distribución teórica en cada intervalo $i$:
+$$\chi^2 = \sum_{i=1}^{k} \frac{(O_i - E_i)^2}{E_i}$$
+\textit{(Donde $k$ es el número total de intervalos o categorías).}
+
+\vspace{0.2cm}
+\textbf{3. Criterio de Decisión:}
+\begin{itemize}
+    \item \textbf{Grados de libertad ($gl$):} $gl = k - 1 - p$ (siendo $p$ el número de parámetros de la distribución estimados a partir de la muestra).
+    \item \textbf{Regla de rechazo:} Se rechaza $H_0$ si $\chi^2 > \chi^2_{gl, \alpha}$ para un nivel de significancia $\alpha$ (usualmente 5\% o 0.05).
+\end{itemize}
+
+\end{frame}
+
+
+% --- DIAPOSITIVA 1: DATOS Y PARÁMETROS ---
+\begin{frame}
+\frametitle{Paso 1: Análisis de Datos y Parámetros}
+Queremos probar si los siguientes datos ($n=15$) se ajustan a una \textbf{Distribución Exponencial}:
+\begin{center}
+0.7, 0.8, 0.9, 1.1, 1.2, 1.5, 1.6, 1.8, 2.1, 2.4, 2.8, 3.1, 3.4, 4.2, 5.6
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Estimación del parámetro ($\lambda$):}
+Como no conocemos el $\lambda$ poblacional, lo estimamos a partir de la media muestral ($\bar{x}$):
+\begin{itemize}
+    \item Suma de datos = $33.2$
+    \item Media ($\bar{x}$) = $33.2 / 15 \approx 2.213$
+    \item Parámetro estimado ($\lambda$) = $1 / \bar{x} \approx \textbf{0.45}$
+\end{itemize}
+
+Por lo tanto, la distribución teórica a probar tiene la función de distribución acumulada: 
+$$F(x) = 1 - e^{-0.45x}$$
+\end{frame}
+
+% --- DIAPOSITIVA 2: FRECUENCIA ESPERADA ---
+\begin{frame}
+\frametitle{Paso 2: ¿Qué es la Frecuencia Esperada ($E_i$)?}
+La \textbf{frecuencia esperada ($E_i$)} es la cantidad de datos que teóricamente "deberían" caer en un intervalo si la hipótesis nula (distribución exponencial con $\lambda=0.45$) fuera perfectamente cierta.
+
+\vspace{0.3cm}
+Se calcula multiplicando el tamaño de la muestra ($n$) por la probabilidad teórica de que un dato caiga en ese intervalo $[a, b)$:
+$$E_i = n \times P(a \leq X < b)$$
+$$E_i = 15 \times [F(b) - F(a)]$$
+
+\vspace{0.2cm}
+\textit{Nota:} El éxito de la prueba depende de comparar la cantidad de datos que \textbf{realmente} cayeron en el intervalo ($O_i$) contra lo que la matemática dictamina ($E_i$).
+\end{frame}
+
+% --- DIAPOSITIVA 3: TABLA DE FRECUENCIAS ---
+\begin{frame}
+\frametitle{Paso 3: Cálculo de Frecuencias por Intervalo}
+Definimos 3 intervalos para agrupar los datos y aplicamos $F(x) = 1 - e^{-0.45x}$.
+
+\vspace{0.2cm}
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Intervalo} & \textbf{Obs. ($O_i$)} & \textbf{Probabilidad Teórica} & \textbf{Esperada ($E_i$)} \\ \midrule
+$[0, 2)$ & 8 & $F(2) - F(0) = 0.593$ & $15 \times 0.593 = \textbf{8.90}$ \\
+$[2, 4)$ & 5 & $F(4) - F(2) = 0.241$ & $15 \times 0.241 = \textbf{3.62}$ \\
+$[4, \infty)$ & 2 & $1 - F(4) = 0.166$ & $15 \times 0.166 = \textbf{2.48}$ \\ \midrule
+\textbf{Total} & \textbf{15} & \textbf{1.000} & \textbf{15.00} \\ \bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\footnotesize{
+\textit{Ejemplo fila 1:} Cayeron 8 datos reales menores a 2. La probabilidad de ser $< 2$ es $1 - e^{-0.45(2)} \approx 0.593$. Se esperaban teóricamente $15 \times 0.593 = 8.9$ datos.}
+\end{frame}
+
+% --- DIAPOSITIVA 4: ESTADÍSTICO Y CONCLUSIÓN ---
+\begin{frame}
+\frametitle{Paso 4: Cálculo Chi-cuadrado y Conclusión}
+Calculamos el estadístico $\chi^2 = \sum \frac{(O_i - E_i)^2}{E_i}$:
+$$ \chi^2 = \frac{(8 - 8.9)^2}{8.9} + \frac{(5 - 3.62)^2}{3.62} + \frac{(2 - 2.48)^2}{2.48} $$
+$$ \chi^2 \approx 0.091 + 0.526 + 0.093 = \textbf{0.710} $$
+
+\vspace{0.3cm}
+\textbf{Toma de Decisión:}
+\begin{itemize}
+    \item \textbf{Grados de libertad:} $gl = k - 1 - p = 3 - 1 - 1 = \textbf{1}$ \\
+    \textit{(k=3 intervalos; p=1 porque estimamos $\lambda$ con la muestra).}
+    \item \textbf{Valor crítico ($\alpha = 0.05$):} $\chi^2_{1, 0.05} = \textbf{3.841}$
+\end{itemize}
+
+\vspace{0.2cm}
+\begin{block}{Conclusión}
+Como $\chi^2 = 0.710 < 3.841$, \textbf{no se rechaza} $H_0$. No hay evidencia suficiente para decir que los datos no siguen una distribución exponencial.
+\end{block}
+\end{frame}
+
+
+% --- DIAPOSITIVA 1: TEORÍA ---
+\begin{frame}
+\frametitle{Prueba de Kolmogorov-Smirnov (K-S)}
+La prueba K-S es una prueba de bondad de ajuste no paramétrica que compara la \textbf{Función de Distribución Empírica} $F_n(x)$ con la \textbf{Función de Distribución Teórica} $F(x)$.
+
+\vspace{0.3cm}
+\textbf{Estadístico de Prueba ($D$):}
+Representa la máxima distancia vertical entre la teoría y la realidad:
+$$D = \max_{1 \leq i \leq n} \{ |F(x_{(i)}) - \frac{i}{n}|, |F(x_{(i)}) - \frac{i-1}{n}| \}$$
+
+\vspace{0.2cm}
+\textbf{Ventajas sobre $\chi^2$:}
+\begin{itemize}
+    \item Se puede usar con muestras muy pequeñas.
+    \item No requiere agrupar datos en intervalos (bins).
+    \item Es más exacta para distribuciones continuas.
+\end{itemize}
+\end{frame}
+
+% --- DIAPOSITIVA 2: PASO A PASO ---
+\begin{frame}
+\frametitle{Paso a Paso del Cálculo}
+Para aplicar K-S a nuestros datos con $\lambda = 0.45$ y $F(x) = 1 - e^{-0.45x}$:
+
+\vspace{0.3cm}
+\begin{enumerate}
+    \item \textbf{Ordenar los datos:} $x_{(1)} \leq x_{(2)} \leq \dots \leq x_{(15)}$.
+    \item \textbf{Calcular probabilidad empírica:} Determinar $i/n$ y $(i-1)/n$ para cada dato.
+    \item \textbf{Calcular probabilidad teórica:} Evaluar $F(x_{(i)})$ usando el modelo propuesto.
+    \item \textbf{Calcular diferencias:} Obtener las distancias $D_i^+$ y $D_i^-$:
+    \begin{itemize}
+        \item $D_i^+ = |\frac{i}{n} - F(x_{(i)})|$
+        \item $D_i^- = |F(x_{(i)}) - \frac{i-1}{n}|$
+    \end{itemize}
+    \item \textbf{Identificar $D$:} Seleccionar la diferencia más grande de todas.
+\end{enumerate}
+\end{frame}
+
+% --- DIAPOSITIVA 3: TABLA DE CÁLCULOS ---
+% ── KS: tabla de cómputo ─────────────────────────────────────
+\begin{frame}{Kolmogorov--Smirnov — tabla de cómputo}
+  Para cada observación ordenada se calculan $d^+_i=i/n-F_0(X_{(i)})$ y $d^-_i=F_0(X_{(i)})-(i-1)/n$;
+  el estadístico es $D_n=\max_i\max(d^+_i,\,d^-_i)$.
+
+  \begin{center}\scriptsize
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{rrrrrrr}
+      \toprule
+      $i$ & $X_{(i)}$ & $F_0(X_{(i)})$ & $i/n$ & $(i-1)/n$ & $d^+_i$ & $d^-_i$ \\
+      \midrule
+      1 & 0{,}70 & 0{,}271 & 0{,}067 & 0{,}000 & $-0{,}205$ & $\mathbf{0{,}271}$ \\
+      2 & 0{,}80 & 0{,}303 & 0{,}133 & 0{,}067 & $-0{,}170$ & $0{,}237$ \\
+      3 & 0{,}90 & 0{,}334 & 0{,}200 & 0{,}133 & $-0{,}134$ & $0{,}201$ \\
+      4 & 1{,}10 & 0{,}392 & 0{,}267 & 0{,}200 & $-0{,}125$ & $0{,}192$ \\
+      5 & 1{,}20 & 0{,}419 & 0{,}333 & 0{,}267 & $-0{,}085$ & $0{,}152$ \\
+      6 & 1{,}50 & 0{,}492 & 0{,}400 & 0{,}333 & $-0{,}092$ & $0{,}159$ \\
+      7 & 1{,}60 & 0{,}515 & 0{,}467 & 0{,}400 & $-0{,}048$ & $0{,}115$ \\
+      8 & 1{,}80 & 0{,}557 & 0{,}533 & 0{,}467 & $-0{,}023$ & $0{,}090$ \\
+      9 & 2{,}10 & 0{,}613 & 0{,}600 & 0{,}533 & $-0{,}013$ & $0{,}080$ \\
+      10 & 2{,}40 & 0{,}662 & 0{,}667 & 0{,}600 & $+0{,}005$ & $0{,}062$ \\
+      11 & 2{,}80 & 0{,}718 & 0{,}733 & 0{,}667 & $+0{,}016$ & $0{,}051$ \\
+      12 & 3{,}10 & 0{,}754 & 0{,}800 & 0{,}733 & $+0{,}046$ & $0{,}020$ \\
+      13 & 3{,}40 & 0{,}785 & 0{,}867 & 0{,}800 & $+0{,}082$ & $-0{,}015$ \\
+      14 & 4{,}20 & 0{,}850 & 0{,}933 & 0{,}867 & $+0{,}083$ & $-0{,}017$ \\
+      15 & 5{,}60 & 0{,}920 & 1{,}000 & 0{,}933 & $+0{,}080$ & $-0{,}013$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{2pt}
+  $D_n = 0{,}271$ (en $i=1$). Compárese con Lilliefors $D^*_{0{,}05,15}\approx 0{,}22$ $\Rightarrow$ se rechaza.
+\end{frame}
+
+% --- DIAPOSITIVA 4: CONCLUSIÓN ---
+\begin{frame}
+\frametitle{Comparación y Conclusión}
+
+
+\vspace{0.2cm}
+\textbf{1. Valor Crítico ($D_{crit}$):}
+Para $n=15$ y $\alpha=0.05$, buscamos en las tablas de Kolmogorov-Smirnov:
+$$D_{15, 0.05} = \mathbf{0.338}$$
+
+\vspace{0.2cm}
+\textbf{2. Regla de Decisión:}
+\begin{itemize}
+    \item Si $D_{calc} > D_{crit} \rightarrow$ Rechazar $H_0$.
+    \item Si $D_{calc} \leq D_{crit} \rightarrow$ No rechazar $H_0$.
+\end{itemize}
+
+\vspace{0.2cm}
+\begin{block}{Conclusión Final}
+Como $0.270 < 0.338$, \textbf{no se rechaza $H_0$}. Los datos se ajustan razonablemente bien a una distribución exponencial con $\lambda=0.45$.
+\end{block}
+\end{frame}
+
+
+
+% ── Kolmogorov-Smirnov: gráfico ──────────────────────────────
+\begin{frame}{Prueba Kolmogorov--Smirnov — el estadístico $D_n$}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5.2cm,
+          xlabel={$x$ (min)}, ylabel={$F(x)$},
+          xmin=0, xmax=6, ymin=0, ymax=1.05,
+          legend pos=south east]
+          \addplot[const plot, thick, mobiblue] coordinates {
+            (0,0) (0.70,0) (0.70,0.067) (0.80,0.067) (0.80,0.133)
+            (0.90,0.133) (0.90,0.200) (1.10,0.200) (1.10,0.267)
+            (1.20,0.267) (1.20,0.333) (1.50,0.333) (1.50,0.400)
+            (1.60,0.400) (1.60,0.467) (1.80,0.467) (1.80,0.533)
+            (2.10,0.533) (2.10,0.600) (2.40,0.600) (2.40,0.667)
+            (2.80,0.667) (2.80,0.733) (3.10,0.733) (3.10,0.800)
+            (3.40,0.800) (3.40,0.867) (4.20,0.867) (4.20,0.933)
+            (5.60,0.933) (5.60,1.000) (6,1.000)};
+          \addlegendentry{$\hat F_n(x)$}
+          \addplot[thick, princetonorange, domain=0:6, samples=120]
+            {1-exp(-0.4518*x)};
+          \addlegendentry{$F_0(x)$}
+          % Máxima distancia en x=0.70: F_0(0.70)=0.271, F_n=0
+          \addplot[very thick, red, mark=none] coordinates {(0.70,0.000) (0.70,0.271)};
+          \node[right, font=\scriptsize, text=red] at (axis cs:0.70,0.14) {$D_n=0{,}271$};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \footnotesize
+      \[
+        D_n \;=\; \sup_x |\hat F_n(x) - F_0(x;\hat\theta)|
+      \]
+
+      El supremo se alcanza justo antes de $x_{(1)}=0{,}70$:
+      \[
+        D_n = F_0(0{,}70) - 0 = 0{,}271
+      \]
+
+      \vspace{4pt}
+      \textbf{Valor crítico con parámetro estimado} (Lilliefors, exp, $n=15$, $5\%$):
+      $D^*\approx 0{,}338$.
+
+      \vspace{4pt}
+      \begin{alertabox}[Veredicto Kolmogorov--Smirnov]
+        $0{,}271 < 0{,}22$ $\Rightarrow$ \textbf{no se rechaza} la exponencial.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+% ── Anderson-Darling: fórmula e intuición ────────────────────
+\begin{frame}{Anderson--Darling — ¿qué es?}
+  \begin{teoremabox}[Estadístico de Anderson--Darling]
+    \[
+      A^2 \;=\; -n \;-\; \frac{1}{n}\sum_{i=1}^{n}(2i-1)
+      \Bigl[\ln F_0(X_{(i)}) \;+\; \ln(1-F_0(X_{(n+1-i)}))\Bigr]
+    \]
+  \end{teoremabox}
+
+  \textbf{¿Por qué esta forma?}
+
+  Anderson--Darling pondera la diferencia cuadrática entre la empírica y la teórica por
+  $\frac{1}{F_0(x)[1-F_0(x)]}$, un peso que \emph{explota en las colas}:
+
+  \begin{center}
+    \begin{tikzpicture}
+      \begin{axis}[width=9cm, height=3.6cm,
+        xlabel={$F_0(x)$}, ylabel={peso},
+        xmin=0.01, xmax=0.99, ymin=0, ymax=12,
+        domain=0.01:0.99, samples=200]
+        \addplot[thick, mobiblue] {1/(x*(1-x))};
+        \node[above, text=mobiblue, font=\scriptsize] at (axis cs:0.5,4) {$w(x)=1/[F_0(1-F_0)]$};
+      \end{axis}
+    \end{tikzpicture}
+  \end{center}
+
+  \small Resultado: Anderson--Darling es \emph{sensible a colas}, donde Kolmogorov--Smirnov
+  pierde potencia. Los valores críticos dependen de la distribución bajo $H_0$
+  (5\%: exponencial 1{,}32; normal/log-normal 0{,}75; Weibull 0{,}76).
+\end{frame}
+
+% ── Anderson-Darling: cálculo paso a paso ────────────────────
+\begin{frame}{Anderson--Darling — cálculo paso a paso (banco, $n=15$)}
+  \begin{center}\scriptsize
+    \renewcommand{\arraystretch}{1.05}
+    \begin{tabular}{rrrrrrrr}
+      \toprule
+      $i$ & $X_{(i)}$ & $F_i{=}F_0(X_{(i)})$ & $X_{(n{+}1{-}i)}$ & $1{-}F_{n+1-i}$ & $\ln F_i$ & $\ln(1{-}F_{n+1-i})$ & $\tfrac{2i-1}{n}[\,\cdot\,]$ \\
+      \midrule
+      1 & 0{,}70 & 0{,}271 & 5{,}60 & 0{,}080 & $-1{,}305$ & $-2{,}530$ & $-0{,}256$ \\
+      2 & 0{,}80 & 0{,}303 & 4{,}20 & 0{,}150 & $-1{,}193$ & $-1{,}898$ & $-0{,}618$ \\
+      3 & 0{,}90 & 0{,}334 & 3{,}40 & 0{,}215 & $-1{,}096$ & $-1{,}536$ & $-0{,}878$ \\
+      4 & 1{,}10 & 0{,}392 & 3{,}10 & 0{,}246 & $-0{,}937$ & $-1{,}401$ & $-1{,}091$ \\
+      5 & 1{,}20 & 0{,}419 & 2{,}80 & 0{,}282 & $-0{,}871$ & $-1{,}265$ & $-1{,}282$ \\
+      6 & 1{,}50 & 0{,}492 & 2{,}40 & 0{,}338 & $-0{,}709$ & $-1{,}084$ & $-1{,}315$ \\
+      7 & 1{,}60 & 0{,}515 & 2{,}10 & 0{,}387 & $-0{,}664$ & $-0{,}949$ & $-1{,}398$ \\
+      8 & 1{,}80 & 0{,}557 & 1{,}80 & 0{,}443 & $-0{,}586$ & $-0{,}813$ & $-1{,}399$ \\
+      9 & 2{,}10 & 0{,}613 & 1{,}60 & 0{,}485 & $-0{,}490$ & $-0{,}723$ & $-1{,}374$ \\
+     10 & 2{,}40 & 0{,}662 & 1{,}50 & 0{,}508 & $-0{,}413$ & $-0{,}678$ & $-1{,}381$ \\
+     11 & 2{,}80 & 0{,}718 & 1{,}20 & 0{,}581 & $-0{,}332$ & $-0{,}542$ & $-1{,}223$ \\
+     12 & 3{,}10 & 0{,}754 & 1{,}10 & 0{,}608 & $-0{,}283$ & $-0{,}497$ & $-1{,}196$ \\
+     13 & 3{,}40 & 0{,}785 & 0{,}90 & 0{,}666 & $-0{,}242$ & $-0{,}407$ & $-1{,}082$ \\
+     14 & 4{,}20 & 0{,}850 & 0{,}80 & 0{,}696 & $-0{,}162$ & $-0{,}361$ & $-0{,}943$ \\
+     15 & 5{,}60 & 0{,}920 & 0{,}70 & 0{,}729 & $-0{,}083$ & $-0{,}316$ & $-0{,}772$ \\
+      \midrule
+      \multicolumn{7}{r}{suma $=$} & $-16{,}207$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \[
+    A^2 \;=\; -n - \text{suma} \;=\; -15 - (-16{,}207) \;=\; 1{,}207
+  \]
+
+  \begin{resultadobox}[Veredicto Anderson--Darling]
+    $A^2 = 1{,}207 < 1{,}32$ (crítico 5\%, exponencial con parámetro estimado)
+    $\Rightarrow$ \textbf{no se rechaza} la exponencial, pero \emph{marginalmente}.
+  \end{resultadobox}
+\end{frame}
+
+% ── Resumen de las 3 pruebas ─────────────────────────────────
+\begin{frame}{Las tres pruebas juntas — y cómo leerlas}
+  \begin{center}\small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{lcccc}
+      \toprule
+      \textbf{Prueba} & \textbf{Estadístico} & \textbf{Crítico 5\%} & \textbf{Decisión} & \textbf{Holgura} \\
+      \midrule
+      $\chi^2$ (Pearson, $k{=}3$) & $3{,}60$ & $3{,}84$ & No rechaza & marginal ($6\%$) \\
+      Kolmogorov--Smirnov (Lilliefors) & $0{,}271$ & $0{,}220$ & \textbf{Rechaza} & por $23\%$ \\
+      Anderson--Darling               & $1{,}207$ & $1{,}320$ & No rechaza & marginal ($9\%$) \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{6pt}
+  \begin{notabox}[¿Qué hacemos cuando las pruebas no coinciden?]
+    \small
+    \begin{itemize}\itemsep1pt
+      \item Con $n=15$ \emph{ninguna} prueba tiene mucho poder.
+      \item El coeficiente de variación $\mathrm{CV}=0{,}63$ es la señal \emph{física} más clara: la exponencial no es apropiada.
+      \item El gráfico Q-Q mostrará curvatura en ``S''; confirma que Erlang o Gamma ajustan mejor.
+      \item Regla práctica: \textbf{usar al menos dos pruebas} + el gráfico Q-Q, y nunca
+        sólo el $p$-value.
+    \end{itemize}
+  \end{notabox}
+
+  \vspace{2pt}
+  \emph{Veredicto final:} sospechar que la exponencial no es correcta; recolectar más datos.
+\end{frame}
+
+% ═════════════════════════════════════════════════════════════
+% PARTE 7 — MLE + AIC/BIC
+% ═════════════════════════════════════════════════════════════
+
+\begin{frame}{Estimación por máxima verosimilitud}
+  \begin{definicionbox}[MLE]
+    $\hat\theta = \arg\max_\theta \ell(\theta)$ con $\ell(\theta)=\sum_{i=1}^n \ln f(x_i;\theta)$.
+  \end{definicionbox}
+
+  \textbf{Derivación completa para la exponencial.}
+  $f(x;\lambda)=\lambda e^{-\lambda x}$:
+  \[
+    \ell(\lambda) = n\ln\lambda - \lambda\sum_{i=1}^n x_i
+    \;\Rightarrow\; \frac{d\ell}{d\lambda} = \frac{n}{\lambda}-\sum x_i = 0
+    \;\Rightarrow\; \hat\lambda = \frac{1}{\bar x}
+  \]
+
+  \begin{center}\scriptsize
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabular}{lll}
+      \toprule
+      \textbf{Distribución} & \textbf{Estimador MLE} & \textbf{Forma cerrada} \\
+      \midrule
+      Exponencial ($\lambda$)     & $\hat\lambda=1/\bar x$ & Sí \\
+      Normal ($\mu,\sigma^2$)     & $\hat\mu=\bar x$, $\hat\sigma^2=S^2$ & Sí \\
+      Log-normal ($\mu,\sigma^2$) & $\hat\mu=\overline{\ln x}$, $\hat\sigma^2=S^2_{\ln x}$ & Sí \\
+      Gamma ($\alpha,\beta$)      & eq.\ trascendental en $\hat\alpha$ (digamma) & No \\
+      Weibull ($k,\lambda$)       & sistema no lineal & No \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \footnotesize Los MLE son \emph{asintóticamente eficientes} (mínima varianza)
+  y consistentes. El método de momentos da un buen \emph{punto de partida}
+  para la optimización numérica.
+\end{frame}
+
+% ── AIC / BIC ────────────────────────────────────────────────
+\begin{frame}{Cuando varias distribuciones pasan las pruebas — AIC y BIC}
+  \begin{formulabox}[Criterios de información]
+    \[
+      \mathrm{AIC} = -2\,\ell(\hat\theta) + 2p,\qquad
+      \mathrm{BIC} = -2\,\ell(\hat\theta) + p\ln n
+    \]
+    Menor es mejor. BIC penaliza más la complejidad cuando $n>7$.
+  \end{formulabox}
+
+  \begin{metodobox}[Regla práctica]
+    \small
+    \begin{enumerate}\itemsep1pt
+      \item Ajustar todas las candidatas con MLE.
+      \item Calcular AIC (o BIC) para cada una.
+      \item Elegir la de \textbf{menor} AIC.
+      \item Si $\Delta\mathrm{AIC}<2$, los modelos son indistinguibles estadísticamente;
+            preferir el \emph{más simple} o el \emph{más interpretable físicamente}.
+    \end{enumerate}
+  \end{metodobox}
+\end{frame}
+
+% ═════════════════════════════════════════════════════════════
+% PARTE 8 — CIERRE DEL PROBLEMA CON EL BANCO COMPLETO
+% ═════════════════════════════════════════════════════════════
+
+\begin{frame}{Cierre del problema — $n=80$ tiempos de servicio}
+  Con más datos podemos discriminar:
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.8cm,
+          xlabel={$x$ (min)}, ylabel={densidad},
+          xmin=0, xmax=7, ymin=0, ymax=0.5,
+          ybar interval, legend pos=north east]
+          \addplot[fill=mobilightblue, draw=mobiblue] coordinates {
+            (0.17,0.122) (0.88,0.315) (1.60,0.367) (2.31,0.297)
+            (3.03,0.157) (3.74,0.035) (4.46,0.052) (5.17,0.017)
+            (5.89,0.000) (6.60,0.035) (7.32,0)
+          };
+          \addlegendentry{datos ($n=80$)}
+          \addplot[thick, princetonorange, domain=0:7, samples=150, no marks]
+            {0.4266*exp(-0.4266*x)};
+          \addlegendentry{Exp}
+          \addplot[thick, deepgreen, domain=0:7, samples=150, no marks]
+            {(1.282)^3*x^2*exp(-1.282*x)/2};
+          \addlegendentry{Erlang-3}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \footnotesize
+      \begin{tabular}{lccc}
+        \toprule
+        & AIC & KS $D$ & $A^2$ \\
+        \midrule
+        Exponencial & 298{,}6 & 0{,}14 & \textbf{2{,}87} \\
+        Erlang-3 & \textbf{276{,}2} & 0{,}06 & 0{,}38 \\
+        Gamma & 276{,}8 & 0{,}05 & 0{,}31 \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{6pt}
+      \begin{itemize}\itemsep1pt
+        \item Exponencial \textbf{rechazada} por Anderson--Darling ($A^2=2{,}87 \gg 1{,}32$).
+        \item Erlang-3 y Gamma son indistinguibles ($\Delta\mathrm{AIC}=0{,}6$).
+        \item Se elige \textbf{Erlang-3} por parsimonia e interpretación física
+          (3 etapas: saludo, transacción, despedida).
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Q-Q banco completo ───────────────────────────────────────
+\begin{frame}{Q-Q: Erlang-3 ajusta, la exponencial no}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5cm,
+          xlabel={Cuantil teórico (Erlang-3)},
+          ylabel={Cuantil empírico},
+          xmin=0, xmax=8, ymin=0, ymax=8,
+          title={Q-Q banco completo vs.\ Erlang-3}]
+          \addplot[only marks, mark=*, mark size=0.8pt, mobiblue] coordinates {
+            (0.29,0.17) (0.53,0.40) (0.73,0.80) (0.88,0.95) (1.02,1.16)
+            (1.14,1.31) (1.25,1.42) (1.37,1.54) (1.47,1.58) (1.58,1.75)
+            (1.69,1.76) (1.80,1.86) (1.91,1.93) (2.03,2.05) (2.15,2.19)
+            (2.27,2.25) (2.40,2.37) (2.54,2.42) (2.69,2.64) (2.85,2.76)
+            (3.03,2.85) (3.23,2.93) (3.46,3.24) (3.73,3.51) (4.08,3.73)
+            (4.57,4.68) (5.40,5.34) (7.02,7.32)
+          };
+          \addplot[thick, princetonorange, domain=0:8] {x};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5cm,
+          xlabel={Cuantil teórico (exponencial)},
+          ylabel={Cuantil empírico},
+          xmin=0, xmax=12, ymin=0, ymax=8,
+          title={Q-Q banco completo vs.\ exponencial}]
+          \addplot[only marks, mark=*, mark size=0.8pt, mobiblue] coordinates {
+            (0.01,0.17) (0.07,0.40) (0.17,0.80) (0.26,0.95) (0.36,1.16)
+            (0.47,1.31) (0.58,1.42) (0.69,1.54) (0.81,1.58) (0.94,1.75)
+            (1.08,1.76) (1.22,1.86) (1.37,1.93) (1.54,2.05) (1.71,2.19)
+            (1.90,2.25) (2.11,2.37) (2.33,2.42) (2.58,2.64) (2.87,2.76)
+            (3.19,2.85) (3.56,2.93) (4.00,3.24) (4.54,3.51) (5.25,3.73)
+            (6.26,4.68) (8.11,5.34) (11.87,7.32)
+          };
+          \addplot[thick, princetonorange, domain=0:12] {x};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \small\textbf{Izquierda:} alineación casi perfecta con Erlang-3.
+  \textbf{Derecha:} la curvatura en ``S'' revela que la exponencial tiene demasiados valores grandes —
+  los tiempos reales son más concentrados.
+\end{frame}
+
+% ── Impacto en W_q ───────────────────────────────────────────
+\begin{frame}{Cerrando el círculo — $W_q$ con la distribución correcta}
+  Con $\lambda=0{,}313$ cl/min, $\E[S]=2{,}18$ min, $\rho=0{,}68$:
+  \[
+    \E[S^2] = (0{,}61\cdot 2{,}18)^2 + (2{,}18)^2 = 1{,}77 + 4{,}75 = 6{,}52
+  \]
+
+  \begin{center}
+    \begin{tikzpicture}
+      \begin{axis}[width=9cm, height=3.5cm, xbar, bar width=10pt,
+        xlabel={$W_q$ (min)}, xmin=0, xmax=6,
+        symbolic y coords={MM1-exp, ME3-Erlang3},
+        ytick=data, yticklabels={$M/M/1$ (exp), $M/E_3/1$ (Erlang-3)},
+        nodes near coords, nodes near coords style={font=\scriptsize},
+        enlarge y limits=0.5]
+        \addplot[fill=princetonorange!70, draw=princetonorange] coordinates {
+          (4.63,MM1-exp)
+          (3.18,ME3-Erlang3)};
+      \end{axis}
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{resultadobox}[Conclusión del modelado del banco]
+    Sistema $M/E_3/1$: llegadas Poisson ($\lambda=0{,}313$~cl/min) + servicio Erlang-3 ($\E[S]=2{,}18$~min). \\
+    Asumir incorrectamente $M/M/1$ \textbf{sobreestimaría $W_q$ en un 46\%}.
+    \\[2pt]
+    Esta cifra es el valor tangible de haber hecho bien el modelado de entradas.
+  \end{resultadobox}
+\end{frame}
+
+% ═════════════════════════════════════════════════════════════
+% PARTE 9 — QUÉ HACER SIN DATOS / CIERRE
+% ═════════════════════════════════════════════════════════════
+
+\begin{frame}{¿Y cuando no hay suficientes datos?}
+  \begin{center}\small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{lll}
+      \toprule
+      \textbf{Situación} & \textbf{Estrategia} & \textbf{Distribución} \\
+      \midrule
+      Se conocen $a$, moda $m$, $b$ & Elicitación de expertos & Triangular, PERT \\
+      Hay benchmarks/literatura & Valores de referencia & Según contexto \\
+      Entrada incierta              & Análisis de sensibilidad & Varias candidatas \\
+      Solo se conocen $[a,b]$       & Máxima entropía & $U(a,b)$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{formulabox}[PERT — momentos]
+    \[
+      \E[X] = \frac{a + 4m + b}{6},\qquad \Var[X] = \frac{(b-a)^2}{36}
+    \]
+  \end{formulabox}
+
+  \begin{alertabox}[La triangular no es un sustituto permanente]
+    Sus colas son \emph{lineales}, no exponenciales. Inadecuada para tiempos de servicio
+    o falla realistas. Sirve para prototipos, \emph{no} para el modelo final.
+  \end{alertabox}
+\end{frame}
+
+% ── Cierre ───────────────────────────────────────────────────
+\begin{frame}{Cierre del tema T3.1}
+  \begin{itemize}\itemsep3pt
+    \item El \textbf{coeficiente de variación} es la primera señal para elegir la familia.
+    \item Con $n<20$ las pruebas formales tienen poco poder: \emph{confiar en Q-Q y
+      en el proceso físico}.
+    \item Con $n>200$ las pruebas rechazan desviaciones irrelevantes: \emph{usar AIC y
+      la inspección visual}.
+    \item \textbf{Siempre} verificar independencia (autocorrelación lag-1, prueba de rachas)
+      y estacionariedad antes de ajustar.
+    \item \textbf{Anderson--Darling} es la prueba estándar cuando las colas importan.
+    \item La elección de distribución puede cambiar $W_q$ por un factor de 2 o más:
+      es la diferencia entre un modelo útil y uno engañoso.
+  \end{itemize}
+
+  \vspace{6pt}
+  \begin{notabox}[Hacia T3.2 — Verificación y Validación]
+    Una vez elegidas las distribuciones de entrada, hay que asegurarse de que el simulador
+    las implementa correctamente \emph{y} que el modelo global reproduce al sistema real.
+  \end{notabox}
+\end{frame}
+
+\end{document}

@@ -39,6 +39,7 @@ El \textbf{coeficiente de variación} $\text{CV} = \sigma/\mu$ resume cuán vari
 W_q^{M/G/1} = \underbrace{\frac{\rho}{\mu(1-\rho)}}_{W_q^{M/M/1}} \cdot \frac{1 + \text{CV}_S^2}{2}
 \]
 
+\begin{ejemplobox}[La misma media, cinco $W_q$ distintos]
 Bajo $\rho = 0{,}8$ y $\E[S]=1$ min (por lo que $W_q^{M/M/1} = 4$ min):
 
 \begin{center}
@@ -57,21 +58,45 @@ Hiperexponencial (CV=2)            & $H_2$            & $2$                  & $
 \end{tabular}
 \end{center}
 
-Ignorar la variabilidad real del servicio puede subestimar o sobreestimar el tiempo en cola por un factor de 2 o más.
+Con la misma media del servicio, ignorar la variabilidad real puede distorsionar el tiempo en cola en un factor de \textbf{5}. Asumir exponencial ``porque es fácil'' es el error más caro del modelado.
+\end{ejemplobox}
 
 % ══════════════════════════════════════════════════
 \section{Proceso metodológico}
 % ══════════════════════════════════════════════════
 
-\begin{metodobox}[Metodología de modelado de entradas — 5 pasos]
+\begin{metodobox}[Metodología de modelado de entradas --- 5 pasos]
 \begin{enumerate}
     \item \textbf{Recolección de datos}: registrar observaciones del sistema real; verificar homogeneidad temporal e independencia entre observaciones.
-    \item \textbf{Exploración gráfica}: histograma, ECDF y gráfico Q-Q; identificar forma, asimetría, colas y posibles valores atípicos.
+    \item \textbf{Exploración gráfica}: histograma, función de distribución empírica (ECDF) y gráfico Q-Q; identificar forma, asimetría, colas y posibles valores atípicos.
     \item \textbf{Identificación de la familia}: usar el CV, el soporte del dato y el conocimiento del proceso físico para seleccionar distribuciones candidatas.
     \item \textbf{Estimación de parámetros}: máxima verosimilitud (MLE) o método de momentos.
     \item \textbf{Prueba de bondad de ajuste}: $\chi^2$, Kolmogorov--Smirnov o Anderson--Darling; aceptar o rechazar el candidato con nivel de significancia $\alpha$.
 \end{enumerate}
 \end{metodobox}
+
+La secuencia es iterativa: un rechazo en el paso~5 suele mandar de regreso al paso~3 para probar otra familia de distribuciones. En cada sección de este documento presentamos el concepto teórico seguido, inmediatamente, por su \emph{ejemplo resuelto}.
+
+% ══════════════════════════════════════════════════
+\section{Un conjunto de datos para todo el recorrido}
+% ══════════════════════════════════════════════════
+
+A lo largo de la lectura usaremos un \emph{mismo} conjunto de 15 tiempos de atención (minutos) registrados en una ventanilla bancaria. La pregunta que guía todo el tema es: \textbf{¿se puede modelar la ventanilla como $M/M/1$?}
+
+\begin{ejemplobox}[Datos del banco pequeño ($n=15$)]
+\begin{center}\small
+\begin{tabular}{rrrrrrrrrrrrrrr}
+0{,}7 & 0{,}8 & 0{,}9 & 1{,}1 & 1{,}2 & 1{,}5 & 1{,}6 & 1{,}8 & 2{,}1 & 2{,}4 & 2{,}8 & 3{,}1 & 3{,}4 & 4{,}2 & 5{,}6 \\
+\end{tabular}
+\end{center}
+
+\textbf{Estadísticos muestrales:}
+\[
+n = 15, \quad \bar{x} = 2{,}213 \text{ min}, \quad s = 1{,}397 \text{ min}, \quad \mathrm{CV} = \tfrac{s}{\bar x} = 0{,}631
+\]
+
+El coeficiente de variación $0{,}63<1$ ya sugiere que los datos son \emph{más regulares} que la exponencial; la guía por CV apunta a una Erlang-$k$ con $k\approx 1/0{,}63^2 \approx 2{,}5$.
+\end{ejemplobox}
 
 % ══════════════════════════════════════════════════
 \section{Recolección y calidad de datos}
@@ -94,20 +119,53 @@ Con $n \ge 500$, la prueba $\chi^2$ o KS puede rechazar una distribución que aj
 
 \subsection{Independencia de las observaciones}
 
-Las fórmulas de MLE y las pruebas de bondad de ajuste asumen que las observaciones $X_1, X_2, \ldots, X_n$ son independientes. Esta hipótesis debe verificarse:
+Las fórmulas de MLE y las pruebas de bondad de ajuste asumen que las observaciones $X_1, X_2, \ldots, X_n$ son independientes. Esta hipótesis debe verificarse antes de cualquier ajuste.
 
-\textbf{Autocorrelación lag-1}. El estimador del coeficiente de autocorrelación de primer orden es:
+\subsubsection{Autocorrelación lagueada (Pearson lagueada)}
+
+La versión lagueada del coeficiente de correlación de Pearson mide la dependencia temporal entre observaciones separadas $k$ pasos:
+
 \[
-\hat\rho_1 = \frac{\sum_{i=1}^{n-1}(X_i - \bar X)(X_{i+1} - \bar X)}{\sum_{i=1}^{n}(X_i - \bar X)^2}
+r_k \;=\; \frac{\sum_{t=k+1}^{n}(X_t-\bar X)(X_{t-k}-\bar X)}{\sum_{t=1}^{n}(X_t-\bar X)^2}.
 \]
 
-Si $|\hat\rho_1| > 2/\sqrt{n}$ (intervalo aproximado al 95\% bajo $H_0$ de independencia), hay evidencia de autocorrelación.
+Bajo $H_0: \rho_k = 0$ y muestra grande,
+\[
+r_k \;\approx\; \mathcal{N}\!\Bigl(0,\; \tfrac{1}{n}\Bigr),
+\]
+por lo que las \textbf{bandas de confianza al $95\%$} son $\pm 1{,}96/\sqrt{n}$. Si $r_k$ cae fuera de las bandas, se rechaza la independencia en el rezago $k$.
 
-\textbf{Prueba de rachas (runs test)}. Se clasifica cada observación como ``$+$'' si $X_i > \tilde X$ (mediana) y ``$-$'' si $X_i < \tilde X$. Sea $R$ el número de rachas (secuencias consecutivas del mismo signo). Bajo independencia, $R$ tiene distribución aproximadamente normal con:
+\textbf{Caso especial: lag 1}. El criterio más usado en modelado de entradas es la autocorrelación de orden uno: si $|\hat\rho_1| > 2/\sqrt{n}$, hay evidencia de autocorrelación.
+
+\subsubsection{Correlograma (ACF)}
+
+Graficando $r_k$ vs.\ $k$ junto con las bandas de confianza obtenemos la \textbf{función de autocorrelación} o correlograma. Barras que sobresalen de las bandas marcan los rezagos con dependencia significativa.
+
+\begin{ejemplobox}[Serie independiente vs.\ serie AR(1)]
+Sobre dos series simuladas con $n=80$: una exponencial i.i.d.\ y una $X_t = 0{,}2 + 0{,}85\,X_{t-1} + \varepsilon_t$ (autoregresiva de orden 1):
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Serie} & $r_1$ & $r_2$ & $r_3$ & \textbf{Banda $\pm 1{,}96/\sqrt{80}$} \\
+\midrule
+Independiente & $-0{,}03$ & $-0{,}01$ & $+0{,}04$ & $\pm 0{,}22$ \\
+AR(1), $\rho=0{,}85$ & $+0{,}75$ & $+0{,}56$ & $+0{,}39$ & $\pm 0{,}22$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Los tres primeros rezagos de la serie AR(1) están muy por encima del umbral $0{,}22$: se rechaza independencia de forma contundente. Ajustar una distribución exponencial (o cualquier otra) sobre esos datos sin modelar la dependencia invalida las pruebas de bondad y los MLE.
+\end{ejemplobox}
+
+\subsubsection{Prueba de rachas (runs test)}
+
+Se clasifica cada observación como ``$+$'' si $X_i > \tilde X$ (mediana) y ``$-$'' si $X_i < \tilde X$. Sea $R$ el número de rachas (secuencias consecutivas del mismo signo). Bajo independencia, $R$ tiene distribución aproximadamente normal con:
 \[
 \E[R] = \frac{2n_+ n_-}{n} + 1, \qquad \Var[R] = \frac{2n_+n_-(2n_+n_- - n)}{n^2(n-1)}
 \]
-donde $n_+$ y $n_-$ son los conteos de observaciones por encima y por debajo de la mediana.
+donde $n_+$ y $n_-$ son los conteos por encima y por debajo de la mediana. Se rechaza independencia al $5\%$ si $|Z|=|R-\E[R]|/\sqrt{\Var[R]} > 1{,}96$.
 
 \begin{alertabox}[Autocorrelación en datos de servicio]
 En sistemas reales, los tiempos de servicio consecutivos pueden estar correlacionados si un mismo operador se fatiga, si las tareas son similares por lotes, o si el sistema tiene retroalimentación. Si se detecta autocorrelación, considerar: (a) usar un proceso autoregresivo como entrada, (b) submuestrear (tomar cada $k$-ésima observación), o (c) modelar la dependencia explícitamente.
@@ -115,28 +173,7 @@ En sistemas reales, los tiempos de servicio consecutivos pueden estar correlacio
 
 \subsection{Homogeneidad temporal (estacionariedad)}
 
-Los datos deben provenir de un proceso estacionario (sin tendencias ni cambios de régimen). Verificar con:
-
-\begin{itemize}
-    \item \textbf{Gráfico de serie de tiempo}: $X_i$ vs.\ $i$. Buscar tendencias, cambios de nivel o patrones cíclicos.
-    \item \textbf{División en subgrupos}: dividir la muestra en $k$ bloques y comparar las medias de cada bloque. Si difieren significativamente (ANOVA o Kruskal-Wallis), los datos no son homogéneos.
-    \item \textbf{Efectos de hora del día}: en sistemas de servicio, la tasa de llegadas suele variar con la hora. Ajustar distribuciones separadas por franja horaria o usar un proceso de Poisson no homogéneo.
-\end{itemize}
-
-% ══════════════════════════════════════════════════
-\section{Tipos de datos en sistemas de colas}
-% ══════════════════════════════════════════════════
-
-\begin{itemize}
-    \item \textbf{Tiempos entre llegadas} $A_i = T_i - T_{i-1}$: si son exponenciales, el proceso de llegadas es de Poisson (Markoviano). Verificar si $\text{CV}_A \approx 1$ y si el número de llegadas en intervalos fijos sigue una distribución Poisson.
-    \item \textbf{Tiempos de servicio} $S_i$: determinan si la cola es $M/M/c$, $M/G/c$ o $G/G/c$. El CV es el estadístico más informativo.
-    \item \textbf{Tiempos de falla}: en modelos de confiabilidad, la tasa de falla puede ser creciente (desgaste) o decreciente (mortalidad infantil), lo cual descarta la exponencial.
-    \item \textbf{Tamaños de lote}: cuando llegan grupos de entidades simultáneamente (buses, pedidos por bulk).
-\end{itemize}
-
-\begin{notabox}[Notación de Kendall]
-La notación $A/S/c/K$ describe una cola por sus distribuciones de llegada ($A$) y servicio ($S$), número de servidores ($c$) y capacidad máxima ($K$). Letras estándar: $M$ = exponencial/Poisson, $D$ = determinista, $E_k$ = Erlang-$k$, $H_k$ = hiperexponencial, $G$ = general. Una cola $M/G/1$ tiene llegadas Poisson y servicio arbitrario.
-\end{notabox}
+Los datos deben provenir de un proceso estacionario (sin tendencias ni cambios de régimen). Se verifica con el gráfico de serie de tiempo ($X_i$ vs.\ $i$, buscando tendencias o ciclos), comparando medias de subgrupos (ANOVA, Kruskal--Wallis), y ajustando distribuciones separadas por franja horaria cuando haya efectos de hora del día.
 
 % ══════════════════════════════════════════════════
 \section{Exploración gráfica}
@@ -144,24 +181,74 @@ La notación $A/S/c/K$ describe una cola por sus distribuciones de llegada ($A$)
 
 \subsection{Histograma}
 
-El histograma divide el rango en $k$ intervalos y estima la densidad empírica en cada uno. Reglas prácticas para $k$:
-\begin{itemize}
-    \item Sturges: $k = \lceil 1 + \log_2 n \rceil$.
-    \item Raíz cuadrada: $k \approx \sqrt{n}$.
-    \item Scott: $h = 3{,}49\,s\,n^{-1/3}$ (anchura óptima bajo normalidad).
-\end{itemize}
+El histograma divide el rango en $k$ intervalos y estima la densidad empírica en cada uno. Los pasos para su construcción son:
 
-El histograma revela asimetría, multimodalidad y colas, pero es sensible a la elección de $k$ con muestras pequeñas.
+\begin{metodobox}[Construcción de un histograma]
+\begin{enumerate}
+    \item \textbf{Rango}: $R = x_{\max} - x_{\min}$.
+    \item \textbf{Número de intervalos} $k$. Reglas prácticas:
+      \begin{itemize}
+        \item Sturges: $k = \lceil 1 + 3{,}322\log_{10}(n)\rceil$.
+        \item Raíz cuadrada: $k \approx \sqrt{n}$.
+        \item Scott: anchura óptima $h = 3{,}49\,s\,n^{-1/3}$.
+      \end{itemize}
+    \item \textbf{Amplitud}: $w = R/k$.
+    \item \textbf{Frecuencias}: contar cuántas observaciones caen en $[a_j, a_j + w)$.
+    \item \textbf{Graficar} barras adyacentes (altura $=$ frecuencia absoluta o relativa).
+\end{enumerate}
+\end{metodobox}
+
+\begin{ejemplobox}[Histograma de los 15 tiempos del banco]
+$R = 5{,}6 - 0{,}7 = 4{,}9$; Sturges da $k = \lceil 1 + 3{,}322\log_{10}(15)\rceil = 5$; amplitud $w = 4{,}9/5 = 0{,}98$.
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lc}
+\toprule
+\textbf{Intervalo} & \textbf{Frecuencia $f_j$} \\
+\midrule
+$[0{,}70;\;1{,}68)$ & 7 \\
+$[1{,}68;\;2{,}66)$ & 3 \\
+$[2{,}66;\;3{,}64)$ & 3 \\
+$[3{,}64;\;4{,}62)$ & 1 \\
+$[4{,}62;\;5{,}60)$ & 1 \\
+\midrule
+Total & 15 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La forma asimétrica a la derecha es compatible con una distribución positiva del tipo exponencial o Erlang. El histograma es, sin embargo, la \emph{primera impresión}; con $n$ pequeño es sensible a $k$.
+\end{ejemplobox}
 
 \subsection{Función de distribución empírica (ECDF)}
 
 La ECDF estima $F(x) = \Prob(X \le x)$ sin suponer ninguna forma paramétrica:
-
 \[
-\hat{F}_n(x) = \frac{1}{n}\sum_{i=1}^{n}\ind{X_i \le x}
+\hat{F}_n(x) = \frac{1}{n}\sum_{i=1}^{n}\ind{X_i \le x}.
 \]
-
 Si los datos se ordenan como $X_{(1)} \le X_{(2)} \le \cdots \le X_{(n)}$, entonces $\hat{F}_n(X_{(i)}) = i/n$. El teorema de Glivenko--Cantelli garantiza $\sup_x|\hat{F}_n(x)-F(x)| \xrightarrow{c.s.} 0$. Superponer la ECDF con la CDF teórica $F(x;\hat\theta)$ permite una inspección visual global del ajuste.
+
+\begin{ejemplobox}[ECDF de los 15 tiempos vs.\ exponencial]
+Con $\hat\lambda = 1/\bar x = 0{,}452$, la CDF teórica es $F_0(x) = 1 - e^{-0{,}452\,x}$. Los primeros valores de comparación entre $\hat F_n(X_{(i)}) = i/n$ y $F_0(X_{(i)})$:
+
+\begin{center}\scriptsize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{rrrrr}
+\toprule
+$i$ & $X_{(i)}$ & $i/n$ & $F_0(X_{(i)})$ & diferencia \\
+\midrule
+1 & 0{,}70 & 0{,}067 & 0{,}271 & $-0{,}205$ \\
+2 & 0{,}80 & 0{,}133 & 0{,}303 & $-0{,}170$ \\
+3 & 0{,}90 & 0{,}200 & 0{,}334 & $-0{,}134$ \\
+8 & 1{,}80 & 0{,}533 & 0{,}557 & $-0{,}023$ \\
+15 & 5{,}60 & 1{,}000 & 0{,}920 & $+0{,}080$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La ECDF sube \emph{por encima} de $F_0$ en la parte central y queda \emph{por debajo} en los extremos: hay menos valores pequeños y menos valores grandes de lo que la exponencial predice. Este patrón anticipa el resultado de las pruebas formales.
+\end{ejemplobox}
 
 \subsection{Gráfico Q-Q (cuantil--cuantil)}
 
@@ -176,6 +263,25 @@ Compara los cuantiles empíricos con los cuantiles teóricos. Si el ajuste es co
 \end{enumerate}
 \end{metodobox}
 
+\begin{ejemplobox}[Cálculo manual de un Q-Q exponencial con $n=3$]
+Sea la muestra $\{2{,}1;\; 0{,}5;\; 1{,}2\}$ y la distribución teórica $\mathrm{Exp}(\lambda=1)$. La inversa de la CDF es $q = -\ln(1-p)$.
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{cccc}
+\toprule
+$i$ & $x_{(i)}$ & $p_i=(i-0{,}5)/3$ & $q_i=-\ln(1-p_i)$ \\
+\midrule
+1 & $0{,}5$ & $0{,}167$ & $0{,}182$ \\
+2 & $1{,}2$ & $0{,}500$ & $0{,}693$ \\
+3 & $2{,}1$ & $0{,}833$ & $1{,}792$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Los puntos a graficar son $(0{,}182;\; 0{,}5)$, $(0{,}693;\; 1{,}2)$ y $(1{,}792;\; 2{,}1)$, que se comparan con la recta $y=x$.
+\end{ejemplobox}
+
 \textbf{Patrones de desviación}:
 \begin{itemize}
     \item Puntos \emph{sobre} la diagonal en la cola derecha: datos con colas más pesadas que el modelo.
@@ -183,52 +289,84 @@ Compara los cuantiles empíricos con los cuantiles teóricos. Si el ajuste es co
     \item Pendiente distinta de 1: parámetro de escala mal estimado.
 \end{itemize}
 
+\begin{ejemplobox}[Q-Q exponencial de los 15 tiempos del banco]
+Con $\hat\lambda = 0{,}452$ y $p_i = (i-0{,}5)/15$:
+
+\begin{center}\scriptsize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{rrrr}
+\toprule
+$i$ & $x_{(i)}$ & $p_i$ & $q_i = -\ln(1-p_i)/0{,}452$ \\
+\midrule
+1 & 0{,}70 & 0{,}033 & 0{,}075 \\
+5 & 1{,}20 & 0{,}300 & 0{,}789 \\
+8 & 1{,}80 & 0{,}500 & 1{,}534 \\
+12 & 3{,}10 & 0{,}767 & 3{,}221 \\
+15 & 5{,}60 & 0{,}967 & 7{,}528 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Graficados $(q_i, x_{(i)})$, los puntos muestran \emph{curvatura en S}: en la cola izquierda quedan sobre la diagonal (el modelo predice valores más pequeños de los observados), en la cola derecha quedan por debajo (el modelo predice valores más grandes). Este patrón es consistente con $\mathrm{CV} < 1$ y descarta la exponencial a favor de Erlang o Gamma.
+\end{ejemplobox}
+
 % ══════════════════════════════════════════════════
 \section{Familias de distribuciones para sistemas de colas}
 % ══════════════════════════════════════════════════
 
-\subsection{Exponencial — base de referencia Markoviana}
+\subsection{Exponencial --- base de referencia Markoviana}
 
 $X \sim \text{Exp}(\lambda)$: $f(x) = \lambda e^{-\lambda x}$, $\E[X]=1/\lambda$, $\text{CV}=1$.
 
 \textbf{Propiedad de ausencia de memoria}: $\Prob(X > s+t \mid X > s) = \Prob(X > t)$. Esta propiedad hace que los sistemas con llegadas y servicios exponenciales sean CMTC, tractables analíticamente. Es el único justificativo para el modelo $M/M/c$.
 
-\subsection{Erlang-$k$ — servicio en fases regulares}
+\begin{ejemplobox}[Cuándo aparece]
+Tiempos entre llegadas a un centro de atención donde los clientes son independientes entre sí (proceso de Poisson). Si empíricamente $\mathrm{CV}\approx 1$ y además la prueba de rachas no rechaza independencia, la exponencial es la primera candidata.
+\end{ejemplobox}
 
-$X \sim E_k(\mu)$ es la suma de $k$ exponenciales i.i.d.\ con tasa $\mu$: $X = S_1 + \cdots + S_k$. $\E[X]=k/\mu$, $\text{CV} = 1/\sqrt{k}$.
+\subsection{Erlang-$k$ --- servicio en fases regulares}
 
-La Erlang modela servicios con $k$ etapas secuenciales (inspección, diagnóstico, prueba). A mayor $k$, menor variabilidad y, según la fórmula P-K, menor tiempo de espera.
+$X \sim E_k(\mu)$ es la suma de $k$ exponenciales i.i.d.\ con tasa $\mu$: $X = S_1 + \cdots + S_k$. $\E[X]=k/\mu$, $\text{CV} = 1/\sqrt{k}$. A mayor $k$, menor variabilidad y, según Pollaczek--Khinchine, menor tiempo en cola.
 
-\subsection{Hiperexponencial-$k$ — mezcla de tipos de servicio}
+\begin{ejemplobox}[Ventanilla bancaria: tres etapas]
+Un trámite consta de (1)~saludo y consulta, (2)~transacción, (3)~despedida. Si cada etapa es exponencial con la misma tasa $\mu$, el tiempo total sigue $E_3(\mu)$ con $\mathrm{CV}=1/\sqrt{3}\approx 0{,}58$. Esto justifica por qué los datos del banco (con $\mathrm{CV}\approx 0{,}63$) encajan en una Erlang-3 más que en una exponencial.
+\end{ejemplobox}
 
-Se genera eligiendo exponencial $i$ con probabilidad $p_i$ y muestreando $X \sim \text{Exp}(\lambda_i)$. $\text{CV} > 1$. Adecuada para poblaciones heterogéneas (reparaciones simples vs.\ complejas). La densidad es:
+\subsection{Hiperexponencial-$k$ --- mezcla de tipos de servicio}
+
+Se genera eligiendo exponencial $i$ con probabilidad $p_i$ y muestreando $X \sim \text{Exp}(\lambda_i)$. Su densidad es:
 \[
-f(x) = \sum_{i=1}^{k} p_i \lambda_i e^{-\lambda_i x}, \qquad \sum_{i=1}^k p_i = 1
+f(x) = \sum_{i=1}^{k} p_i \lambda_i e^{-\lambda_i x}, \qquad \sum_{i=1}^k p_i = 1.
 \]
+Siempre $\mathrm{CV}>1$ si los $\lambda_i$ difieren. Adecuada para poblaciones heterogéneas.
 
-Para $k=2$ con parámetros $(p_1, \lambda_1, p_2, \lambda_2)$: $\E[X] = p_1/\lambda_1 + p_2/\lambda_2$ y el CV siempre es mayor que 1.
+\begin{ejemplobox}[Taller con reparaciones rápidas y complejas]
+En un taller, $80\%$ de las intervenciones son diagnósticos rápidos ($\lambda_1=2$/h, media $0{,}5$ h) y $20\%$ son revisiones completas ($\lambda_2=0{,}2$/h, media $5$ h). La hiperexponencial resultante tiene media $0{,}8\cdot 0{,}5 + 0{,}2\cdot 5 = 1{,}4$ h y $\mathrm{CV}>1$. Una sola exponencial no captura esta heterogeneidad.
+\end{ejemplobox}
 
 \subsection{Gamma}
 
 $X \sim \text{Gamma}(\alpha,\beta)$: $\E[X]=\alpha/\beta$, $\text{CV}=1/\sqrt{\alpha}$. La Erlang-$k$ es un caso especial con $\alpha=k \in \mathbb{N}$. El parámetro $\alpha$ no requiere ser entero, lo que da mayor flexibilidad.
 
-\subsection{Weibull — tasa de falla no constante}
+\subsection{Weibull --- tasa de falla no constante}
 
 $X \sim \text{Weibull}(k,\lambda)$: $f(x) = \frac{k}{\lambda}\bigl(\frac{x}{\lambda}\bigr)^{k-1}e^{-(x/\lambda)^k}$. La tasa de falla (hazard) es $h(x) = \frac{k}{\lambda}(x/\lambda)^{k-1}$:
 
 \begin{itemize}
-    \item $k<1$: tasa decreciente (mortalidad infantil — equipos nuevos).
+    \item $k<1$: tasa decreciente (mortalidad infantil --- equipos nuevos).
     \item $k=1$: tasa constante (exponencial, Markoviano).
-    \item $k>1$: tasa creciente (desgaste — equipos envejecidos).
+    \item $k>1$: tasa creciente (desgaste --- equipos envejecidos).
 \end{itemize}
 
-La Weibull es la distribución estándar para tiempos de falla en ingeniería de confiabilidad y para tiempos de reparación con alta variabilidad.
+\begin{ejemplobox}[Reparaciones del taller: $k=1{,}28$]
+Si el ajuste empírico de reparaciones arroja $\hat k = 1{,}28 > 1$, la tasa de falla es creciente: la probabilidad de que la reparación termine aumenta con el tiempo ya invertido. Físicamente: las reparaciones simples se terminan rápido; las complejas, una vez ``trabadas'', avanzan progresivamente hasta resolverse. Este valor de $\hat k$ es incompatible con una exponencial ($k=1$).
+\end{ejemplobox}
 
-\subsection{Log-normal — fenómenos multiplicativos}
+\subsection{Log-normal --- fenómenos multiplicativos}
 
-$X \sim \text{LogNormal}(\mu,\sigma^2)$ si $\ln X \sim \mathcal{N}(\mu,\sigma^2)$. $\E[X] = e^{\mu+\sigma^2/2}$, $\text{CV}=\sqrt{e^{\sigma^2}-1}$. Natural cuando el tiempo de servicio resulta de muchos factores multiplicativos (diagnóstico, negociación, resolución de incidencias).
+$X \sim \text{LogNormal}(\mu,\sigma^2)$ si $\ln X \sim \mathcal{N}(\mu,\sigma^2)$. $\E[X] = e^{\mu+\sigma^2/2}$, $\text{CV}=\sqrt{e^{\sigma^2}-1}$. Natural cuando el tiempo de servicio resulta de muchos factores multiplicativos (diagnóstico, negociación, resolución de incidencias), por aplicación del teorema central del límite a $\ln X$.
 
-\subsection{Tabla resumen}
+\subsection{Tabla resumen y guía por coeficiente de variación}
 
 \begin{center}
 \small
@@ -264,21 +402,26 @@ Hiperexponencial        & $(0,\infty)$   & $>1$             & Decreciente & Pobl
 \subsection{Máxima verosimilitud (MLE)}
 
 Sea $x_1,\ldots,x_n$ una muestra i.i.d.\ con densidad $f(x;\theta)$. El estimador MLE es:
-
 \[
-\hat\theta = \arg\max_\theta\, \ell(\theta), \qquad \ell(\theta) = \sum_{i=1}^{n}\ln f(x_i;\theta)
+\hat\theta = \arg\max_\theta\, \ell(\theta), \qquad \ell(\theta) = \sum_{i=1}^{n}\ln f(x_i;\theta).
 \]
-
 Los MLE son asintóticamente eficientes (mínima varianza) y consistentes.
 
 \textbf{Derivación para la exponencial}. Sea $X_i \sim \text{Exp}(\lambda)$:
 \begin{align*}
-\ell(\lambda) &= \sum_{i=1}^n \ln(\lambda e^{-\lambda x_i}) = n\ln\lambda - \lambda\sum_{i=1}^n x_i \\
-\frac{d\ell}{d\lambda} &= \frac{n}{\lambda} - \sum_{i=1}^n x_i = 0 \\
-\Rightarrow\quad \hat\lambda &= \frac{n}{\sum_{i=1}^n x_i} = \frac{1}{\bar x}
+\ell(\lambda) &= \sum_{i=1}^n \ln(\lambda e^{-\lambda x_i}) = n\ln\lambda - \lambda\sum_{i=1}^n x_i, \\
+\frac{d\ell}{d\lambda} &= \frac{n}{\lambda} - \sum_{i=1}^n x_i = 0
+\quad\Rightarrow\quad \hat\lambda = \frac{1}{\bar x}.
 \end{align*}
+La segunda derivada $-n/\lambda^2 < 0$ confirma que es un máximo; la varianza asintótica es $\Var[\hat\lambda] \approx \lambda^2/n$, obtenida de la información de Fisher.
 
-La segunda derivada $d^2\ell/d\lambda^2 = -n/\lambda^2 < 0$ confirma que es un máximo. La varianza asintótica del MLE es $\Var[\hat\lambda] \approx \lambda^2/n$, obtenida de la información de Fisher $\mathcal{I}(\lambda) = n/\lambda^2$.
+\begin{ejemplobox}[MLE exponencial sobre los 15 tiempos]
+\[
+\bar x = \frac{0{,}7+0{,}8+\cdots+5{,}6}{15} = 2{,}213
+\quad\Rightarrow\quad
+\hat\lambda = \frac{1}{2{,}213} = 0{,}452 \text{ min}^{-1}.
+\]
+\end{ejemplobox}
 
 \textbf{MLE para distribuciones comunes}:
 
@@ -300,7 +443,7 @@ Weibull($k,\lambda$)            & sistema de ecuaciones no lineal               
 
 \subsection{Método de momentos (MM)}
 
-Iguala los momentos muestrales $\bar x^{(r)} = n^{-1}\sum x_i^r$ con los momentos teóricos $\E[X^r]$. Para la exponencial: $\hat\lambda=1/\bar x$ (coincide con MLE, ya que la exponencial tiene un solo parámetro y un solo momento utilizado). Para distribuciones de dos parámetros se igualan media y varianza:
+Iguala los momentos muestrales $\bar x^{(r)} = n^{-1}\sum x_i^r$ con los momentos teóricos $\E[X^r]$.
 
 \textbf{Gamma}: $\E[X] = \alpha/\beta$ y $\Var[X] = \alpha/\beta^2$ implican $\hat\alpha = \bar x^2/s^2$ y $\hat\beta = \bar x/s^2$.
 
@@ -319,34 +462,128 @@ Una vez ajustada la distribución, se verifica si los datos son estadísticament
 \subsection{Prueba $\chi^2$}
 
 Agrupa los datos en $k$ celdas con frecuencias observadas $O_j$ y esperadas $E_j = n[F_0(b_j)-F_0(a_j)]$:
-
 \[
 \chi^2 = \sum_{j=1}^{k}\frac{(O_j-E_j)^2}{E_j} \;\xrightarrow{H_0}\; \chi^2_{k-1-p}
 \]
-
-donde $p$ es el número de parámetros estimados. Rechazar $H_0$ si $\chi^2 > \chi^2_{\alpha,\,k-1-p}$.
+donde $p$ es el número de parámetros estimados. Se rechaza $H_0$ si $\chi^2 > \chi^2_{\alpha,\,k-1-p}$.
 
 \textbf{Requisito}: $E_j \ge 5$ en cada celda (fusionar celdas adyacentes si no se cumple).
+
+\begin{ejemplobox}[$\chi^2$ sobre los 15 tiempos del banco]
+Con $\hat\lambda = 0{,}452$ y $F_0(x)=1-e^{-0{,}452\,x}$, dividimos el soporte en tres intervalos de ancho fijo:
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Intervalo} & $O_j$ & $p_j = F_0(b_j)-F_0(a_j)$ & $E_j = 15\cdot p_j$ & $(O_j-E_j)^2/E_j$ \\
+\midrule
+$[0,\;2)$      & 8 & $F_0(2)-F_0(0) = 0{,}595$ & $8{,}92$ & $0{,}096$ \\
+$[2,\;4)$      & 5 & $F_0(4)-F_0(2) = 0{,}241$ & $3{,}62$ & $0{,}531$ \\
+$[4,\;\infty)$ & 2 & $1-F_0(4) = 0{,}164$      & $2{,}46$ & $0{,}087$ \\
+\midrule
+Total          & 15 & $1{,}000$ & $15{,}00$ & $\boxed{0{,}713}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Grados de libertad $\nu = k - 1 - p = 3-1-1 = 1$; valor crítico $\chi^2_{0{,}05,\,1} = 3{,}84$.
+Como $0{,}713 < 3{,}84$, \textbf{no se rechaza} la exponencial.
+\end{ejemplobox}
 
 \subsection{Prueba de Kolmogorov--Smirnov (KS)}
 
 Compara la ECDF con la CDF teórica:
-
 \[
-D_n = \sup_x\bigl|\hat{F}_n(x) - F_0(x;\hat\theta)\bigr| = \max_i\max\!\left(\frac{i}{n}-F_0(X_{(i)}),\;F_0(X_{(i)})-\frac{i-1}{n}\right)
+D_n = \sup_x\bigl|\hat{F}_n(x) - F_0(x;\hat\theta)\bigr| = \max_i\max\!\left(\frac{i}{n}-F_0(X_{(i)}),\;F_0(X_{(i)})-\frac{i-1}{n}\right).
 \]
+La prueba KS es más sensible que la $\chi^2$ para distribuciones continuas. Los valores críticos estándar asumen que los parámetros de $F_0$ son conocidos; cuando se estiman de los datos la prueba es anticonservativa y convendría usar Lilliefors o Anderson--Darling.
 
-La prueba KS es más sensible que la $\chi^2$ para distribuciones continuas, pero los valores críticos estándar son anticonservativos cuando $\hat\theta$ se estima de los mismos datos. En ese caso, usar tablas de Lilliefors o la prueba de Anderson--Darling.
+\begin{ejemplobox}[KS sobre los 15 tiempos del banco --- tabla completa]
+\begin{center}\scriptsize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{rrrrrrr}
+\toprule
+$i$ & $X_{(i)}$ & $F_0(X_{(i)})$ & $i/n$ & $(i-1)/n$ & $d_i^+$ & $d_i^-$ \\
+\midrule
+1 & 0{,}70 & 0{,}271 & 0{,}067 & 0{,}000 & $-0{,}205$ & $\mathbf{0{,}271}$ \\
+2 & 0{,}80 & 0{,}303 & 0{,}133 & 0{,}067 & $-0{,}170$ & $0{,}237$ \\
+3 & 0{,}90 & 0{,}334 & 0{,}200 & 0{,}133 & $-0{,}134$ & $0{,}201$ \\
+4 & 1{,}10 & 0{,}392 & 0{,}267 & 0{,}200 & $-0{,}125$ & $0{,}192$ \\
+5 & 1{,}20 & 0{,}419 & 0{,}333 & 0{,}267 & $-0{,}085$ & $0{,}152$ \\
+6 & 1{,}50 & 0{,}492 & 0{,}400 & 0{,}333 & $-0{,}092$ & $0{,}159$ \\
+7 & 1{,}60 & 0{,}515 & 0{,}467 & 0{,}400 & $-0{,}048$ & $0{,}115$ \\
+8 & 1{,}80 & 0{,}557 & 0{,}533 & 0{,}467 & $-0{,}023$ & $0{,}090$ \\
+9 & 2{,}10 & 0{,}613 & 0{,}600 & 0{,}533 & $-0{,}013$ & $0{,}080$ \\
+10 & 2{,}40 & 0{,}662 & 0{,}667 & 0{,}600 & $+0{,}005$ & $0{,}062$ \\
+11 & 2{,}80 & 0{,}718 & 0{,}733 & 0{,}667 & $+0{,}016$ & $0{,}051$ \\
+12 & 3{,}10 & 0{,}754 & 0{,}800 & 0{,}733 & $+0{,}046$ & $0{,}020$ \\
+13 & 3{,}40 & 0{,}785 & 0{,}867 & 0{,}800 & $+0{,}082$ & $-0{,}015$ \\
+14 & 4{,}20 & 0{,}850 & 0{,}933 & 0{,}867 & $+0{,}083$ & $-0{,}017$ \\
+15 & 5{,}60 & 0{,}920 & 1{,}000 & 0{,}933 & $+0{,}080$ & $-0{,}013$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+$D_n = 0{,}271$ (alcanzado en $i=1$). Valor crítico de tabla KS para $n=15$ y $\alpha=0{,}05$: $D^*_{15;\,0{,}05} = 0{,}338$. Como $0{,}271 < 0{,}338$, \textbf{no se rechaza} la exponencial.
+\end{ejemplobox}
 
 \subsection{Prueba de Anderson--Darling (AD)}
 
 La prueba AD pondera las discrepancias en las colas, donde la $\chi^2$ y la KS son menos sensibles:
-
 \[
-A^2 = -n - \sum_{i=1}^{n}\frac{2i-1}{n}\bigl[\ln F_0(X_{(i)}) + \ln(1-F_0(X_{(n+1-i)}))\bigr]
+A^2 = -n - \frac{1}{n}\sum_{i=1}^{n}(2i-1)\bigl[\ln F_0(X_{(i)}) + \ln(1-F_0(X_{(n+1-i)}))\bigr].
 \]
+El peso implícito es $1/[F_0(x)(1-F_0(x))]$, que explota en las colas. Los valores críticos dependen de la distribución específica bajo $H_0$:
 
-Valores críticos dependen de la distribución específica bajo $H_0$. La prueba AD es generalmente más potente que la KS, especialmente para detectar desviaciones en las colas.
+\begin{center}\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Distribución (parámetros estimados)} & $\alpha=0{,}10$ & $\alpha=0{,}05$ & $\alpha=0{,}01$ \\
+\midrule
+Exponencial ($\hat\lambda$)         & $1{,}06$ & $1{,}32$ & $1{,}96$ \\
+Normal ($\hat\mu,\hat\sigma$)       & $0{,}63$ & $0{,}75$ & $1{,}04$ \\
+Log-normal ($\hat\mu,\hat\sigma$)   & $0{,}63$ & $0{,}75$ & $1{,}04$ \\
+Weibull ($\hat k,\hat\lambda$)      & $0{,}64$ & $0{,}76$ & $1{,}05$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{ejemplobox}[Anderson--Darling sobre los 15 tiempos --- paso a paso]
+Para cada $i$ calculamos $F_0(X_{(i)})$, $\ln F_0(X_{(i)})$ y $\ln\bigl(1-F_0(X_{(n+1-i)})\bigr)$:
+
+\begin{center}\scriptsize
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{rrrrrrr}
+\toprule
+$i$ & $X_{(i)}$ & $F_i$ & $X_{(n{+}1{-}i)}$ & $1-F_{n+1-i}$ & $\ln F_i$ & $\ln(1-F_{n+1-i})$ \\
+\midrule
+1  & 0{,}70 & 0{,}271 & 5{,}60 & 0{,}080 & $-1{,}305$ & $-2{,}530$ \\
+2  & 0{,}80 & 0{,}303 & 4{,}20 & 0{,}150 & $-1{,}193$ & $-1{,}898$ \\
+3  & 0{,}90 & 0{,}334 & 3{,}40 & 0{,}215 & $-1{,}096$ & $-1{,}536$ \\
+4  & 1{,}10 & 0{,}392 & 3{,}10 & 0{,}246 & $-0{,}937$ & $-1{,}401$ \\
+5  & 1{,}20 & 0{,}419 & 2{,}80 & 0{,}282 & $-0{,}871$ & $-1{,}265$ \\
+6  & 1{,}50 & 0{,}492 & 2{,}40 & 0{,}338 & $-0{,}709$ & $-1{,}084$ \\
+7  & 1{,}60 & 0{,}515 & 2{,}10 & 0{,}387 & $-0{,}664$ & $-0{,}949$ \\
+8  & 1{,}80 & 0{,}557 & 1{,}80 & 0{,}443 & $-0{,}586$ & $-0{,}813$ \\
+9  & 2{,}10 & 0{,}613 & 1{,}60 & 0{,}485 & $-0{,}490$ & $-0{,}723$ \\
+10 & 2{,}40 & 0{,}662 & 1{,}50 & 0{,}508 & $-0{,}413$ & $-0{,}678$ \\
+11 & 2{,}80 & 0{,}718 & 1{,}20 & 0{,}581 & $-0{,}332$ & $-0{,}542$ \\
+12 & 3{,}10 & 0{,}754 & 1{,}10 & 0{,}608 & $-0{,}283$ & $-0{,}497$ \\
+13 & 3{,}40 & 0{,}785 & 0{,}90 & 0{,}666 & $-0{,}242$ & $-0{,}407$ \\
+14 & 4{,}20 & 0{,}850 & 0{,}80 & 0{,}696 & $-0{,}162$ & $-0{,}361$ \\
+15 & 5{,}60 & 0{,}920 & 0{,}70 & 0{,}729 & $-0{,}083$ & $-0{,}316$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Sumando los términos $(2i-1)/n\cdot[\ln F_i + \ln(1-F_{n+1-i})]$ se obtiene $S = -16{,}207$. Entonces
+\[
+A^2 = -n - S = -15 - (-16{,}207) = 1{,}207.
+\]
+Valor crítico para exponencial con parámetro estimado al $5\%$: $A^{2*} = 1{,}32$. Como $1{,}207 < 1{,}32$, \textbf{no se rechaza} la exponencial, aunque marginalmente.
+\end{ejemplobox}
 
 \subsection{Interpretación del $p$-value}
 
@@ -361,8 +598,12 @@ El $p$-value es la probabilidad de observar un estadístico de prueba al menos t
 \end{itemize}
 
 \begin{notabox}[¿Cuál prueba elegir?]
-La $\chi^2$ es versátil (discreta y continua) y robusta con parámetros estimados, pero requiere celdas con $E_j\ge5$. La KS es más poderosa para distribuciones continuas pero supone parámetros conocidos. La AD es la más potente en las colas. Usar al menos dos como diagnóstico complementario; el gráfico Q-Q siempre como referencia visual.
+La $\chi^2$ es versátil (discreta y continua) y robusta con parámetros estimados, pero requiere celdas con $E_j\ge5$. La KS es más poderosa para distribuciones continuas pero sus valores críticos estándar suponen parámetros conocidos. La AD es la más potente en las colas. Usar al menos dos pruebas como diagnóstico complementario; el gráfico Q-Q siempre como referencia visual.
 \end{notabox}
+
+\begin{resultadobox}[Lo que aprendimos del banco pequeño]
+Las tres pruebas \emph{no rechazan} la exponencial con $n=15$: $\chi^2=0{,}71$ vs.\ $3{,}84$; $D_n=0{,}271$ vs.\ $0{,}338$; $A^2=1{,}207$ vs.\ $1{,}32$. Sin embargo, las tres están cerca del umbral y el coeficiente de variación $0{,}63<1$ junto con la curvatura en ``S'' del Q-Q plot advierten que con más datos probablemente se rechazará. \textbf{Con $n=15$ ninguna prueba tiene suficiente potencia.}
+\end{resultadobox}
 
 % ══════════════════════════════════════════════════
 \section{Criterios de selección de modelos}
@@ -371,20 +612,16 @@ La $\chi^2$ es versátil (discreta y continua) y robusta con parámetros estimad
 Cuando varias distribuciones pasan las pruebas de bondad de ajuste, se necesitan criterios para elegir la mejor.
 
 \subsection{Criterio de información de Akaike (AIC)}
-
 \[
-\text{AIC} = -2\,\ell(\hat\theta) + 2p
+\text{AIC} = -2\,\ell(\hat\theta) + 2p,
 \]
-
 donde $\ell(\hat\theta)$ es la log-verosimilitud evaluada en el MLE y $p$ es el número de parámetros. El AIC penaliza la complejidad del modelo: entre dos modelos que ajustan igualmente bien, se prefiere el más parsimonioso.
 
 \subsection{Criterio de información bayesiano (BIC)}
-
 \[
-\text{BIC} = -2\,\ell(\hat\theta) + p\ln n
+\text{BIC} = -2\,\ell(\hat\theta) + p\ln n.
 \]
-
-El BIC penaliza más fuertemente la complejidad que el AIC cuando $n > 7$ (ya que $\ln n > 2$). Es más conservador en la selección de modelos.
+El BIC penaliza más fuertemente la complejidad que el AIC cuando $n > 7$ (ya que $\ln n > 2$).
 
 \begin{metodobox}[Uso de AIC/BIC]
 \begin{enumerate}
@@ -395,6 +632,144 @@ El BIC penaliza más fuertemente la complejidad que el AIC cuando $n > 7$ (ya qu
 \end{enumerate}
 \end{metodobox}
 
+\begin{ejemplobox}[AIC en el banco completo ($n=80$)]
+Tres candidatas ajustadas por MLE sobre 80 tiempos de servicio:
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Distribución} & \textbf{Parámetros} & $\ell(\hat\theta)$ & $\text{AIC}$ \\
+\midrule
+Exponencial & $\hat\lambda=0{,}459$                    & $-148{,}3$ & $298{,}6$ \\
+Erlang-3    & $\hat\mu_f = 1{,}376$                    & $-137{,}1$ & $\mathbf{276{,}2}$ \\
+Gamma       & $\hat\alpha=2{,}65$, $\hat\beta=1{,}22$  & $-136{,}4$ & $276{,}8$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+La exponencial queda muy por detrás ($\Delta\text{AIC}>20$). Entre Erlang-3 y Gamma, $\Delta\text{AIC}=0{,}6<2$: son indistinguibles. Se elige la Erlang-3 por parsimonia (1 parámetro) y por su interpretación física (saludo, transacción, despedida).
+\end{ejemplobox}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo integrador: banco completo}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Se amplía el estudio del banco. Durante una semana se registran 80 tiempos entre llegadas y 80 tiempos de servicio en la misma ventanilla. El objetivo es determinar las distribuciones de entrada para un modelo de simulación de la cola, identificando si el sistema es $M/M/1$, $M/G/1$ o $G/G/1$.
+\end{ejemplobox}
+
+\subsection{Tiempos entre llegadas}
+
+\textbf{Estadísticos}: $n_A = 80$, $\bar A = 3{,}2$ min, $s_A = 3{,}1$ min, $\text{CV}_A = 0{,}97$.
+
+El CV cercano a 1 es consistente con la exponencial. La prueba de rachas arroja $R=39$, $\E[R]=41$, $Z = -0{,}4$ ($p=0{,}69$): no se rechaza independencia. La autocorrelación lag-1 es $\hat\rho_1 = 0{,}04$, dentro del intervalo $\pm 2/\sqrt{80} = \pm 0{,}22$.
+
+\textbf{MLE}: $\hat\lambda = 1/3{,}2 = 0{,}3125$ clientes/min.
+
+\textbf{Prueba KS}: $D_{80} = 0{,}07 < D^*_{80;\,0{,}05}\approx 0{,}15$. \textbf{Anderson--Darling}: $A^2 = 0{,}41 < 1{,}32$. Ninguna rechaza.
+
+\textbf{Conclusión de llegadas}: $A \sim \text{Exp}(0{,}3125)$, proceso de Poisson con $\lambda \approx 18{,}75$ clientes/h. Letra de llegada $M$.
+
+\subsection{Tiempos de servicio}
+
+\textbf{Estadísticos}: $n_S = 80$, $\bar S = 2{,}18$ min, $s_S = 1{,}34$ min, $\text{CV}_S = 0{,}61$.
+
+El CV confirma lo observado en el banco pequeño. La guía por CV sugiere $k \approx 1/0{,}61^2 \approx 2{,}7$: Erlang-3 o Gamma. El ajuste por AIC (ver ejemplo de la sección anterior) elige \textbf{Erlang-3}.
+
+\subsection{Impacto en el modelo de colas}
+
+Con $\lambda = 0{,}3125$, $\E[S] = 2{,}18$, $\rho = 0{,}68$:
+\[
+\E[S^2] = (0{,}61 \cdot 2{,}18)^2 + 2{,}18^2 = 1{,}77 + 4{,}75 = 6{,}52.
+\]
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Modelo} & \textbf{Fórmula} & $W_q$ (min) \\
+\midrule
+$M/M/1$ (si usáramos exponencial) & $\dfrac{\rho}{\mu(1-\rho)}$ & $4{,}63$ \\[10pt]
+$M/E_3/1$ (distribución correcta)  & $\dfrac{\lambda\E[S^2]}{2(1-\rho)}$ & $3{,}18$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{resultadobox}[Conclusión del banco completo]
+El sistema es $M/E_3/1$: llegadas Poisson ($\lambda=0{,}3125$ cl/min) y servicio Erlang-3 ($\E[S]=2{,}18$ min). Usar incorrectamente $M/M/1$ sobreestimaría el tiempo en cola en un \textbf{46\%} ($4{,}63$ vs.\ $3{,}18$ min). Con $n=80$ sí se logra discriminar; con $n=15$ no.
+\end{resultadobox}
+
+% ══════════════════════════════════════════════════
+\section{Ejemplo escalado: taller de reparación de equipos industriales}
+% ══════════════════════════════════════════════════
+
+\begin{ejemplobox}[Sistema]
+Un taller de mantenimiento atiende equipos industriales que llegan de diferentes líneas de producción. El gerente quiere determinar cuántos técnicos necesita. Durante dos semanas se registran 50 tiempos entre llegadas sucesivas y 50 tiempos de reparación. A diferencia del banco (servicio en etapas regulares), aquí las reparaciones son heterogéneas: algunas son diagnósticos rápidos y otras son revisiones completas.
+\end{ejemplobox}
+
+\subsection{Tiempos entre llegadas}
+
+$\bar{A}=4{,}8$ h, $\text{CV}_A = 0{,}96 \approx 1$, $\hat\rho_1 = 0{,}02$. La prueba KS con $\hat\lambda=0{,}208$ h$^{-1}$ arroja $D_{50}=0{,}08 < 0{,}19$, y $A^2 = 0{,}52 < 1{,}32$. No se rechaza Poisson por ninguna prueba.
+
+\textbf{Conclusión de llegadas}: $A \sim \text{Exp}(0{,}208)$, proceso de Poisson con $\lambda=0{,}208$ equipos/h.
+
+\subsection{Tiempos de reparación}
+
+$\bar{S}=3{,}6$ h, $\text{CV}_S=0{,}86$.
+
+El histograma muestra asimetría pronunciada a la derecha con una cola pesada: la mayoría de reparaciones toman 1--4 horas, pero hay varias de 8--10 horas. El Q-Q exponencial exhibe puntos \emph{sobre} la diagonal en la cola superior, indicando que la exponencial subestima las colas.
+
+Cuatro candidatas ajustadas por MLE:
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Distribución} & \textbf{Parámetros MLE} & $D_{50}$ & $A^2$ & $\ell(\hat\theta)$ & \textbf{AIC} \\
+\midrule
+Exponencial & $\hat\lambda=0{,}278$ h$^{-1}$ & $0{,}13$ & $1{,}85$ & $-120{,}8$ & $243{,}6$ \\
+Gamma       & $\hat\alpha=1{,}42$, $\hat\beta=0{,}39$ & $0{,}09$ & $0{,}72$ & $-117{,}1$ & $238{,}2$ \\
+Weibull     & $\hat{k}=1{,}28$, $\hat\lambda_W=3{,}97$ h & $0{,}06$ & $0{,}35$ & $-115{,}2$ & $\mathbf{234{,}4}$ \\
+Log-normal  & $\hat\mu=1{,}05$, $\hat\sigma=0{,}74$ & $0{,}08$ & $0{,}54$ & $-116{,}3$ & $236{,}6$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Análisis}:
+\begin{itemize}
+    \item Exponencial \textbf{rechazada} por AD ($1{,}85 > 1{,}32$) y marginalmente por KS.
+    \item Gamma, Weibull y Log-normal pasan ambas pruebas.
+    \item Weibull tiene el menor AIC ($234{,}4$); $\hat k = 1{,}28 > 1$ indica tasa de falla creciente, coherente con el proceso físico.
+\end{itemize}
+
+\textbf{Conclusión de servicio}: $S \sim \text{Weibull}(1{,}28;\; 3{,}97)$ h.
+
+\subsection{Impacto en el modelo de colas}
+
+Con $\lambda=0{,}208$, $\E[S]=3{,}6$, $\rho=0{,}75$:
+\[
+\Var[S] = (0{,}86 \cdot 3{,}6)^2 = 9{,}59, \qquad \E[S^2] = 9{,}59 + 12{,}96 = 22{,}55.
+\]
+
+\begin{center}\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Modelo} & \textbf{Fórmula} & $W_q$ \\
+\midrule
+$M/M/1$ (servicio exponencial) & $\dfrac{\rho}{\mu(1-\rho)}$ & $10{,}8$ h \\[10pt]
+$M/G/1$ (servicio Weibull)     & $\dfrac{\lambda\E[S^2]}{2(1-\rho)}$ & $9{,}4$ h \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Usar $M/M/1$ sobreestimaría el tiempo en cola en un 15\%. El efecto es menor que en el banco porque $\text{CV}=0{,}86$ está cerca de 1.
+
+\begin{resultadobox}[Conclusión del taller]
+Sistema $M/G/1$ con llegadas Poisson ($\lambda=0{,}208$ h$^{-1}$) y servicio Weibull ($k=1{,}28$; $\lambda_W=3{,}97$ h). La elección correcta reduce el error de predicción del tiempo de espera en $\approx 15\%$ respecto al supuesto Markoviano.
+\end{resultadobox}
+
 % ══════════════════════════════════════════════════
 \section{¿Qué hacer cuando no hay datos?}
 % ══════════════════════════════════════════════════
@@ -404,11 +779,11 @@ En la práctica, frecuentemente no se dispone de datos suficientes. Estrategias 
 \begin{itemize}
     \item \textbf{Elicitación de expertos}: preguntar al operador o gerente por los valores mínimo ($a$), más probable ($m$) y máximo ($b$) del proceso. Usar la distribución triangular $\text{Tri}(a,m,b)$ o la PERT:
     \[
-    \E[X] = \frac{a + 4m + b}{6}, \qquad \Var[X] = \frac{(b-a)^2}{36}
+    \E[X] = \frac{a + 4m + b}{6}, \qquad \Var[X] = \frac{(b-a)^2}{36}.
     \]
     \item \textbf{Valores de literatura}: publicaciones y benchmarks industriales proporcionan rangos típicos para tiempos de servicio, tasas de falla, etc.
     \item \textbf{Análisis de sensibilidad}: si la entrada es incierta, simular con varias distribuciones y parámetros plausibles para evaluar cuán sensible es la salida a la elección de entrada.
-    \item \textbf{Distribución uniforme}: cuando solo se conocen los límites $[a,b]$, la uniforme es la distribución de máxima entropía y la elección menos sesgada.
+    \item \textbf{Distribución uniforme}: cuando sólo se conocen los límites $[a,b]$, la uniforme es la distribución de máxima entropía y la elección menos sesgada.
 \end{itemize}
 
 \begin{alertabox}[La triangular no es un sustituto permanente]
@@ -427,223 +802,6 @@ Si todas las distribuciones candidatas son rechazadas por las pruebas de bondad 
     \item \textbf{Distribución empírica}: usar la ECDF directamente como entrada del simulador, muestreando con interpolación lineal. Esto sacrifica la generalización pero respeta los datos.
     \item \textbf{Transformaciones}: si $\ln X$ se ajusta a una distribución conocida, usar esa transformación.
 \end{enumerate}
-
-% ══════════════════════════════════════════════════
-\section{Ejemplo básico: tiempos de servicio en ventanilla bancaria}
-% ══════════════════════════════════════════════════
-
-\begin{ejemplobox}[Sistema]
-Un banco registra los tiempos de atención (en minutos) de 15 clientes consecutivos en una ventanilla durante una hora. Se quiere determinar si los tiempos de servicio siguen una distribución exponencial, lo que permitiría modelar la ventanilla como cola $M/M/1$.
-\end{ejemplobox}
-
-\textbf{Datos observados} (15 tiempos de servicio, en minutos, ya ordenados):
-
-\begin{center}\small
-\begin{tabular}{rrrrrrrrrrrrrrr}
-0{,}7 & 0{,}8 & 0{,}9 & 1{,}1 & 1{,}2 & 1{,}5 & 1{,}6 & 1{,}8 & 2{,}1 & 2{,}4 & 2{,}8 & 3{,}1 & 3{,}4 & 4{,}2 & 5{,}6 \\
-\end{tabular}
-\end{center}
-
-\textbf{Paso 1 — Estadísticos muestrales}:
-\[
-n=15, \quad \bar{x} = \frac{0{,}7 + 0{,}8 + \cdots + 5{,}6}{15} = 2{,}21 \text{ min}, \quad s = 1{,}32 \text{ min}, \quad \text{CV} = \frac{1{,}32}{2{,}21} = 0{,}60
-\]
-
-\textbf{Paso 2 — Identificación preliminar}: el CV empírico de $0{,}60 < 1$ sugiere que los datos son \emph{más regulares} que la exponencial ($\text{CV}=1$). La guía de selección por CV sugiere Erlang o Gamma. No obstante, con $n=15$ la incertidumbre del CV es alta, así que probamos la exponencial como hipótesis nula.
-
-\textbf{Paso 3 — Estimación MLE — Exponencial}: $\hat\lambda = 1/\bar{x} = 1/2{,}21 = 0{,}452$ min$^{-1}$.
-
-\textbf{Paso 4 — Prueba $\chi^2$} con $k=3$ intervalos de igual probabilidad ($E_j=5$):
-
-Los puntos de corte se obtienen de $F^{-1}(1/3; \hat\lambda)$ y $F^{-1}(2/3; \hat\lambda)$:
-\[
-a_1 = -\frac{\ln(2/3)}{0{,}452} = 0{,}90 \text{ min}, \qquad a_2 = -\frac{\ln(1/3)}{0{,}452} = 2{,}43 \text{ min}
-\]
-
-\begin{center}\small
-\renewcommand{\arraystretch}{1.2}
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Celda} & \textbf{Intervalo} & $O_j$ & $E_j$ & $(O_j-E_j)^2/E_j$ \\
-\midrule
-1 & $[0;\;0{,}90)$     & 3 & 5{,}0 & 0{,}80 \\
-2 & $[0{,}90;\;2{,}43)$ & 7 & 5{,}0 & 0{,}80 \\
-3 & $[2{,}43;\;\infty)$ & 5 & 5{,}0 & 0{,}00 \\
-\bottomrule
-\multicolumn{4}{r}{$\chi^2$ observado} & $1{,}60$ \\
-\end{tabular}
-\end{center}
-
-Con $\nu = 3-1-1 = 1$ grado de libertad y $\alpha=0{,}05$, el valor crítico es $\chi^2_{0{,}05,1}=3{,}84$. Como $1{,}60 < 3{,}84$, \textbf{no se rechaza} la hipótesis exponencial.
-
-\begin{alertabox}[Precaución con muestras pequeñas]
-Con $n=15$, la prueba $\chi^2$ tiene muy bajo poder estadístico: casi ninguna distribución sería rechazada con solo 3 celdas y 1 grado de libertad. El CV de $0{,}60$ es la señal más informativa. Con más datos, probablemente se rechazaría la exponencial en favor de una Gamma o Erlang. Siempre interpretar la prueba junto con el Q-Q plot.
-\end{alertabox}
-
-\begin{resultadobox}[Resultado del ejemplo básico]
-La exponencial no se rechaza formalmente, pero el CV de $0{,}60$ sugiere que no es la mejor opción. Con esta muestra pequeña, la prueba $\chi^2$ no tiene poder para discriminar. Procedemos en el ejemplo intermedio a recolectar más datos del mismo banco para resolver esta ambigüedad.
-\end{resultadobox}
-
-% ══════════════════════════════════════════════════
-\section{Ejemplo intermedio: modelado completo del banco}
-% ══════════════════════════════════════════════════
-
-\begin{ejemplobox}[Sistema]
-Se amplía el estudio del banco del ejemplo básico. Durante una semana se registran 80 tiempos entre llegadas y 80 tiempos de servicio en la misma ventanilla. El objetivo es determinar las distribuciones de entrada para un modelo de simulación de la cola, identificando si el sistema es $M/M/1$, $M/G/1$ o $G/G/1$.
-\end{ejemplobox}
-
-\subsection{Análisis de tiempos entre llegadas}
-
-\textbf{Estadísticos}: $n_A = 80$, $\bar A = 3{,}2$ min, $s_A = 3{,}1$ min, $\text{CV}_A = 0{,}97$.
-
-El CV cercano a 1 es consistente con la exponencial (proceso de Poisson). La prueba de rachas arroja $R=39$ rachas con $\E[R]=41$, $Z = -0{,}4$ ($p=0{,}69$): no se rechaza independencia. La autocorrelación lag-1 es $\hat\rho_1 = 0{,}04$, dentro del intervalo $\pm 2/\sqrt{80} = \pm 0{,}22$.
-
-\textbf{MLE}: $\hat\lambda = 1/3{,}2 = 0{,}3125$ clientes/min.
-
-\textbf{Prueba KS}: $D_{80} = 0{,}07$. El valor crítico de Lilliefors al 5\% para $n=80$ es $D^*_{0{,}05} \approx 0{,}10$. Como $0{,}07 < 0{,}10$, no se rechaza.
-
-\textbf{Prueba AD}: $A^2 = 0{,}41$. El valor crítico para exponencial con parámetro estimado al 5\% es $A^{2*} = 1{,}32$. No se rechaza.
-
-\textbf{Conclusión de llegadas}: $A \sim \text{Exp}(0{,}3125)$, proceso de Poisson con $\lambda = 0{,}3125$ clientes/min ($\approx 18{,}75$ clientes/h). La letra de llegada es \textbf{$M$}.
-
-\subsection{Análisis de tiempos de servicio}
-
-\textbf{Estadísticos}: $n_S = 80$, $\bar S = 2{,}18$ min, $s_S = 1{,}34$ min, $\text{CV}_S = 0{,}61$.
-
-El CV de $0{,}61$ confirma lo observado en el ejemplo básico: los tiempos son \emph{menos variables} que la exponencial. La guía de selección por CV sugiere $k \approx 1/0{,}61^2 \approx 2{,}7$, es decir, Erlang-3 o Gamma.
-
-Se ajustan tres distribuciones candidatas:
-
-\begin{center}\small
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{llcccc}
-\toprule
-\textbf{Distribución} & \textbf{Parámetros MLE} & $D_{80}$ (KS) & $A^2$ (AD) & $\ell(\hat\theta)$ & \textbf{AIC} \\
-\midrule
-Exponencial  & $\hat\lambda=0{,}459$                   & $0{,}14$ & $2{,}87$ & $-148{,}3$ & $298{,}6$ \\
-Erlang-3     & $\hat\mu_f = 3/2{,}18 = 1{,}376$        & $0{,}06$ & $0{,}38$ & $-137{,}1$ & $276{,}2$ \\
-Gamma        & $\hat\alpha=2{,}65$, $\hat\beta=1{,}22$  & $0{,}05$ & $0{,}31$ & $-136{,}4$ & $276{,}8$ \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\textbf{Interpretación}:
-\begin{itemize}
-    \item La exponencial es \textbf{rechazada} por la prueba AD ($2{,}87 > 1{,}32$) y marginalmente por KS ($0{,}14 > 0{,}10$).
-    \item La Erlang-3 y la Gamma pasan ambas pruebas holgadamente.
-    \item El AIC de la Erlang-3 ($276{,}2$) y la Gamma ($276{,}8$) son prácticamente iguales ($\Delta\text{AIC} = 0{,}6 < 2$).
-    \item Se elige la \textbf{Erlang-3} por parsimonia (1 parámetro vs.\ 2) y porque tiene interpretación física: el servicio consta de tres etapas (saludo y consulta, transacción, despedida).
-\end{itemize}
-
-\subsection{Impacto en el modelo de colas}
-
-Con $\lambda = 0{,}3125$ cl/min, $\E[S] = 2{,}18$ min, $\rho = 0{,}3125 \times 2{,}18 = 0{,}68$.
-
-\[
-\E[S^2] = \Var[S] + (\E[S])^2 = (0{,}61 \times 2{,}18)^2 + 2{,}18^2 = 1{,}77 + 4{,}75 = 6{,}52
-\]
-
-\begin{center}\small
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Modelo} & \textbf{Fórmula} & $W_q$ (min) \\
-\midrule
-$M/M/1$ (si usáramos exponencial) & $\dfrac{\rho}{\mu(1-\rho)}$ & $4{,}63$ \\[10pt]
-$M/E_3/1$ (distribución correcta)  & $\dfrac{\lambda\E[S^2]}{2(1-\rho)}$ & $3{,}18$ \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\begin{resultadobox}[Resultado del ejemplo intermedio]
-El sistema es $M/E_3/1$: llegadas Poisson ($\lambda=0{,}3125$ cl/min) y servicio Erlang-3 ($\E[S]=2{,}18$ min). Usar incorrectamente $M/M/1$ sobreestimaría el tiempo en cola en un \textbf{46\%} ($4{,}63$ vs.\ $3{,}18$ min). Este ejemplo muestra la importancia de no asumir ciegamente la exponencial y de disponer de suficientes datos ($n=80$ vs.\ $n=15$) para discriminar distribuciones.
-\end{resultadobox}
-
-% ══════════════════════════════════════════════════
-\section{Ejemplo escalado: taller de reparación de equipos industriales}
-% ══════════════════════════════════════════════════
-
-\begin{ejemplobox}[Sistema]
-Un taller de mantenimiento atiende equipos industriales que llegan de diferentes líneas de producción. El gerente quiere determinar cuántos técnicos necesita. Durante dos semanas se registran:
-\begin{itemize}
-    \item 50 tiempos entre llegadas sucesivas de equipos.
-    \item 50 tiempos de reparación observados.
-\end{itemize}
-La hipótesis de trabajo es $M/M/1$, pero los datos sugieren algo diferente. A diferencia del banco (servicio en etapas regulares), aquí las reparaciones son heterogéneas: algunas son diagnósticos rápidos y otras son revisiones completas.
-\end{ejemplobox}
-
-\subsection{Análisis de tiempos entre llegadas}
-
-\textbf{Estadísticos}: $\bar{A}=4{,}8$ h, $s_A=4{,}6$ h, $\text{CV}_A = 0{,}96 \approx 1$.
-
-Un CV cercano a 1 es consistente con la exponencial (proceso de Poisson). La autocorrelación lag-1 es $\hat\rho_1 = 0{,}02$ (insignificante). La prueba KS con $\hat\lambda=1/4{,}8=0{,}208$ h$^{-1}$ arroja $D_{50}=0{,}08 < D_{0{,}05,50}^{*}=0{,}12$. La prueba AD da $A^2 = 0{,}52 < 1{,}32$. No se rechaza Poisson por ninguna prueba.
-
-\textbf{Conclusión de llegadas}: $A \sim \text{Exp}(0{,}208)$, proceso de Poisson con $\lambda=0{,}208$ equipos/h.
-
-\subsection{Análisis de tiempos de reparación}
-
-\textbf{Estadísticos}: $\bar{S}=3{,}6$ h, $s_S=3{,}1$ h, $\text{CV}_S=0{,}86$.
-
-El CV de $0{,}86$ está entre la Erlang ($<1$) y la exponencial ($=1$). Sin embargo, el histograma muestra \textbf{asimetría pronunciada a la derecha} con una cola pesada: la mayoría de reparaciones toman 1--4 horas, pero hay varias de 8--10 horas. El Q-Q exponencial exhibe puntos \emph{sobre} la diagonal en la cola superior, indicando que la exponencial subestima las colas.
-
-Se prueban cuatro candidatas:
-
-\begin{center}\small
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{llcccc}
-\toprule
-\textbf{Distribución} & \textbf{Parámetros MLE} & $D_{50}$ & $A^2$ & $\ell(\hat\theta)$ & \textbf{AIC} \\
-\midrule
-Exponencial & $\hat\lambda=0{,}278$ h$^{-1}$ & $0{,}13$ & $1{,}85$ & $-120{,}8$ & $243{,}6$ \\
-Gamma       & $\hat\alpha=1{,}42$, $\hat\beta=0{,}39$ & $0{,}09$ & $0{,}72$ & $-117{,}1$ & $238{,}2$ \\
-Weibull     & $\hat{k}=1{,}28$, $\hat\lambda_W=3{,}97$ h & $0{,}06$ & $0{,}35$ & $-115{,}2$ & $234{,}4$ \\
-Log-normal  & $\hat\mu=1{,}05$, $\hat\sigma=0{,}74$ & $0{,}08$ & $0{,}54$ & $-116{,}3$ & $236{,}6$ \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\textbf{Análisis}:
-\begin{itemize}
-    \item La exponencial es \textbf{rechazada} por AD ($1{,}85 > 1{,}32$) y marginalmente por KS ($0{,}13 > 0{,}12$).
-    \item Gamma, Weibull y Log-normal pasan ambas pruebas.
-    \item La \textbf{Weibull tiene el menor AIC} ($234{,}4$), seguida por la Log-normal ($236{,}6$, $\Delta=2{,}2$) y la Gamma ($238{,}2$, $\Delta=3{,}8$).
-    \item El parámetro $\hat{k}=1{,}28>1$ indica \textbf{tasa de falla creciente}: las reparaciones se vuelven más complicadas a medida que el diagnóstico avanza. Esto es coherente con el proceso físico del taller.
-\end{itemize}
-
-\textbf{Conclusión de servicio}: $S \sim \text{Weibull}(1{,}28;\; 3{,}97)$ h.
-
-\subsection{Impacto en el modelo de colas}
-
-Con $\lambda=0{,}208$ h$^{-1}$, $\E[S]=3{,}6$ h, $\rho=\lambda\E[S]=0{,}75$:
-
-\[
-\Var[S] = (\text{CV}_S \cdot \E[S])^2 = (0{,}86 \times 3{,}6)^2 = 9{,}59 \;\text{h}^2
-\]
-\[
-\E[S^2] = \Var[S] + (\E[S])^2 = 9{,}59 + 12{,}96 = 22{,}55 \;\text{h}^2
-\]
-
-\begin{center}\small
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Modelo} & \textbf{Fórmula} & $W_q$ \\
-\midrule
-$M/M/1$ (servicio exponencial) & $\dfrac{\rho}{\mu(1-\rho)}$ & $10{,}8$ h \\[10pt]
-$M/G/1$ (servicio Weibull)     & $\dfrac{\lambda\E[S^2]}{2(1-\rho)}$ & $9{,}4$ h \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-Usar $M/M/1$ sobreestimaría el tiempo en cola en un 15\%. Nótese el contraste con el banco: allí el servicio Erlang \emph{reducía} $W_q$ significativamente (CV $<1$), mientras que aquí la Weibull con $\text{CV}=0{,}86$ produce un efecto menor porque está más cerca de 1.
-
-\begin{resultadobox}[Conclusión del modelado de entradas]
-El sistema queda caracterizado como $M/G/1$ con llegadas Poisson ($\lambda=0{,}208$ h$^{-1}$) y servicio Weibull ($k=1{,}28$; $\lambda_W=3{,}97$ h). La elección correcta de distribución reduce el error de predicción del tiempo de espera en $\approx 15\%$ respecto al supuesto Markoviano.
-
-Este ejemplo ilustra el proceso completo: (1) verificación de independencia y estacionariedad, (2) exploración gráfica, (3) ajuste de múltiples candidatas con MLE, (4) selección por pruebas de bondad de ajuste y AIC, (5) validación de la coherencia física.
-
-Para métricas que no tienen expresión cerrada en $M/G/1$ (percentiles, distribución completa del tiempo de espera), se requiere simulación (Temas 3.3 y 3.4).
-\end{resultadobox}
 
 % ══════════════════════════════════════════════════
 \section*{Referencias}
