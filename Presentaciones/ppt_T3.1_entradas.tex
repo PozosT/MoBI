@@ -486,7 +486,7 @@ A continuación se muestra un histograma generado con datos que siguen una distr
     nodes near coords, % Muestra el valor sobre la barra
     every node near coord/.append style={font=\tiny},
     axis lines=left,
-    grid=vertical,
+    xmajorgrids=true,
     ]
     % Datos empíricos simulados (Frecuencias por clase)
     \addplot[fill=blue!40, draw=blue!70] coordinates {
@@ -873,7 +873,7 @@ El \textbf{correlograma} es la representación gráfica de los coeficientes $r_k
     mark=*, % Añade un círculo al final de la línea
     xtick={1,2,3,4,5,6,7,8,9},
     axis lines=left,
-    grid=horizontal,
+    ymajorgrids=true,
     ]
     
     % Límites de confianza (ej: +/- 0.3 para un n simulado)
@@ -1325,35 +1325,74 @@ Como $0.270 < 0.338$, \textbf{no se rechaza $H_0$}. Los datos se ajustan razonab
 \end{frame}
 
 
-% ── Anderson-Darling: fórmula e intuición ────────────────────
-\begin{frame}{Anderson--Darling — ¿qué es?}
-  \begin{teoremabox}[Estadístico de Anderson--Darling]
-    \[
-      A^2 \;=\; -n \;-\; \frac{1}{n}\sum_{i=1}^{n}(2i-1)
-      \Bigl[\ln F_0(X_{(i)}) \;+\; \ln(1-F_0(X_{(n+1-i)}))\Bigr]
-    \]
-  \end{teoremabox}
 
-  \textbf{¿Por qué esta forma?}
+% ── DIAPOSITIVA 1: HIPÓTESIS Y CRITERIOS ────────────────────
+\begin{frame}{Prueba Anderson-Darling: Hipótesis}
+La prueba de Anderson-Darling evalúa si una muestra proviene de una distribución específica. A diferencia de otras pruebas, es especialmente rigurosa en los valores extremos de los datos.
 
-  Anderson--Darling pondera la diferencia cuadrática entre la empírica y la teórica por
-  $\frac{1}{F_0(x)[1-F_0(x)]}$, un peso que \emph{explota en las colas}:
+\vspace{0.3cm}
+\textbf{1. Planteamiento de Hipótesis:}
+\begin{itemize}
+    \item $H_0$: Los datos provienen de una distribución Exponencial.
+    \item $H_a$: Los datos \textbf{no} provienen de una distribución Exponencial.
+\end{itemize}
 
-  \begin{center}
-    \begin{tikzpicture}
-      \begin{axis}[width=9cm, height=3.6cm,
-        xlabel={$F_0(x)$}, ylabel={peso},
-        xmin=0.01, xmax=0.99, ymin=0, ymax=12,
-        domain=0.01:0.99, samples=200]
-        \addplot[thick, mobiblue] {1/(x*(1-x))};
-        \node[above, text=mobiblue, font=\scriptsize] at (axis cs:0.5,4) {$w(x)=1/[F_0(1-F_0)]$};
-      \end{axis}
-    \end{tikzpicture}
-  \end{center}
+\vspace{0.3cm}
+\textbf{2. El Estadístico Crítico:}
+El valor crítico contra el cual compararemos nuestro resultado depende de la distribución evaluada, el tamaño de la muestra y el nivel de significancia ($\alpha$). 
 
-  \small Resultado: Anderson--Darling es \emph{sensible a colas}, donde Kolmogorov--Smirnov
-  pierde potencia. Los valores críticos dependen de la distribución bajo $H_0$
-  (5\%: exponencial 1{,}32; normal/log-normal 0{,}75; Weibull 0{,}76).
+
+Para una distribución exponencial con el parámetro estimado por la muestra y un nivel de significancia del 5\%, el valor crítico estándar es 1.32.
+
+\textit{Regla:} Si nuestro estadístico calculado $A^2$ es mayor a 1.32, rechazamos $H_0$.
+\end{frame}
+
+% ── DIAPOSITIVA 2: FÓRMULA E INTUICIÓN ────────────────────
+\begin{frame}{Anderson-Darling: Fórmula e Intuición}
+\begin{block}{Estadístico de Anderson-Darling ($A^2$)}
+  $$ A^2 \;=\; -n \;-\; \sum_{i=1}^{n} \frac{2i-1}{n} \Bigl[\ln F_0(X_{(i)}) \;+\; \ln(1-F_0(X_{(n+1-i)}))\Bigr] $$
+\end{block}
+
+\vspace{0.2cm}
+\textbf{¿Por qué esta forma?}
+Pondera la diferencia entre la distribución empírica y la teórica usando un peso que \emph{explota en las colas}: $w(x) = \frac{1}{F_0(x)[1-F_0(x)]}$.
+
+\begin{center}
+  \begin{tikzpicture}
+    \begin{axis}[width=8cm, height=3.2cm,
+      xlabel={Probabilidad Acumulada $F_0(x)$}, ylabel={Peso},
+      xmin=0.01, xmax=0.99, ymin=0, ymax=12,
+      domain=0.01:0.99, samples=200,
+      axis lines=left]
+      \addplot[thick, mobiblue] {1/(x*(1-x))};
+    \end{axis}
+  \end{tikzpicture}
+\end{center}
+
+
+\small \textbf{Resultado:} Es muy \emph{sensible a valores atípicos en las colas}, donde la prueba de Kolmogorov-Smirnov suele perder potencia.
+\end{frame}
+
+% ── DIAPOSITIVA 3: EJEMPLO PASO A PASO ────────────────────
+\begin{frame}{Anderson-Darling: Cálculo Paso a Paso}
+Veamos de dónde salen los números evaluando el \textbf{primer dato} ($i=1$) de nuestra muestra de $n=15$. Usamos el modelo $F_0(x) = 1 - e^{-\lambda x}$.
+
+\vspace{0.2cm}
+\textbf{1. Identificar extremos:}
+\begin{itemize}
+    \item Dato inferior ($i=1$): $X_{(1)} = \mathbf{0.70}$
+    \item Dato superior opuesto ($n+1-1 = 15$): $X_{(15)} = \mathbf{5.60}$
+\end{itemize}
+
+\textbf{2. Calcular probabilidades teóricas:}
+\begin{itemize}
+    \item $F_0(0.70) \approx \mathbf{0.271} \implies \ln(0.271) = -1.305$
+    \item $F_0(5.60) \approx \mathbf{0.920} \implies 1 - F_0(5.60) = \mathbf{0.080} \implies \ln(0.080) = -2.530$
+\end{itemize}
+
+\textbf{3. Sustituir en la sumatoria para $i=1$:}
+$$ \text{Término}_1 = \frac{2(1)-1}{15} \Bigl[ -1.305 + (-2.530) \Bigr] $$
+$$ \text{Término}_1 = \frac{1}{15} \Bigl[ -3.835 \Bigr] = \mathbf{-0.256} $$
 \end{frame}
 
 % ── Anderson-Darling: cálculo paso a paso ────────────────────
