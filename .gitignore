@@ -32,3 +32,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
+
+# Claude Code (config local e instrucciones del proyecto, no se versionan)
+.claude/
+CLAUDE.md
