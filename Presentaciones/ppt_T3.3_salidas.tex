@@ -1,0 +1,755 @@
+\documentclass[aspectratio=1610, 10pt]{beamer}
+\usepackage{mobi-beamer}
+
+% ============================================================
+%  Inferencia Estadística con Modelos de Simulación
+%  Estimación, Comparación y Reducción de Varianza
+% ============================================================
+
+% ── Notación adicional no incluida en mobi-beamer ─────────────
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\Cor}{\operatorname{Cor}}
+
+% ----------- Información -----------
+\title[Análisis de Salidas]{Inferencia Estadística con Modelos de Simulación}
+\subtitle{Estimación en estado estacionario, comparación de sistemas \\ y reducción de varianza}
+\author[Análisis de Salidas]{Curso de Pregrado en Simulación de Eventos Discretos}
+\institute[]{Departamento de Ingeniería Industrial}
+\date{\today}
+
+% ============================================================
+\begin{document}
+% ============================================================
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Hoja de ruta}
+\begin{enumerate}
+\item \textbf{Estimación en estado estacionario.} Sesgo del estado inicial; procedimiento de Welch para el período de calentamiento.
+\item \textbf{Método de réplicas.} Estimadores, varianza entre réplicas, IC y dimensionamiento.
+\item \textbf{Método de medias por lotes (\emph{batch means}).} Una sola corrida larga; test de independencia entre lotes.
+\item \textbf{Comparación de dos sistemas.} Muestreo independiente con prueba $t$ de Welch.
+\item \textbf{Reducción de varianza con Números Aleatorios Comunes (CRN).} Teorema fundamental, sincronización y comparación pareada.
+\item \textbf{Eficiencia estadística.} Cuantificación de la ganancia por CRN.
+\item \textbf{Métodos no paramétricos.} Mann--Whitney y Wilcoxon de rangos con signo.
+\item \textbf{Decisión bajo incertidumbre.} Error Tipo I y Tipo II, función de potencia, tamaño de muestra.
+\end{enumerate}
+\end{frame}
+
+% ============================================================
+\section{Estimación en estado estacionario}
+% ============================================================
+
+\begin{frame}{El problema central}
+Sea $\{X_t : t \geq 0\}$ el proceso estocástico de interés (e.g., número en cola, tiempo de espera del cliente $i$). El \textbf{parámetro objetivo} es:
+\[
+\mu \;=\; \lim_{t\to\infty} \E\!\left[\frac{1}{t}\int_0^t X_s\,ds\right] \quad \text{(estado estacionario)}.
+\]
+
+\vspace{0.2cm}
+\textbf{Dos dificultades fundamentales:}
+\begin{enumerate}
+\item \textbf{Dependencia serial.} Las observaciones de \emph{una sola corrida} están \textbf{correlacionadas}. El estimador ingenuo $S^2/N$ subestima $\Var(\bar X)$:
+\[
+\Var(\bar X) \;=\; \frac{\sigma^2}{N}\!\left[1 + 2\sum_{k=1}^{N-1}\!\left(1-\tfrac{k}{N}\right)\rho_k\right],
+\]
+donde $\rho_k$ es la autocorrelación de orden $k$. En una M/M/1 con $\rho=0{,}8$, este factor de inflación supera fácilmente a $30$.
+
+\item \textbf{Sesgo del estado inicial.} El simulador suele arrancar en estado vacío y ocioso. Las primeras observaciones reflejan esa condición artificial, no la distribución estacionaria.
+\end{enumerate}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Período de calentamiento: procedimiento gráfico de Welch}
+\begin{metodobox}[Procedimiento]
+\textbf{Algoritmo (Welch, 1983):}
+\begin{enumerate}
+\item Ejecutar $k$ réplicas piloto independientes ($k\geq 5$), cada una de longitud $T$.
+\item En cada instante $j$, calcular el promedio entre réplicas:
+\[
+\bar Y_j \;=\; \tfrac{1}{k}\textstyle\sum_{i=1}^{k} Y_{ij}, \quad j=1,\ldots,T.
+\]
+\item Suavizar con media móvil de ventana $w$:
+\[
+\widetilde Y_j(w) \;=\; \tfrac{1}{2w+1}\textstyle\sum_{s=-w}^{w} \bar Y_{j+s}, \quad w+1 \le j \le T-w.
+\]
+\item Graficar $\widetilde Y_j(w)$ contra $j$ y elegir como $T_0$ el punto a partir del cual la curva se estabiliza visualmente.
+\end{enumerate}
+\end{metodobox}
+
+\vspace{0.1cm}
+\footnotesize
+\textbf{Reglas prácticas:} $w$ debe ser pequeño frente a $T$ (e.g., $w = T/10$). Si la curva no se estabiliza, aumentar $T$.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Welch: ilustración para una M/M/1, $\rho=0{,}8$}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+  width=11cm, height=5.5cm,
+  xlabel={Cliente $j$},
+  ylabel={$\widetilde Y_j(w)$ (tiempo en sistema, min)},
+  xmin=0, xmax=3000,
+  ymin=0, ymax=6,
+  grid=major, grid style={dashed,gray!30},
+  domain=1:3000,
+  samples=200,
+  legend pos=south east,
+  legend style={font=\footnotesize}
+]
+\addplot[color=mobiblue, thick] {5*(1-exp(-x/400)) + 0.10*sin(deg(x/200))};
+\addlegendentry{$\widetilde Y_j(w)$}
+\addplot[color=red!70!black, dashed, very thick] coordinates {(1500,0)(1500,6)};
+\node[font=\footnotesize, red!70!black] at (axis cs:1700,0.5) {$T_0 \approx 1500$};
+\addplot[color=deepgreen, dashed, thick] coordinates {(0,5)(3000,5)};
+\node[font=\footnotesize, deepgreen] at (axis cs:2700,5.25) {$\mu = 5$};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\textbf{Lectura:} las observaciones del cliente 1 al 1500 están sesgadas (sistema arranca vacío). Se descartan; el análisis se hace con los datos a partir del cliente 1501.
+\end{frame}
+
+% ============================================================
+\section{Método de réplicas}
+% ============================================================
+
+\begin{frame}{Método de réplicas: notación y estimadores}
+\begin{definicionbox}
+Se ejecutan $n$ \textbf{réplicas independientes} (semillas independientes), cada una de longitud $T$ con calentamiento $T_0$. Para la réplica $i$ se calcula un estadístico resumen $Y_i$ (por ejemplo, el promedio temporal de $X_t$ sobre $[T_0, T]$).
+\end{definicionbox}
+
+\vspace{0.2cm}
+\textbf{Propiedades.} Por construcción, $Y_1, \ldots, Y_n$ son \textbf{i.i.d.}. Si $T$ es lo bastante grande, $\E[Y_i] \approx \mu$ y por TLC $\sqrt{n}(\bar Y - \mu) \xrightarrow{d} \mathcal{N}(0,\sigma^2)$.
+
+\vspace{0.2cm}
+\textbf{Estimadores:}
+\[
+\bar Y(n) \;=\; \tfrac{1}{n}\textstyle\sum_{i=1}^{n} Y_i,
+\qquad
+S^2(n) \;=\; \tfrac{1}{n-1}\textstyle\sum_{i=1}^{n} (Y_i - \bar Y(n))^2.
+\]
+
+\textbf{Error estándar e intervalo de confianza al} $100(1-\alpha)\%$:
+\[
+\widehat{\mathrm{SE}}(\bar Y) \;=\; \frac{S(n)}{\sqrt{n}},
+\qquad
+\bar Y(n) \;\pm\; t_{\alpha/2,\,n-1}\cdot\frac{S(n)}{\sqrt{n}}.
+\]
+
+\textbf{Ventaja:} $Y_i$ son i.i.d.\ por construcción, así que la teoría clásica del IC para la media aplica sin modificaciones.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Réplicas: ejemplo trabajado M/M/1}
+\textbf{Sistema:} cajero único. $\lambda=0{,}8$ clientes/min, $\mu=1{,}0$ clientes/min. Métrica: tiempo medio en sistema $W$. Valor teórico $W = 1/(\mu-\lambda) = 5{,}0$ min.
+
+\vspace{0.1cm}
+\textbf{Diseño:} $n=10$ réplicas independientes, $T=10\,000$ min, $T_0=1\,000$ min.
+
+\vspace{0.2cm}
+\textbf{Estadístico por réplica} $Y_i = \widehat W_i$:
+\begin{table}
+\centering
+\small
+\begin{tabular}{c|cccccccccc}
+\toprule
+$i$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 \\
+\midrule
+$Y_i$ & 4.78 & 5.12 & 4.95 & 5.23 & 4.82 & 5.05 & 5.18 & 4.91 & 5.09 & 4.87 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.1cm}
+\textbf{Cálculos:}
+\[
+\bar Y(10) = 5{,}000, \qquad S^2(10) = \tfrac{1}{9}\textstyle\sum (Y_i-5{,}000)^2 = 0{,}02429, \qquad S(10) = 0{,}1559.
+\]
+\[
+\widehat{\mathrm{SE}} = 0{,}1559/\sqrt{10} = 0{,}04929, \qquad t_{0{,}025;\,9} = 2{,}262.
+\]
+\textbf{IC 95\%:} $\;5{,}000 \pm 2{,}262\cdot 0{,}04929 \;=\; [4{,}888;\; 5{,}112]$ min. \quad (El valor teórico $5{,}000 \in$ IC \textcolor{deepgreen}{\checkmark}.)
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Tamaño de muestra para precisión absoluta}
+\textbf{Objetivo:} obtener un IC con semi-anchura $h^*$ prefijada (precisión absoluta).
+
+\vspace{0.2cm}
+\textbf{Aproximación normal} (válida cuando $n$ es grande o la distribución de $Y_i$ es aproximadamente normal):
+\[
+n \;\geq\; \left(\frac{z_{\alpha/2}\, S}{h^*}\right)^2,
+\]
+con $S$ estimado a partir de una corrida piloto de $n_0$ réplicas.
+
+\vspace{0.2cm}
+\textbf{Procedimiento iterativo de Stein} (con $t$ de Student):
+\[
+n^* \;=\; \min\!\left\{n \geq n_0 \;:\; \frac{t_{\alpha/2,\,n-1}\, S(n_0)}{\sqrt{n}} \leq h^*\right\}.
+\]
+
+\vspace{0.2cm}
+\begin{ejemplobox}[Ejemplo trabajado]
+\textbf{Ejemplo (continuación M/M/1):} con $S(10)=0{,}1559$, ¿cuántas réplicas se necesitan para $h^*=0{,}05$ min?
+\[
+n \;\geq\; \left(\frac{1{,}96 \cdot 0{,}1559}{0{,}05}\right)^2 \;=\; (6{,}111)^2 \;\approx\; 37{,}3 \;\Rightarrow\; n=38.
+\]
+Con corrección $t$ (procedimiento de Stein) se llega a $n^* = 42$.
+\end{ejemplobox}
+\end{frame}
+
+% ============================================================
+\section{Medias por lotes}
+% ============================================================
+
+\begin{frame}{Medias por lotes (\emph{batch means}): motivación y formalización}
+\textbf{Idea:} en lugar de $n$ corridas independientes, hacer \textbf{una sola corrida muy larga} y dividirla en bloques. Si cada bloque es suficientemente grande, los promedios de los bloques son \emph{aproximadamente} independientes.
+
+\vspace{0.2cm}
+\begin{definicionbox}
+Sea $\{X_i\}_{i=1}^N$ la secuencia de observaciones tras descartar el calentamiento. Se forman $b$ \textbf{lotes} no superpuestos de tamaño $m$ cada uno, con $N=bm$. La media del lote $j$ es:
+\[
+\bar X_j \;=\; \tfrac{1}{m}\textstyle\sum_{i=(j-1)m+1}^{jm} X_i, \qquad j=1,\ldots,b.
+\]
+La media global y el estimador de varianza son:
+\[
+\bar{\bar X}(b) \;=\; \tfrac{1}{b}\textstyle\sum_{j=1}^{b} \bar X_j,
+\quad
+S_b^2 \;=\; \tfrac{1}{b-1}\textstyle\sum_{j=1}^{b} (\bar X_j - \bar{\bar X}(b))^2.
+\]
+\end{definicionbox}
+
+\vspace{0.1cm}
+\textbf{IC bajo independencia aproximada de los lotes:}
+\[
+\bar{\bar X}(b) \;\pm\; t_{\alpha/2,\,b-1}\cdot \frac{S_b}{\sqrt{b}}.
+\]
+
+\textbf{Compromiso:} $m$ pequeño $\Rightarrow$ muchos lotes correlacionados (IC inválido). $m$ grande $\Rightarrow$ pocos lotes (IC ancho).
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Test formal de independencia entre lotes}
+\textbf{Idea:} verificar empíricamente que los $b$ lotes pueden tratarse como i.i.d.\ mediante la \textbf{autocorrelación de orden 1} de la sucesión $\{\bar X_j\}$.
+
+\vspace{0.2cm}
+\textbf{Estadístico:}
+\[
+\widehat\rho_1 \;=\; \frac{\sum_{j=1}^{b-1} (\bar X_j - \bar{\bar X})(\bar X_{j+1} - \bar{\bar X})}{\sum_{j=1}^{b}(\bar X_j - \bar{\bar X})^2}.
+\]
+
+\textbf{Distribución bajo $H_0$:} si los lotes son independientes, asintóticamente
+\[
+\widehat\rho_1 \;\stackrel{a}{\sim}\; \mathcal{N}\!\left(-\tfrac{1}{b-1},\; \tfrac{1}{b}\right).
+\]
+
+\textbf{Regla de decisión} (rechazar independencia si):
+\[
+\sqrt{b}\,\left|\widehat\rho_1 + \tfrac{1}{b-1}\right| \;>\; z_{\alpha/2}.
+\]
+
+\vspace{0.2cm}
+\begin{metodobox}[Procedimiento de Schmeiser]
+Si el test \textbf{rechaza} independencia, \textbf{duplicar el tamaño del lote} ($m \to 2m$, lo cual reduce $b$ a $b/2$) y repetir. Iterar hasta que no se rechace o hasta agotar la corrida.
+\end{metodobox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Batch means: ejemplo trabajado}
+\textbf{Sistema:} M/M/1 anterior. Una sola corrida $T = 100\,000$ min, $T_0=10\,000$. \\
+Tras descartar warm-up: $N = 90\,000$ observaciones. Se forman $b = 20$ lotes de $m = 4\,500$ cada uno.
+
+\vspace{0.2cm}
+\textbf{Medias de lote $\bar X_j$ (min):}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{cccccccccc}
+\toprule
+4.96 & 5.04 & 5.08 & 4.93 & 5.10 & 4.97 & 5.06 & 5.02 & 4.95 & 5.07 \\
+5.01 & 4.99 & 5.05 & 4.94 & 5.08 & 5.00 & 4.96 & 5.03 & 5.02 & 4.98 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.2cm}
+\textbf{Cálculos:}
+\[
+\bar{\bar X}(20) = 5{,}012,\quad S_b^2 = 0{,}00262,\quad S_b = 0{,}0512,\quad \widehat{\mathrm{SE}} = 0{,}0512/\sqrt{20} = 0{,}01145.
+\]
+\textbf{IC 95\%} (con $t_{0{,}025;\,19} = 2{,}093$): $\;5{,}012 \pm 0{,}0240 = [4{,}988;\; 5{,}036]$ min. \textcolor{deepgreen}{$\checkmark$}
+
+\vspace{0.2cm}
+\textbf{Test de independencia:} $\widehat\rho_1 = 0{,}12$. Umbral $z_{0{,}025}/\sqrt{20} = 1{,}96/4{,}472 = 0{,}438$. \\
+$\sqrt{20}\,|0{,}12 + 1/19| = 4{,}472 \cdot 0{,}173 = 0{,}772 < 1{,}96 \Rightarrow$ \textcolor{deepgreen}{no se rechaza independencia}; tamaño de lote adecuado.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Réplicas vs.\ medias por lotes}
+\small
+\begin{table}
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{3.6cm}|p{5.4cm}|p{5.4cm}}
+\toprule
+ & \textbf{Réplicas} & \textbf{Medias por lotes} \\
+\midrule
+Estructura & $n$ corridas independientes & 1 corrida larga partida en $b$ lotes \\
+Independencia & Garantizada por diseño & Aproximada; debe verificarse \\
+Calentamiento & Se descarta en \textbf{cada} corrida & Se descarta una sola vez \\
+Eficiencia computacional & Menor (cada corrida paga su warm-up) & Mayor (un solo warm-up) \\
+Uso típico & \emph{Terminating} y estado estacionario & Estado estacionario \\
+Sensibilidad a sesgo inicial & Alta si $T$ pequeño & Baja (warm-up amortizado) \\
+Diagnóstico & Trivial (varianza muestral) & Test de independencia obligatorio \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.2cm}
+\textbf{Recomendación práctica} (Law, cap.\ 9): para estado estacionario con corridas costosas, preferir \textbf{batch means}. Para estudios donde se puedan paralelizar las réplicas, el método de réplicas suele ser más simple y robusto.
+\end{frame}
+
+% ============================================================
+\section{Comparación de dos sistemas}
+% ============================================================
+
+\begin{frame}{Comparación de dos sistemas: planteamiento}
+\textbf{Sistemas:} dos configuraciones $A$ y $B$ con medidas de desempeño $\mu_A$ y $\mu_B$. Hipótesis:
+\[
+H_0: \mu_A = \mu_B \quad \text{vs.} \quad H_1: \mu_A \neq \mu_B.
+\]
+El parámetro de interés es la diferencia $\theta = \mu_A - \mu_B$.
+
+\vspace{0.2cm}
+\textbf{Estrategias muestrales:}
+\begin{enumerate}
+\item \textbf{Muestreo independiente:} cada réplica de $A$ usa semillas independientes de las de $B$. Los pares $(X_{A,i}, X_{B,j})$ son no correlacionados.
+\item \textbf{Muestreo pareado con CRN:} la réplica $i$ de $A$ y la réplica $i$ de $B$ comparten los mismos números aleatorios (\emph{Common Random Numbers}). Induce $\Cor(X_{A,i}, X_{B,i}) > 0$.
+\end{enumerate}
+
+\vspace{0.2cm}
+\textbf{Identidad clave de varianzas:}
+\[
+\Var(X_A - X_B) \;=\; \Var(X_A) + \Var(X_B) - 2\,\Cov(X_A, X_B).
+\]
+$\Rightarrow$ Inducir covarianza positiva \textbf{reduce} la varianza de la diferencia.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Muestreo independiente: prueba $t$ de Welch}
+\begin{definicionbox}
+Sean $\{X_{A,i}\}_{i=1}^{n_A}$ y $\{X_{B,j}\}_{j=1}^{n_B}$ muestras independientes con varianzas posiblemente distintas. \textbf{Estadístico de Welch:}
+\[
+T \;=\; \frac{\bar X_A - \bar X_B}{\sqrt{S_A^2/n_A + S_B^2/n_B}} \;\stackrel{a}{\sim}\; t_\nu,
+\]
+con grados de libertad de Welch--Satterthwaite:
+\[
+\nu \;=\; \frac{(S_A^2/n_A + S_B^2/n_B)^2}{\dfrac{(S_A^2/n_A)^2}{n_A-1}+\dfrac{(S_B^2/n_B)^2}{n_B-1}}.
+\]
+\end{definicionbox}
+
+\vspace{0.2cm}
+\textbf{IC al $100(1-\alpha)\%$ para} $\theta = \mu_A - \mu_B$:
+\[
+(\bar X_A - \bar X_B) \;\pm\; t_{\alpha/2,\,\nu}\cdot\sqrt{S_A^2/n_A + S_B^2/n_B}.
+\]
+
+\textbf{Por qué Welch y no la versión \emph{pooled}:} en simulación rara vez se cumple $\sigma_A^2=\sigma_B^2$ (sistemas distintos producen variabilidades distintas); usar varianza común sesga el nivel real de la prueba. Welch es robusto a heterocedasticidad.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Ejemplo: ¿una cola común o colas separadas?}
+\textbf{Sistema:} dos cajeros idénticos, $\mu = 5$ clientes/h cada uno; tasa total de llegadas $\lambda = 8$/h.
+\begin{itemize}\small
+\item \textbf{Configuración A.} Una sola cola alimenta a los dos cajeros (M/M/2).
+\item \textbf{Configuración B.} Dos colas independientes, una por cajero ($\lambda/2 = 4$ a cada lado, M/M/1).
+\end{itemize}
+
+\textbf{Métrica:} tiempo medio en sistema $W$ (min). Valores teóricos: $W_A = 33{,}3$, $W_B = 60{,}0$.
+
+\vspace{0.2cm}
+\textbf{Datos: $n=10$ réplicas independientes de cada configuración, $T = 8$ h tras warm-up:}
+
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{l|cccccccccc|c}
+\toprule
+$i$        & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & $\bar X$ \\
+\midrule
+$X_{A,i}$  & 33.71 & 33.02 & 34.18 & 33.45 & 33.85 & 32.71 & 34.02 & 33.61 & 33.20 & 33.25 & 33.500 \\
+$X_{B,i}$  & 60.49 & 58.95 & 60.78 & 59.32 & 60.91 & 58.62 & 60.04 & 59.78 & 60.85 & 60.26 & 60.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.1cm}
+\textbf{Estadísticos:} $S_A^2 = 0{,}2134$, $S_B^2 = 0{,}6651$, $\bar X_A - \bar X_B = -26{,}500$.
+
+\vspace{0.1cm}
+\[
+\widehat{\mathrm{SE}} \;=\; \sqrt{0{,}2134/10 + 0{,}6651/10} \;=\; \sqrt{0{,}0879} \;=\; 0{,}2964.
+\]
+\[
+T \;=\; -26{,}500 / 0{,}2964 \;=\; -89{,}4, \qquad \nu \;=\; 14{,}3 \;\Rightarrow\; t_{0{,}025;\,14} = 2{,}145.
+\]
+\textbf{IC 95\% para} $\mu_A-\mu_B$: $\;-26{,}500 \pm 0{,}636 \;=\; [-27{,}136;\; -25{,}864]$. \\
+$0 \notin$ IC y diferencia operacionalmente enorme: \textcolor{deepgreen}{Configuración A es claramente superior}.
+\end{frame}
+
+% ============================================================
+\section{Reducción de varianza con CRN}
+% ============================================================
+
+\begin{frame}{Números aleatorios comunes (CRN): teorema fundamental}
+\textbf{Idea:} ejecutar las dos configuraciones \emph{con los mismos números aleatorios} para los mismos propósitos (mismas llegadas, mismos tiempos de servicio del cliente $i$, etc.). Esto induce dependencia positiva entre $X_A$ y $X_B$.
+
+\vspace{0.2cm}
+\begin{teoremabox}[Teorema (Bratley, Fox \& Schrage, 1987)]
+Sean $X_A = g_A(\mathbf U)$ y $X_B = g_B(\mathbf U)$ con $\mathbf U = (U_1,\ldots,U_d)$ vector de uniformes independientes. Si $g_A$ y $g_B$ son ambas \textbf{monótonas no decrecientes} (o ambas no crecientes) en cada componente $U_k$, entonces:
+\[
+\Cov(X_A, X_B) \;\geq\; 0.
+\]
+\end{teoremabox}
+
+\textbf{Consecuencia.} Bajo CRN:
+\[
+\Var(X_A - X_B) \;=\; \Var(X_A) + \Var(X_B) - 2\,\Cov(X_A, X_B) \;\leq\; \Var(X_A) + \Var(X_B).
+\]
+
+\textbf{Advertencia.} En simulaciones complejas no se puede garantizar la monotonicidad analíticamente, pero CRN es una técnica \textbf{empíricamente robusta}: en la inmensa mayoría de los casos prácticos induce $\Cov > 0$ y reduce la varianza de la diferencia.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{CRN: sincronización e implementación}
+\textbf{Implementación correcta requiere dos elementos:}
+
+\vspace{0.2cm}
+\textbf{(1) Streams dedicados.} Un generador independiente para cada \emph{fuente} de aleatoriedad (no uno solo para todo el modelo):
+\begin{center}
+\small
+\begin{tabular}{ll}
+\toprule
+\textbf{Fuente} & \textbf{Stream} \\
+\midrule
+Tiempos entre llegadas & Stream 1 \\
+Tiempos de servicio    & Stream 2 \\
+Decisiones de \emph{routing} & Stream 3 \\
+Fallas de equipo       & Stream 4 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{(2) Sincronización.} El $i$-ésimo número de cada stream se debe usar para la \textbf{misma decisión} en ambas configuraciones. Por ejemplo: $U_i$ del Stream~2 genera el tiempo de servicio del cliente $i$ \emph{tanto en $A$ como en $B$}.
+
+\vspace{0.3cm}
+\textbf{Método de generación.} La sincronización se preserva mejor con \textbf{transformación inversa} ($X = F^{-1}(U)$): un solo $U$ produce un solo $X$. Métodos como aceptación-rechazo consumen un número aleatorio de uniformes y \emph{rompen} la sincronización entre sistemas.
+
+\vspace{0.2cm}
+\textbf{Reset.} Al inicio de la réplica $i$, ambos sistemas reinician todos los streams al mismo estado.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Comparación pareada con CRN: marco formal}
+\begin{definicionbox}
+Bajo CRN, para cada réplica $i=1,\ldots,n$ se obtiene el par $(X_{A,i}, X_{B,i})$ ejecutado con los mismos streams. Definimos las diferencias:
+\[
+D_i \;=\; X_{A,i} - X_{B,i}, \qquad i=1,\ldots,n.
+\]
+$D_1, \ldots, D_n$ son i.i.d.\ con $\E[D_i] = \mu_A - \mu_B$ y varianza:
+\[
+\sigma_D^2 \;=\; \Var(X_A) + \Var(X_B) - 2\,\Cov(X_A, X_B).
+\]
+\end{definicionbox}
+
+\vspace{0.2cm}
+\textbf{Estadístico:} \quad $\bar D = \tfrac{1}{n}\sum D_i$, \quad $S_D^2 = \tfrac{1}{n-1}\sum (D_i-\bar D)^2$.
+
+\textbf{Prueba $t$ pareada:}
+\[
+T_{\text{par}} \;=\; \frac{\bar D}{S_D/\sqrt{n}} \;\sim\; t_{n-1} \quad \text{bajo } H_0:\;\mu_A=\mu_B.
+\]
+
+\textbf{IC al $100(1-\alpha)\%$ para} $\theta=\mu_A-\mu_B$: \quad
+$\displaystyle \bar D \;\pm\; t_{\alpha/2,\,n-1}\cdot\frac{S_D}{\sqrt{n}}$.
+
+\vspace{0.2cm}
+\textbf{Atención:} se usa $t_{n-1}$, \textbf{no} la fórmula de Welch. Las muestras dejan de ser independientes; la varianza relevante es la de las diferencias, no la suma de las varianzas marginales.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{CRN: ejemplo trabajado (mismo experimento del ejemplo anterior)}
+\textbf{Mismo problema}, ahora con CRN: la réplica $i$ usa los \emph{mismos} streams para llegadas y servicios en $A$ y en $B$.
+
+\vspace{0.1cm}
+\begin{table}
+\centering
+\scriptsize
+\begin{tabular}{l|cccccccccc|c}
+\toprule
+$i$        & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & $\bar D$ \\
+\midrule
+$X_{A,i}$  & 33.71 & 33.02 & 34.18 & 33.45 & 33.85 & 32.71 & 34.02 & 33.61 & 33.20 & 33.25 &  \\
+$X_{B,i}$  & 60.12 & 59.64 & 60.48 & 60.00 & 60.25 & 59.49 & 60.34 & 60.11 & 59.75 & 59.77 &  \\
+$D_i$      & $-26{.}41$ & $-26{.}62$ & $-26{.}30$ & $-26{.}55$ & $-26{.}40$ & $-26{.}78$ & $-26{.}32$ & $-26{.}50$ & $-26{.}55$ & $-26{.}52$ & $-26{.}500$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.2cm}
+\textbf{Cálculos:}
+\[
+\bar D = -26{,}500,\quad S_D^2 = 0{,}02013,\quad S_D = 0{,}1419, \quad \widehat{\mathrm{SE}}_D = 0{,}1419/\sqrt{10} = 0{,}04488.
+\]
+\[
+T_{\text{par}} = -26{,}500 / 0{,}04488 = -590{,}5, \qquad t_{0{,}025;\,9} = 2{,}262.
+\]
+\textbf{IC 95\% para} $\mu_A-\mu_B$: $\;-26{,}500 \pm 0{,}1015 \;=\; [-26{,}601;\; -26{,}398]$.
+
+\vspace{0.2cm}
+\textbf{Comparación de IC} (mismo experimento, mismo tamaño muestral):
+\begin{itemize}\small
+\item Independiente: semi-anchura $h_{\text{ind}} = 0{,}636$.
+\item CRN pareado: \;\;\;\; semi-anchura $h_{\text{CRN}} = 0{,}102$.
+\item \textbf{Razón de anchuras:} $h_{\text{ind}}/h_{\text{CRN}} \approx 6{,}2$.
+\end{itemize}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Eficiencia estadística: cuantificación de la ganancia}
+\textbf{Definición.} La \textbf{eficiencia} de CRN respecto al muestreo independiente es:
+\[
+\eta \;=\; \frac{\Var_{\text{ind}}(\bar X_A - \bar X_B)}{\Var_{\text{CRN}}(\bar D)}.
+\]
+
+\vspace{0.2cm}
+\textbf{En el ejemplo:}
+\[
+\Var_{\text{ind}} = \frac{S_A^2}{n}+\frac{S_B^2}{n} = \frac{0{,}2134 + 0{,}6651}{10} = 0{,}0879.
+\]
+\[
+\Var_{\text{CRN}} = \frac{S_D^2}{n} = \frac{0{,}02013}{10} = 0{,}002013.
+\]
+\[
+\eta \;=\; \frac{0{,}0879}{0{,}002013} \;\approx\; 43{,}7.
+\]
+
+\vspace{0.2cm}
+\begin{block}{Lectura operacional}
+Con CRN, $n=10$ réplicas producen un IC tan preciso como $\eta\cdot n \approx 437$ réplicas independientes. \textbf{La ganancia computacional es enorme.}
+\end{block}
+
+\vspace{0.1cm}
+\footnotesize
+\textbf{Caveat.} CRN puede \emph{aumentar} la varianza si las funciones de respuesta son \emph{anti-monótonas} (subir un $U$ favorece a $A$ y perjudica a $B$). En la práctica esto es raro pero debe verificarse con un piloto: estimar $\widehat\Cov(X_A, X_B)$; si resulta negativa, abandonar CRN.
+\end{frame}
+
+% ============================================================
+\section{Métodos no paramétricos}
+% ============================================================
+
+\begin{frame}{Cuándo fallan los supuestos paramétricos}
+\textbf{La prueba $t$ requiere}, vía TLC, que $\bar D$ (o $\bar X_A - \bar X_B$) sea aproximadamente normal. Esto puede fallar cuando:
+\begin{itemize}
+\item $n$ es \textbf{pequeño} (digamos $n \le 8$) y la distribución de $D_i$ es muy asimétrica.
+\item La métrica tiene \textbf{cola pesada} (e.g., tiempo de espera del cliente más perjudicado, máxima cola del día).
+\item Hay \textbf{atípicos} que dominan la varianza muestral.
+\item La métrica es \textbf{ordinal} (rangos, calificaciones).
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Alternativas no paramétricas:}
+\begin{table}
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Diseño} & \textbf{Prueba} & \textbf{Hipótesis nula} \\
+\midrule
+Independiente & Mann--Whitney $U$ (Wilcoxon de suma de rangos) & $F_A = F_B$ \\
+Pareado (CRN) & Wilcoxon de rangos con signo & $F_D$ simétrica en torno a 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Pérdida de potencia bajo normalidad:} $\approx$ 5\% (eficiencia asintótica relativa $3/\pi \approx 0{,}955$). Vale la pena pagarla cuando la normalidad es dudosa.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Mann--Whitney $U$: muestreo independiente}
+\begin{metodobox}[Procedimiento]
+\begin{enumerate}
+\item Combinar las dos muestras y asignar rangos $1,\ldots,n_A+n_B$ (rangos promedio en empates).
+\item $R_A$ = suma de rangos de la muestra $A$.
+\item Calcular $U_A = R_A - n_A(n_A+1)/2$. Análogamente $U_B$. (Verificación: $U_A + U_B = n_A n_B$.)
+\item Estadístico: $U = \min(U_A, U_B)$. Rechazar $H_0$ si $U \le u_{\alpha; n_A,n_B}$ (tabla).
+\item Si $n_A, n_B \ge 10$: usar la aproximación normal $Z = (U - \mu_U)/\sigma_U$ con $\mu_U = n_A n_B/2$ y $\sigma_U^2 = n_A n_B(n_A+n_B+1)/12$.
+\end{enumerate}
+\end{metodobox}
+
+\vspace{0.2cm}
+\begin{ejemplobox}[Ejemplo trabajado]
+Aplicado a las primeras 10 réplicas de cada configuración del ejemplo: las 10 observaciones de $A$ caen entre 32.71 y 34.18; las de $B$ entre 58.62 y 60.91. Toda observación de $A$ es menor que toda observación de $B$, así que los rangos de $A$ son $\{1,\ldots,10\}$.
+\\
+$R_A = 55$, $U_A = 55 - 55 = 0$, $U_B = 100$, $U = 0$. Valor crítico de tabla: $u_{0{,}05;\,10,10} = 23$. \\
+$0 \le 23 \Rightarrow$ se rechaza $H_0$: las distribuciones difieren \textcolor{deepgreen}{(coincide con la conclusión paramétrica)}.
+\end{ejemplobox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Wilcoxon de rangos con signo: comparación pareada}
+\begin{metodobox}[Procedimiento]
+\begin{enumerate}
+\item Calcular las diferencias pareadas $D_i = X_{A,i} - X_{B,i}$. Descartar $D_i = 0$.
+\item Asignar rangos a $|D_i|$ (rangos promedio en empates).
+\item Sumar los rangos de las $D_i > 0$: \;$W^+$. \;Sumar los rangos de las $D_i < 0$: \;$W^-$. \;Verificación: $W^+ + W^- = n(n+1)/2$.
+\item Estadístico: $W = \min(W^+, W^-)$. Rechazar $H_0$ si $W \le w_{\alpha; n}$ (tabla).
+\item Para $n \ge 20$: aproximación normal con $\mu_W = n(n+1)/4$ y $\sigma_W^2 = n(n+1)(2n+1)/24$.
+\end{enumerate}
+\end{metodobox}
+
+\vspace{0.2cm}
+\begin{ejemplobox}[Ejemplo trabajado]
+Diferencias del ejemplo CRN: todas $D_i < 0$, $|D_i|$ entre 26.30 y 26.78 con rangos $1,\ldots,10$. \\
+$W^+ = 0$, $W^- = 55$, $W = 0$. Valor crítico $w_{0{,}05;\,10} = 8$ (dos colas). \\
+$0 \le 8 \Rightarrow$ se rechaza $H_0$: las medianas difieren significativamente \textcolor{deepgreen}{(coincide con $t$ pareado)}.
+\end{ejemplobox}
+\end{frame}
+
+% ============================================================
+\section{Decisión bajo incertidumbre}
+% ============================================================
+
+\begin{frame}{Errores Tipo I y Tipo II en la decisión}
+\textbf{Toda prueba de hipótesis admite dos tipos de error:}
+
+\vspace{0.2cm}
+\begin{table}
+\centering
+\small
+\begin{tabular}{l|cc}
+\toprule
+\textbf{Decisión $\backslash$ Realidad} & $H_0$ verdadera ($\mu_A = \mu_B$) & $H_0$ falsa ($\mu_A \neq \mu_B$) \\
+\midrule
+No rechazar $H_0$ & Decisión correcta & \textcolor{red!70!black}{\textbf{Error Tipo II}} (prob. $\beta$) \\
+Rechazar $H_0$    & \textcolor{red!70!black}{\textbf{Error Tipo I}} (prob. $\alpha$) & Decisión correcta (potencia $1-\beta$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.3cm}
+\textbf{Asimetría operacional:}
+\begin{itemize}
+\item \textbf{Error Tipo I.} Concluir que las configuraciones difieren cuando son equivalentes. Costo: invertir en cambiar el sistema sin obtener beneficio.
+\item \textbf{Error Tipo II.} Concluir que son equivalentes cuando $A$ es realmente mejor. Costo: oportunidad perdida; el sistema sigue subóptimo.
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{El analista controla} $\alpha$ (típicamente 0.05) \textbf{y} $\beta$ (típicamente 0.20, i.e., potencia 0.80) \textbf{eligiendo el tamaño de muestra}.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Función de potencia y tamaño de muestra}
+\textbf{Función de potencia:} probabilidad de rechazar $H_0$ como función de la diferencia real $\theta = \mu_A - \mu_B$:
+\[
+\pi(\theta) \;=\; \Prob(\text{rechazar } H_0 \mid \mu_A - \mu_B = \theta).
+\]
+$\pi(0) = \alpha$ (nivel) y $\pi(\theta) \to 1$ cuando $|\theta| \to \infty$ (consistencia).
+
+\vspace{0.2cm}
+\textbf{Tamaño de muestra para detectar una diferencia $\delta$ con potencia} $1-\beta$:
+
+\vspace{0.1cm}
+\begin{block}{Pareado (CRN)}
+\[
+n_{\text{par}} \;\geq\; \left\lceil \frac{(z_{\alpha/2} + z_\beta)^2 \, \sigma_D^2}{\delta^2} \right\rceil
+\]
+\end{block}
+
+\begin{block}{Independiente, varianza común $\sigma^2$}
+\[
+n_{\text{ind}} \;\geq\; \left\lceil \frac{2(z_{\alpha/2} + z_\beta)^2 \, \sigma^2}{\delta^2} \right\rceil \quad (\text{por grupo})
+\]
+\end{block}
+
+\vspace{0.1cm}
+\footnotesize
+\textbf{Ajuste con $t$:} fórmulas anteriores usan aproximación normal. Para $n$ pequeño, iterar reemplazando $z_{\alpha/2} \to t_{\alpha/2,\,n-1}$ y resolver hasta convergencia.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Ejemplo: dimensionar el experimento}
+\textbf{Decisión:} se quiere detectar una diferencia operacional $\delta = 0{,}5$ min con $\alpha = 0{,}05$ y potencia $1-\beta = 0{,}80$.
+
+\textbf{Datos del piloto} (10 réplicas previas):
+\[
+S_A^2 = 0{,}21, \quad S_B^2 = 0{,}67, \quad S_D^2 = 0{,}020 \;(\text{con CRN}).
+\]
+\textbf{Cuantiles:} $z_{0{,}025} = 1{,}96$, $z_{0{,}20} = 0{,}84$, $(z_{0{,}025}+z_{0{,}20})^2 = 7{,}84$.
+
+\vspace{0.3cm}
+\textbf{Independiente:} usar $\sigma^2 \approx (S_A^2+S_B^2)/2 = 0{,}44$.
+\[
+n_{\text{ind}} \;\geq\; \frac{2 \cdot 7{,}84 \cdot 0{,}44}{0{,}25} \;=\; \frac{6{,}90}{0{,}25} \;=\; 27{,}6 \;\Rightarrow\; n_{\text{ind}} = 28 \;\text{por grupo}\;(\textbf{56 réplicas totales}).
+\]
+
+\textbf{CRN pareado:} $\sigma_D^2 = 0{,}020$.
+\[
+n_{\text{par}} \;\geq\; \frac{7{,}84 \cdot 0{,}020}{0{,}25} \;=\; \frac{0{,}157}{0{,}25} \;=\; 0{,}63 \;\Rightarrow\; n_{\text{par}} = 1.
+\]
+Como $n_{\text{par}}$ debe ser razonable para que aplique TLC, fijar $n_{\text{par}}\geq 5$ por convención. \textbf{Total: 5 réplicas pareadas.}
+
+\vspace{0.2cm}
+\textbf{Costo computacional:} 56 corridas vs.\ $5\times 2 = 10$ corridas $\Rightarrow$ \textbf{factor 5.6 a favor de CRN}.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Síntesis: la decisión bajo incertidumbre}
+\begin{enumerate}
+\item \textbf{Estimación.} En estado estacionario, las observaciones están autocorrelacionadas; la varianza muestral ingenua subestima $\Var(\bar X)$. Hay dos remedios formales: \textbf{réplicas} (con calentamiento individual) y \textbf{batch means} (una corrida larga + test de independencia).
+
+\item \textbf{Comparación.} Si las muestras son independientes, usar \textbf{prueba $t$ de Welch}. Si están pareadas (CRN), usar \textbf{prueba $t$ pareada} sobre las diferencias. \emph{Nunca aplicar Welch a datos CRN}: pierde toda la ganancia de varianza.
+
+\item \textbf{Reducción de varianza.} \textbf{CRN} es la técnica más simple y eficaz: ganancias típicas de 5--50$\times$ en eficiencia. Requiere \emph{streams dedicados} y \emph{sincronización} cuidadosa.
+
+\item \textbf{No paramétricos.} Cuando las muestras son pequeñas y la normalidad es dudosa, \textbf{Mann--Whitney} (independiente) y \textbf{Wilcoxon de rangos con signo} (pareado) son alternativas robustas que pierden poca potencia.
+
+\item \textbf{Diseño experimental.} El tamaño de muestra se elige \emph{antes de correr} fijando $\alpha$, $\beta$ y la diferencia mínima detectable $\delta$. La fórmula de potencia es la herramienta central.
+\end{enumerate}
+
+\vspace{0.3cm}
+\begin{center}
+\textcolor{mobiblue}{\large\textbf{Sin análisis estadístico de salidas, una simulación es solo un programa que produce números.}}
+\end{center}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Referencias}
+\footnotesize
+\begin{thebibliography}{9}
+\bibitem{law} Law, A.\ M. (2015). \textit{Simulation Modeling and Analysis} (5th ed.). McGraw-Hill. \textbf{Caps.\ 9--12.}
+\bibitem{banks} Banks, J., Carson, J.\ S., Nelson, B.\ L., Nicol, D.\ M. (2010). \textit{Discrete-Event System Simulation} (5th ed.). Pearson. Caps.\ 11--12.
+\bibitem{kelton} Kelton, W.\ D., Sadowski, R.\ P., Zupick, N.\ B. (2015). \textit{Simulation with Arena} (6th ed.). McGraw-Hill. Caps.\ 6, 12.
+\bibitem{ross} Ross, S.\ M. (2013). \textit{Simulation} (5th ed.). Academic Press. Caps.\ 7, 9.
+\bibitem{welch} Welch, P.\ D. (1983). The Statistical Analysis of Simulation Results. En \textit{The Computer Performance Modeling Handbook}, Lavenberg (ed.), Academic Press, 268--328.
+\bibitem{schmeiser} Schmeiser, B.\ W. (1982). Batch Size Effects in the Analysis of Simulation Output. \textit{Operations Research}, 30(3), 556--568.
+\bibitem{bratley} Bratley, P., Fox, B.\ L., Schrage, L.\ E. (1987). \textit{A Guide to Simulation} (2nd ed.). Springer-Verlag.
+\bibitem{nelson} Nelson, B.\ L. (2013). \textit{Foundations and Methods of Stochastic Simulation}. Springer.
+\bibitem{conover} Conover, W.\ J. (1999). \textit{Practical Nonparametric Statistics} (3rd ed.). Wiley.
+\end{thebibliography}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}
+\begin{center}
+\Huge \textcolor{mobiblue}{\textbf{¿Preguntas?}}\\[0.5cm]
+\large Inferencia Estadística con Modelos\\ de Simulación de Eventos Discretos
+\end{center}
+\end{frame}
+
+\end{document}

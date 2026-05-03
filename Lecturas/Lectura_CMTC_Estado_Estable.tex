@@ -1,0 +1,1118 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Paquetes ──────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{automata,positioning,arrows.meta,babel}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{framed}
+\usepackage{tcolorbox}
+\tcbuselibrary{theorems,breakable}
+
+\geometry{margin=2.5cm}
+
+% ── Entornos ──────────────────────────────────────────────────────────────
+\theoremstyle{definition}
+\newtheorem{definicion}{Definición}[section]
+\newtheorem{teorema}{Teorema}[section]
+\newtheorem{proposicion}{Proposición}[section]
+\newtheorem{corolario}{Corolario}[section]
+\newtheorem{lema}{Lema}[section]
+
+\theoremstyle{remark}
+\newtheorem{observacion}{Observación}[section]
+
+\newtcolorbox{ejemplo}[1][]{%
+  colback=blue!5!white,
+  colframe=blue!60!black,
+  fonttitle=\bfseries,
+  title=Ejemplo: #1,
+  breakable
+}
+
+\newtcolorbox{ejercicio}[1][]{%
+  colback=green!5!white,
+  colframe=green!50!black,
+  fonttitle=\bfseries,
+  title=Ejercicio propuesto: #1,
+  breakable
+}
+
+\newtcolorbox{cajanota}[1][]{%
+  colback=yellow!8!white,
+  colframe=orange!70!black,
+  fonttitle=\bfseries,
+  title=Nota importante: #1,
+  breakable
+}
+
+% ── Comandos útiles ───────────────────────────────────────────────────────
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\e}{\mathrm{e}}
+\DeclareMathOperator{\diag}{diag}
+
+% ══════════════════════════════════════════════════════════════════════════
+\title{%
+  \textbf{Análisis de Estado Estable de Cadenas de Markov\\
+  de Tiempo Continuo}\\[6pt]
+  \large Lectura para curso de pregrado
+}
+\author{Notas de clase}
+\date{2026}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+\newpage
+
+% ======================================================================
+%  SECCIÓN 1 — MOTIVACIÓN
+% ======================================================================
+\section{Motivación: ¿qué describe el estado estable?}
+
+En la lectura anterior sobre análisis transitorio vimos cómo calcular la
+distribución $\boldsymbol{p}(t) = \boldsymbol{\alpha}\,\e^{Qt}$ para un
+instante particular $t$.  Observamos que, en todos los ejemplos, cuando
+$t$ crecía, las probabilidades convergían a valores fijos
+independientes de la distribución inicial $\boldsymbol{\alpha}$.  Esa
+distribución límite es la \textbf{distribución de estado estable}
+(o \emph{estacionaria}).
+
+¿Por qué nos importa?
+
+\begin{itemize}[nosep]
+  \item Un servidor web lleva meses operando.  Las condiciones iniciales
+        ya no son relevantes; queremos saber la fracción del tiempo que
+        está saturado.
+  \item Una clínica veterinaria quiere dimensionar su sala de espera.
+        Le interesa el número promedio de mascotas en cola \emph{a largo
+        plazo}, no en los primeros minutos del día.
+  \item Un ingeniero de redes necesita calcular la tasa promedio de
+        paquetes perdidos cuando un enlace ha estado operando por tiempo
+        indefinido.
+  \item Un gerente de banco quiere saber qué porcentaje del tiempo sus
+        cajeros están ociosos, para decidir si contrata uno más.
+\end{itemize}
+
+En todos estos casos, el sistema ha ``olvidado'' sus condiciones
+iniciales y opera en un régimen permanente.  El análisis de estado
+estable nos da las herramientas para responder estas preguntas sin
+necesidad de calcular la exponencial de matriz.
+
+% ======================================================================
+%  SECCIÓN 2 — EXISTENCIA Y UNICIDAD
+% ======================================================================
+\section{Existencia y unicidad de la distribución estacionaria}
+
+\subsection{De lo transitorio a lo estable: el paso al límite}
+
+Recordemos que la distribución transitoria satisface
+\[
+  \boldsymbol{p}(t) = \boldsymbol{\alpha}\,\e^{Qt}.
+\]
+Si definimos $\boldsymbol{\pi} = \lim_{t\to\infty}\boldsymbol{p}(t)$
+(asumiendo que el límite existe), entonces al derivar
+$\boldsymbol{p}'(t) = \boldsymbol{p}(t)\,Q$ y tomar $t\to\infty$:
+\[
+  \lim_{t\to\infty}\boldsymbol{p}'(t) = \boldsymbol{0}
+  \quad\Longrightarrow\quad
+  \boldsymbol{\pi}\,Q = \boldsymbol{0}.
+\]
+
+Esta es la intuición: en estado estable la distribución ya no cambia,
+así que su derivada temporal es cero.
+
+\subsection{Condiciones formales}
+
+\begin{teorema}[Existencia y unicidad]
+\label{teo:existencia}
+Sea $\{X(t)\}$ una CTMC con espacio de estados finito
+$\mathcal{S} = \{0,1,\dots,n-1\}$ y generadora $Q$.  Si la cadena es
+\textbf{irreducible} (todo estado se puede alcanzar desde cualquier
+otro), entonces:
+\begin{enumerate}[nosep]
+  \item Existe un único vector $\boldsymbol{\pi} = (\pi_0,\pi_1,\dots,\pi_{n-1})$ tal que
+    \[
+      \boldsymbol{\pi}\,Q = \boldsymbol{0}, \qquad
+      \sum_{j=0}^{n-1}\pi_j = 1, \qquad
+      \pi_j > 0 \;\;\forall j.
+    \]
+  \item Para cualquier distribución inicial $\boldsymbol{\alpha}$,
+    \[
+      \lim_{t\to\infty}\boldsymbol{\alpha}\,\e^{Qt} = \boldsymbol{\pi}.
+    \]
+  \item $\pi_j$ tiene dos interpretaciones equivalentes:
+    \begin{itemize}[nosep]
+      \item Probabilidad a largo plazo de estar en el estado $j$.
+      \item Fracción del tiempo que el sistema pasa en el estado $j$.
+    \end{itemize}
+\end{enumerate}
+\end{teorema}
+
+\begin{cajanota}[¿Por qué se necesita irreducibilidad?]
+Si la cadena no es irreducible, puede haber múltiples clases
+comunicantes, cada una con su propia distribución estacionaria.  En ese
+caso, la distribución límite \emph{sí} depende de $\boldsymbol{\alpha}$:
+el sistema queda ``atrapado'' en la clase a la que llegue.  Para esta
+lectura asumiremos siempre irreducibilidad.
+\end{cajanota}
+
+\subsection{Deducción algebraica del sistema de ecuaciones}
+
+La ecuación $\boldsymbol{\pi}Q = \boldsymbol{0}$ se escribe componente
+a componente como
+\[
+  \sum_{i=0}^{n-1}\pi_i\,q_{ij} = 0, \qquad j = 0,1,\dots,n-1.
+\]
+Separando el término diagonal:
+\[
+  \pi_j\,q_{jj} + \sum_{i\ne j}\pi_i\,q_{ij} = 0
+  \quad\Longrightarrow\quad
+  \pi_j\,|q_{jj}| = \sum_{i\ne j}\pi_i\,q_{ij}.
+\]
+Dado que $|q_{jj}| = \sum_{k\ne j}q_{jk}$, esta ecuación dice:
+
+\begin{center}
+\fbox{\parbox{0.8\textwidth}{
+\centering
+\textbf{Tasa total de salida del estado $j$}
+= \textbf{Tasa total de entrada al estado $j$}.
+}}
+\end{center}
+
+Esto se conoce como las \textbf{ecuaciones de balance global}.
+
+% ======================================================================
+%  SECCIÓN 3 — ECUACIONES DE BALANCE
+% ======================================================================
+\section{Ecuaciones de balance}
+
+\subsection{Balance global}
+
+Para cada estado $j$:
+\[
+  \underbrace{\pi_j \sum_{k\ne j} q_{jk}}_{\text{flujo que sale de }j}
+  \;=\;
+  \underbrace{\sum_{i\ne j}\pi_i\,q_{ij}}_{\text{flujo que entra a }j}.
+\]
+
+Son $n$ ecuaciones, pero como las filas de $Q$ suman cero, una ecuación
+es combinación lineal de las demás.  Se descarta una y se reemplaza por
+la condición de normalización $\sum_j \pi_j = 1$.
+
+\subsection{Balance detallado (\textit{detailed balance})}
+
+En algunos sistemas (particularmente los reversibles), se cumple una
+condición más fuerte:
+\[
+  \pi_i\,q_{ij} = \pi_j\,q_{ji}, \qquad \forall\; i \ne j.
+\]
+Esto dice que el flujo de $i$ a $j$ es igual al flujo de $j$ a $i$
+para \emph{cada par} de estados.  Si se cumple balance detallado,
+entonces automáticamente se cumple balance global (sumar sobre $i$).
+
+\begin{cajanota}[Utilidad del balance detallado]
+El balance detallado reduce enormemente la cantidad de trabajo.  En
+lugar de resolver un sistema de ecuaciones, se obtienen relaciones
+directas entre las $\pi_j$.  Esto es particularmente útil en cadenas
+de nacimiento y muerte, donde las únicas transiciones son entre estados
+vecinos.
+\end{cajanota}
+
+\subsection{Cadenas de nacimiento y muerte}
+
+Para una cadena con estados $\{0,1,\dots,K\}$ donde solo hay
+transiciones entre vecinos (tasas $\lambda_j$ de $j$ a $j+1$ y $\mu_j$
+de $j$ a $j-1$), el balance detallado da:
+\[
+  \pi_j\,\lambda_j = \pi_{j+1}\,\mu_{j+1}, \qquad j=0,1,\dots,K-1.
+\]
+Despejando recursivamente:
+\begin{align*}
+  \pi_1 &= \frac{\lambda_0}{\mu_1}\,\pi_0, \\
+  \pi_2 &= \frac{\lambda_1}{\mu_2}\,\pi_1
+          = \frac{\lambda_0\lambda_1}{\mu_1\mu_2}\,\pi_0, \\
+  &\;\;\vdots \\
+  \pi_j &= \frac{\lambda_0\lambda_1\cdots\lambda_{j-1}}
+                 {\mu_1\mu_2\cdots\mu_j}\,\pi_0
+         = \pi_0\prod_{k=0}^{j-1}\frac{\lambda_k}{\mu_{k+1}}.
+\end{align*}
+Finalmente, $\pi_0$ se obtiene de $\sum_{j=0}^K \pi_j = 1$.
+
+% ======================================================================
+%  SECCIÓN 4 — MÉTODOS DE SOLUCIÓN
+% ======================================================================
+\section{Métodos para resolver \texorpdfstring{$\boldsymbol{\pi}Q=\boldsymbol{0}$}{πQ=0}}
+
+\subsection{Método 1: sustitución directa (sistemas pequeños)}
+
+Para 2 o 3 estados, se escribe el sistema a mano, se descarta una
+ecuación redundante, se sustituye la normalización, y se resuelve
+por sustitución o eliminación.
+
+\subsection{Método 2: balance detallado (si aplica)}
+
+Si la cadena es de nacimiento y muerte (o más generalmente, reversible),
+se usan las relaciones $\pi_i q_{ij} = \pi_j q_{ji}$ para expresar
+todo en función de $\pi_0$, y luego se normaliza.
+
+\subsection{Método 3: forma matricial}
+
+Se reemplaza una columna de $Q^\top$ por un vector de unos (para
+incorporar la normalización) y se resuelve el sistema lineal resultante.
+Concretamente, sea $\tilde{Q}$ la matriz que se obtiene de $Q^\top$ al
+reemplazar la última fila por $(1,1,\dots,1)$.  Entonces
+\[
+  \tilde{Q}\,\boldsymbol{\pi}^\top = \begin{pmatrix}0\\0\\\vdots\\0\\1\end{pmatrix}
+  \quad\Longrightarrow\quad
+  \boldsymbol{\pi}^\top = \tilde{Q}^{-1}\begin{pmatrix}0\\\vdots\\0\\1\end{pmatrix}.
+\]
+
+\subsection{Método 4: a partir de la cadena embebida}
+
+La cadena embebida de tiempo discreto tiene matriz de transición
+$\hat{P}$ con entradas $\hat{p}_{ij} = q_{ij}/|q_{ii}|$ para $i\ne j$.
+Si $\hat{\boldsymbol{\pi}}$ es la distribución estacionaria de
+$\hat{P}$, entonces la distribución estacionaria de la CTMC es
+\[
+  \pi_j = \frac{\hat{\pi}_j / |q_{jj}|}
+               {\sum_k \hat{\pi}_k / |q_{kk}|}.
+\]
+La intuición: la cadena embebida indica con qué frecuencia se
+\emph{visita} cada estado, pero el tiempo de permanencia en cada visita
+es $1/|q_{jj}|$.  La distribución de tiempo continuo pondera por ambos
+factores.
+
+% ======================================================================
+%  SECCIÓN 5 — MÉTRICAS DE DESEMPEÑO
+% ======================================================================
+\section{Métricas de desempeño en estado estable}
+
+Una vez que tenemos $\boldsymbol{\pi}$, podemos calcular cualquier
+cantidad que dependa del estado del sistema ``a largo plazo''.
+
+\subsection{Valor esperado en estado estable}
+
+Para una función $f:\mathcal{S}\to\R$:
+\[
+  \E_\pi[f(X)] = \sum_{j\in\mathcal{S}} f(j)\,\pi_j.
+\]
+
+\subsection{Varianza en estado estable}
+
+\[
+  \Var_\pi[f(X)] = \sum_{j\in\mathcal{S}} f(j)^2\,\pi_j
+  - \Bigl(\sum_{j\in\mathcal{S}} f(j)\,\pi_j\Bigr)^{\!2}
+  = \E_\pi[f(X)^2] - \bigl(\E_\pi[f(X)]\bigr)^2.
+\]
+
+\begin{cajanota}[Deducción detallada de la varianza]
+La varianza se deduce igual que en el caso transitorio.  Sea
+$Y = f(X)$ donde $X$ tiene distribución $\boldsymbol{\pi}$.
+\begin{align*}
+  \Var[Y] &= \E[(Y-\E[Y])^2] = \E[Y^2 - 2Y\E[Y] + (\E[Y])^2] \\
+  &= \E[Y^2] - 2\E[Y]\E[Y] + (\E[Y])^2 = \E[Y^2] - (\E[Y])^2.
+\end{align*}
+Expandiendo:
+\[
+  \E[Y^2] = \sum_j f(j)^2\,\pi_j, \qquad
+  (\E[Y])^2 = \Bigl(\sum_j f(j)\,\pi_j\Bigr)^{\!2}.
+\]
+No hay ningún paso especial de cadenas de Markov; es álgebra de
+variables aleatorias discretas aplicada a la distribución $\pi$.
+\end{cajanota}
+
+\subsection{Tasas de flujo en estado estable}
+
+La \textbf{tasa de flujo de $i$ a $j$} en estado estable es
+$\pi_i\,q_{ij}$.  Esto permite calcular, por ejemplo:
+
+\begin{itemize}[nosep]
+  \item \textbf{Tasa efectiva de llegada a un sistema con pérdidas:}
+    la tasa de entrada real (no la ofrecida) es
+    $\lambda_{\text{ef}} = \lambda\sum_{j:\text{hay espacio}}\pi_j$.
+  \item \textbf{Tasa de pérdida:} $\lambda_{\text{perd}} = \lambda\,\pi_K$
+    si el estado $K$ es ``lleno''.
+  \item \textbf{Throughput:} tasa de servicio completado,
+    $\mu\sum_{j:\text{servidor ocupado}}\pi_j$.
+\end{itemize}
+
+\subsection{Métricas integrales: conexión con el tiempo}
+
+Puesto que $\pi_j$ es la fracción del tiempo en estado $j$:
+\[
+  \E_\pi[f(X)] = \lim_{T\to\infty}\frac{1}{T}\int_0^T f(X(s))\,ds
+  \quad\text{(con probabilidad 1).}
+\]
+Esto es el \textbf{teorema ergódico}.  La media temporal iguala la media
+espacial.  Formalmente, la integral del lado derecho es una variable
+aleatoria que converge casi seguramente al valor determinista del lado
+izquierdo.
+
+% ======================================================================
+%  SECCIÓN 6 — EJEMPLO 1: DOS ESTADOS
+% ======================================================================
+\section{Ejemplo 1 --- Máquina con fallas (dos estados)}
+
+\begin{ejemplo}[Máquina industrial que falla y se repara]
+Una máquina en una planta de producción puede estar operativa (estado~0)
+o descompuesta (estado~1).  Las fallas ocurren con tasa
+$\lambda = 0.5$ fallas/hora y las reparaciones con tasa
+$\mu = 1.5$ reparaciones/hora.  La máquina lleva operando meses y
+queremos responder:
+
+\begin{enumerate}[label=(\alph*)]
+  \item ¿Qué fracción del tiempo está descompuesta?
+  \item Si cada hora de inactividad cuesta \$200, ¿cuál es el costo
+        promedio por hora?
+  \item ¿Cuál es la varianza del costo por hora?
+\end{enumerate}
+
+\tcblower
+
+\textbf{Paso 1: la generadora.}
+
+\begin{center}
+\begin{tikzpicture}[->,>=Stealth,node distance=3cm,
+    every state/.style={thick,fill=blue!10}]
+  \node[state] (0) {0};
+  \node[state] (1) [right=of 0] {1};
+  \path (0) edge[bend left] node[above] {$\lambda=0.5$} (1)
+        (1) edge[bend left] node[below] {$\mu=1.5$} (0);
+\end{tikzpicture}
+\end{center}
+
+\[
+  Q = \begin{pmatrix} -0.5 & 0.5 \\ 1.5 & -1.5 \end{pmatrix}.
+\]
+
+\textbf{Paso 2: resolver $\boldsymbol{\pi}Q = \boldsymbol{0}$.}
+
+El sistema es:
+\[
+  \begin{cases}
+    -0.5\,\pi_0 + 1.5\,\pi_1 = 0, \\
+    0.5\,\pi_0 - 1.5\,\pi_1 = 0.
+  \end{cases}
+\]
+Ambas ecuaciones dicen lo mismo: $\pi_0 = 3\pi_1$.  Con la normalización
+$\pi_0 + \pi_1 = 1$:
+\[
+  3\pi_1 + \pi_1 = 1 \quad\Longrightarrow\quad \pi_1 = \frac{1}{4},
+  \qquad \pi_0 = \frac{3}{4}.
+\]
+
+\textbf{Verificación por balance detallado:}
+$\pi_0\,q_{01} = \frac{3}{4}\times 0.5 = 0.375$ y
+$\pi_1\,q_{10} = \frac{1}{4}\times 1.5 = 0.375$. \checkmark
+
+\textbf{Verificación alternativa:} para un sistema de dos estados con
+tasas $\lambda$ y $\mu$, la fórmula general es
+\[
+  \pi_0 = \frac{\mu}{\lambda+\mu}, \qquad
+  \pi_1 = \frac{\lambda}{\lambda+\mu}.
+\]
+Con $\lambda=0.5$, $\mu=1.5$: $\pi_0 = 1.5/2 = 3/4$,
+$\pi_1 = 0.5/2 = 1/4$. \checkmark
+
+\textbf{Paso 3: respuestas.}
+
+(a) La máquina está descompuesta el $25\%$ del tiempo.
+
+(b) Definimos $f(0) = 0$ (operativa, sin costo) y $f(1) = 200$
+(descompuesta, \$200/hora):
+\[
+  \E_\pi[f(X)] = 0 \times \frac{3}{4} + 200 \times \frac{1}{4}
+  = \$50 \text{ por hora}.
+\]
+
+(c) Varianza del costo:
+\[
+  \E_\pi[f(X)^2] = 0^2 \times \frac{3}{4} + 200^2 \times \frac{1}{4}
+  = 10{,}000.
+\]
+\[
+  \Var_\pi[f(X)] = 10{,}000 - 50^2 = 10{,}000 - 2{,}500 = 7{,}500.
+\]
+\[
+  \sigma = \sqrt{7{,}500} \approx \$86.60 \text{ por hora}.
+\]
+
+La desviación estándar es alta relativa a la media, lo cual refleja la
+naturaleza ``todo o nada'' del costo: o se pagan \$0 o \$200, con nada
+intermedio.
+\end{ejemplo}
+
+% ======================================================================
+%  SECCIÓN 7 — EJEMPLO 2: COLA M/M/1/2
+% ======================================================================
+\section{Ejemplo 2 --- Cola con capacidad limitada ($M/M/1/2$)}
+
+\begin{ejemplo}[Fotocopiadora con espera limitada]
+Una oficina tiene una fotocopiadora.  Los empleados llegan a usarla
+con tasa $\lambda = 6$ personas/hora.  Cada trabajo tarda en promedio
+8 minutos, así que $\mu = 60/8 = 7.5$ trabajos/hora.  Solo cabe una
+persona esperando (además de la que está usando la máquina), así que
+la capacidad es $K=2$.  Si alguien llega y hay 2 personas, se va a
+otra planta.
+
+La fotocopiadora lleva meses en servicio.  Se pide:
+
+\begin{enumerate}[label=(\alph*)]
+  \item Distribución estacionaria.
+  \item Número promedio de personas en el sistema y su varianza.
+  \item Fracción de empleados que se van sin fotocopiar (probabilidad de
+        bloqueo).
+  \item Tasa efectiva de uso de la fotocopiadora (throughput).
+\end{enumerate}
+
+\tcblower
+
+\textbf{Paso 1: generadora.}
+
+\begin{center}
+\begin{tikzpicture}[->,>=Stealth,node distance=2.5cm,
+    every state/.style={thick,fill=blue!10}]
+  \node[state] (0) {0};
+  \node[state] (1) [right=of 0] {1};
+  \node[state] (2) [right=of 1] {2};
+  \path (0) edge[bend left] node[above] {$6$} (1)
+        (1) edge[bend left] node[below] {$7.5$} (0)
+        (1) edge[bend left] node[above] {$6$} (2)
+        (2) edge[bend left] node[below] {$7.5$} (1);
+\end{tikzpicture}
+\end{center}
+
+\[
+  Q = \begin{pmatrix}
+    -6 & 6 & 0 \\
+    7.5 & -13.5 & 6 \\
+    0 & 7.5 & -7.5
+  \end{pmatrix}.
+\]
+
+\textbf{Paso 2: resolver por balance detallado.}
+
+Es una cadena de nacimiento y muerte con $\lambda_j = 6$ y $\mu_j = 7.5$
+para todo $j$.  Definimos $\rho = \lambda/\mu = 6/7.5 = 0.8$.
+
+Balance detallado entre estados vecinos:
+\begin{align*}
+  \pi_0 \cdot 6 &= \pi_1 \cdot 7.5
+  \quad\Longrightarrow\quad \pi_1 = \rho\,\pi_0 = 0.8\,\pi_0, \\
+  \pi_1 \cdot 6 &= \pi_2 \cdot 7.5
+  \quad\Longrightarrow\quad \pi_2 = \rho\,\pi_1 = \rho^2\,\pi_0 = 0.64\,\pi_0.
+\end{align*}
+En general $\pi_j = \rho^j\,\pi_0$.  Normalización:
+\[
+  \pi_0(1 + \rho + \rho^2) = 1
+  \quad\Longrightarrow\quad
+  \pi_0 = \frac{1}{1+0.8+0.64} = \frac{1}{2.44} \approx 0.4098.
+\]
+
+\textbf{Fórmula general para $M/M/1/K$ con $\rho\ne 1$:}
+\[
+  \pi_0 = \frac{1-\rho}{1-\rho^{K+1}}, \qquad
+  \pi_j = \rho^j\,\pi_0, \quad j=0,1,\dots,K.
+\]
+Verifiquemos: $\pi_0 = \frac{1-0.8}{1-0.8^3} = \frac{0.2}{1-0.512}
+= \frac{0.2}{0.488} \approx 0.4098$. \checkmark
+
+Distribución completa:
+\[
+  \boldsymbol{\pi} \approx (0.4098,\; 0.3279,\; 0.2623).
+\]
+
+\textbf{Paso 3: valor esperado.}
+
+Sea $N$ el número de personas en el sistema, $f(j)=j$:
+\[
+  \E_\pi[N] = 0\times 0.4098 + 1\times 0.3279 + 2\times 0.2623
+  = 0.3279 + 0.5246 = 0.8525.
+\]
+
+Para la fórmula cerrada, derivemos la expresión general.  Con
+$\pi_j = \rho^j\pi_0$:
+\begin{align*}
+  \E[N] &= \sum_{j=0}^{K} j\,\rho^j\,\pi_0
+  = \pi_0\sum_{j=1}^{K}j\,\rho^j
+  = \pi_0\,\rho\frac{d}{d\rho}\sum_{j=0}^{K}\rho^j
+  = \pi_0\,\rho\frac{d}{d\rho}\Bigl(\frac{1-\rho^{K+1}}{1-\rho}\Bigr).
+\end{align*}
+La derivada es:
+\[
+  \frac{d}{d\rho}\frac{1-\rho^{K+1}}{1-\rho}
+  = \frac{-(K+1)\rho^K(1-\rho)+(1-\rho^{K+1})}{(1-\rho)^2}.
+\]
+Para $K=2$, $\rho=0.8$:
+\[
+  \frac{d}{d\rho}\frac{1-\rho^3}{1-\rho}\Bigg|_{\rho=0.8}
+  = \frac{-3(0.64)(0.2)+0.488}{0.04}
+  = \frac{-0.384+0.488}{0.04}
+  = \frac{0.104}{0.04} = 2.60.
+\]
+\[
+  \E[N] = 0.4098 \times 0.8 \times 2.60 = 0.8524 \approx 0.8525. \;\checkmark
+\]
+
+\textbf{Paso 4: varianza.}
+
+Segundo momento:
+\[
+  \E[N^2] = 0^2\times 0.4098 + 1^2\times 0.3279 + 2^2\times 0.2623
+  = 0.3279 + 1.0492 = 1.3771.
+\]
+\[
+  \Var[N] = 1.3771 - (0.8525)^2 = 1.3771 - 0.7268 = 0.6503.
+\]
+\[
+  \sigma_N = \sqrt{0.6503} \approx 0.8064.
+\]
+
+\textbf{Paso 5: probabilidad de bloqueo y throughput.}
+
+Probabilidad de bloqueo (un cliente llega y el sistema está lleno):
+\[
+  P_{\text{bloqueo}} = \pi_2 \approx 0.2623.
+\]
+Es decir, aproximadamente el $26.23\%$ de los empleados se van sin
+fotocopiar.
+
+Tasa efectiva de llegada:
+\[
+  \lambda_{\text{ef}} = \lambda(1-\pi_2) = 6(1-0.2623) = 6\times 0.7377
+  \approx 4.426 \text{ personas/hora}.
+\]
+
+Throughput (tasa de trabajos completados, que en estado estable iguala
+a la tasa efectiva de llegada):
+\[
+  \text{Throughput} = \mu\,(1-\pi_0) = 7.5\times 0.5902 \approx 4.426. \;\checkmark
+\]
+Ambas formas dan el mismo resultado, como debe ser en estado estable.
+\end{ejemplo}
+
+% ======================================================================
+%  SECCIÓN 8 — EJEMPLO 3: TRES ESTADOS, NO NACIMIENTO-MUERTE
+% ======================================================================
+\section{Ejemplo 3 --- Sistema que no es de nacimiento y muerte}
+
+\begin{ejemplo}[Servidor web con modo degradado]
+Un servidor web puede estar en tres estados: funcionando a plena
+capacidad (estado~0), funcionando en modo degradado (estado~1), o
+caído (estado~2).  Las transiciones son:
+
+\begin{center}
+\begin{tikzpicture}[->,>=Stealth,node distance=3cm,
+    every state/.style={thick,fill=blue!10}]
+  \node[state] (0) {0};
+  \node[state] (1) [right=of 0] {1};
+  \node[state] (2) [below right=1.5cm and 1.5cm of 0] {2};
+  \path (0) edge[bend left=15] node[above] {$2$} (1)
+        (0) edge node[left] {$0.5$} (2)
+        (1) edge[bend left=15] node[below] {$3$} (0)
+        (1) edge node[right] {$1$} (2)
+        (2) edge node[below left] {$4$} (0);
+\end{tikzpicture}
+\end{center}
+
+Note que desde el estado caído (2) solo se puede ir a plena capacidad
+(0), no a degradado.  Esto \emph{no} es una cadena de nacimiento y
+muerte (hay transición $0\to 2$ saltándose el estado~1).
+
+El servidor lleva operando tiempo indefinido.  Si en estado~0 procesa
+100 solicitudes/seg, en estado~1 procesa 40 solicitudes/seg, y en
+estado~2 procesa 0, calcular el throughput promedio y su varianza.
+
+\tcblower
+
+\textbf{Paso 1: generadora.}
+
+\[
+  Q = \begin{pmatrix}
+    -2.5 & 2 & 0.5 \\
+    3 & -4 & 1 \\
+    4 & 0 & -4
+  \end{pmatrix}.
+\]
+
+\textbf{Paso 2: resolver $\boldsymbol{\pi}Q=\boldsymbol{0}$ por
+sustitución.}
+
+Las ecuaciones de balance global para cada estado son:
+
+\emph{Estado 0 (flujo de entrada = flujo de salida):}
+\[
+  3\pi_1 + 4\pi_2 = 2.5\,\pi_0. \tag{E0}
+\]
+
+\emph{Estado 1:}
+\[
+  2\pi_0 = 4\,\pi_1. \tag{E1}
+\]
+
+\emph{Estado 2:}
+\[
+  0.5\,\pi_0 + 1\,\pi_1 = 4\,\pi_2. \tag{E2}
+\]
+
+De (E1): $\pi_1 = \pi_0/2$.
+
+Sustituyendo en (E2): $0.5\pi_0 + 0.5\pi_0 = 4\pi_2$, es decir
+$\pi_0 = 4\pi_2$, así que $\pi_2 = \pi_0/4$.
+
+Verificamos en (E0): $3(\pi_0/2)+4(\pi_0/4) = 1.5\pi_0+\pi_0 = 2.5\pi_0$. \checkmark
+
+Normalización:
+\[
+  \pi_0 + \frac{\pi_0}{2} + \frac{\pi_0}{4} = 1
+  \quad\Longrightarrow\quad
+  \frac{7}{4}\pi_0 = 1
+  \quad\Longrightarrow\quad
+  \pi_0 = \frac{4}{7}.
+\]
+\[
+  \boldsymbol{\pi} = \Bigl(\frac{4}{7},\;\frac{2}{7},\;\frac{1}{7}\Bigr)
+  \approx (0.5714,\;0.2857,\;0.1429).
+\]
+
+\textbf{Paso 3: throughput promedio.}
+
+Sea $f(0)=100$, $f(1)=40$, $f(2)=0$ solicitudes/seg:
+\[
+  \E_\pi[f(X)] = 100\times\frac{4}{7} + 40\times\frac{2}{7}
+  + 0\times\frac{1}{7}
+  = \frac{400+80}{7} = \frac{480}{7} \approx 68.57 \text{ sol/seg}.
+\]
+
+\textbf{Paso 4: varianza del throughput.}
+\[
+  \E_\pi[f(X)^2] = 100^2\times\frac{4}{7} + 40^2\times\frac{2}{7}
+  + 0^2\times\frac{1}{7}
+  = \frac{40{,}000+3{,}200}{7} = \frac{43{,}200}{7} \approx 6{,}171.43.
+\]
+\[
+  \Var_\pi[f(X)] = 6{,}171.43 - (68.57)^2 = 6{,}171.43 - 4{,}701.84
+  = 1{,}469.59.
+\]
+\[
+  \sigma \approx 38.34 \text{ solicitudes/seg}.
+\]
+
+\textbf{Interpretación:} el servidor procesa en promedio 68.6 sol/seg
+a largo plazo, pero con una desviación de 38.3 sol/seg, reflejando que
+oscila entre 100 y 0 frecuentemente.  El coeficiente de variación es
+$38.3/68.6 \approx 56\%$, bastante alto.
+\end{ejemplo}
+
+% ======================================================================
+%  SECCIÓN 9 — EJEMPLO CON DOS VARIABLES
+% ======================================================================
+\section{Ejemplo 4 --- Dos componentes con dependencia}
+
+\begin{ejemplo}[Sistema de potencia con generador y respaldo]
+Una estación tiene un generador principal (G) y un generador de respaldo
+(R).  El generador G falla con tasa $\alpha=1$/día y se repara con
+tasa $\beta=4$/día.  El respaldo R falla con tasa $\gamma=0.5$/día y
+se repara con tasa $\delta=2$/día.
+
+Aquí viene la dependencia: \textbf{solo hay un técnico de reparación}.
+Si ambos generadores fallan simultáneamente, el técnico prioriza a G
+(repara G primero; R espera).
+
+El estado es $(G,R)$ donde $G,R\in\{0,1\}$ ($0$=funciona, $1$=fallado).
+Los estados son: $(0,0)$, $(1,0)$, $(0,1)$, $(1,1)$, que numeramos
+$0,1,2,3$.
+
+\tcblower
+
+\textbf{Paso 1: generadora.}
+
+Las transiciones:
+\begin{itemize}[nosep]
+  \item $(0,0)\to(1,0)$: G falla, tasa $\alpha=1$.
+  \item $(0,0)\to(0,1)$: R falla, tasa $\gamma=0.5$.
+  \item $(1,0)\to(0,0)$: G se repara (técnico libre), tasa $\beta=4$.
+  \item $(1,0)\to(1,1)$: R también falla, tasa $\gamma=0.5$.
+  \item $(0,1)\to(0,0)$: R se repara (técnico libre), tasa $\delta=2$.
+  \item $(0,1)\to(1,1)$: G también falla, tasa $\alpha=1$.
+  \item $(1,1)\to(0,1)$: técnico repara G primero, tasa $\beta=4$.
+  \item \textbf{$(1,1)\to(1,0)$: NO ocurre} (R no se repara mientras G
+        esté fallado).
+\end{itemize}
+
+\[
+  Q = \begin{pmatrix}
+    -1.5 & 1   & 0.5 & 0    \\
+    4    & -4.5 & 0   & 0.5  \\
+    2    & 0   & -3  & 1    \\
+    0    & 0   & 4   & -4
+  \end{pmatrix}.
+\]
+
+\textbf{Paso 2: resolver $\boldsymbol{\pi}Q = \boldsymbol{0}$.}
+
+Ecuaciones de balance global:
+
+Estado 0: $\;4\pi_1 + 2\pi_2 = 1.5\,\pi_0.$
+
+Estado 1: $\;\pi_0 = 4.5\,\pi_1 - 0.5\,\pi_3.\;$ Reescribimos:
+$\pi_0 + 0.5\pi_3 = 4.5\pi_1.$
+
+Estado 2: $\;0.5\pi_0 + 4\pi_3 = 3\pi_2.$
+
+Estado 3: $\;0.5\pi_1 + \pi_2 = 4\pi_3.$
+
+De la ecuación del estado 3: $\pi_3 = (0.5\pi_1+\pi_2)/4$.
+
+Expresemos todo en función de $\pi_0$.  De estado 0 y estado 1,
+probemos con balance detallado parcial.  En realidad, al no ser
+nacimiento-muerte, resolvamos el sistema directamente.
+
+De (E1): $\pi_0 = 4.5\pi_1 - 0.5\pi_3$.
+De (E3): $\pi_3 = 0.125\pi_1 + 0.25\pi_2$.
+
+Sustituimos (E3) en (E1):
+$\pi_0 = 4.5\pi_1 - 0.5(0.125\pi_1+0.25\pi_2)
+= 4.5\pi_1 - 0.0625\pi_1 - 0.125\pi_2
+= 4.4375\pi_1 - 0.125\pi_2.$
+
+De (E2): $0.5\pi_0 + 4(0.125\pi_1+0.25\pi_2) = 3\pi_2$,
+es decir $0.5\pi_0 + 0.5\pi_1 + \pi_2 = 3\pi_2$,
+así que $0.5\pi_0 + 0.5\pi_1 = 2\pi_2$, lo que da
+$\pi_2 = (0.5\pi_0+0.5\pi_1)/2 = 0.25\pi_0+0.25\pi_1$.
+
+Sustituyendo en la expresión de $\pi_0$:
+\begin{align*}
+  \pi_0 &= 4.4375\pi_1 - 0.125(0.25\pi_0+0.25\pi_1) \\
+  &= 4.4375\pi_1 - 0.03125\pi_0 - 0.03125\pi_1 \\
+  1.03125\,\pi_0 &= 4.40625\,\pi_1 \\
+  \pi_1 &= \frac{1.03125}{4.40625}\,\pi_0 = 0.23404\,\pi_0.
+\end{align*}
+
+Entonces:
+\begin{align*}
+  \pi_2 &= 0.25\pi_0 + 0.25(0.23404\pi_0) = 0.25\pi_0+0.05851\pi_0
+  = 0.30851\,\pi_0, \\
+  \pi_3 &= 0.125(0.23404\pi_0)+0.25(0.30851\pi_0)
+  = 0.02926\pi_0 + 0.07713\pi_0 = 0.10638\,\pi_0.
+\end{align*}
+
+Normalización:
+\[
+  \pi_0(1+0.23404+0.30851+0.10638) = 1
+  \quad\Longrightarrow\quad
+  1.64894\,\pi_0 = 1
+  \quad\Longrightarrow\quad
+  \pi_0 \approx 0.6065.
+\]
+\[
+  \boldsymbol{\pi} \approx (0.6065,\;0.1419,\;0.1871,\;0.0645).
+\]
+
+\textbf{Verificación:} la suma es $0.6065+0.1419+0.1871+0.0645=1.0000$. \checkmark
+
+\textbf{Paso 3: métricas de estado estable.}
+
+Definimos las variables indicadoras:
+$G = \begin{cases}0&\text{si G funciona}\\1&\text{si G fallado}\end{cases}$
+y análogamente $R$.  El número de generadores fallados es $N=G+R$.
+
+\emph{Marginales:}
+\begin{align*}
+  \Prob(G=1) &= \pi_1+\pi_3 = 0.1419+0.0645 = 0.2064, \\
+  \Prob(R=1) &= \pi_2+\pi_3 = 0.1871+0.0645 = 0.2516.
+\end{align*}
+
+\emph{Valor esperado:}
+\[
+  \E[N] = \E[G]+\E[R] = 0.2064+0.2516 = 0.4580.
+\]
+
+\emph{Varianzas individuales:}
+\begin{align*}
+  \Var[G] &= 0.2064\times 0.7936 = 0.1638, \\
+  \Var[R] &= 0.2516\times 0.7484 = 0.1883.
+\end{align*}
+
+\emph{Covarianza:}
+\[
+  \E[GR] = \Prob(G=1,R=1) = \pi_3 = 0.0645.
+\]
+\[
+  \Cov(G,R) = 0.0645 - 0.2064\times 0.2516 = 0.0645 - 0.0519 = 0.0126.
+\]
+
+La covarianza es \emph{positiva}: cuando G falla, el técnico se ocupa de
+G, dejando a R sin reparar, lo que aumenta la probabilidad de que R
+también esté fallado.  La dependencia estructural (un solo técnico)
+genera correlación positiva.
+
+\emph{Varianza de $N$:}
+\[
+  \Var[N] = \Var[G]+\Var[R]+2\Cov(G,R)
+  = 0.1638+0.1883+2(0.0126) = 0.3773.
+\]
+
+Si los generadores fueran independientes, la varianza sería
+$0.1638+0.1883=0.3521$.  El efecto del técnico compartido agrega
+$2\times 0.0126 = 0.0252$ de varianza extra.
+
+\textbf{Paso 4: ¿cuál es la fracción del tiempo sin ningún generador
+funcionando?}
+\[
+  \Prob(\text{apagón total}) = \pi_3 \approx 6.45\%.
+\]
+\end{ejemplo}
+
+% ======================================================================
+%  SECCIÓN 10 — EJEMPLO CON DOS COLAS PEQUEÑAS
+% ======================================================================
+\section{Ejemplo 5 --- Dos colas acopladas: desbordamiento}
+
+\begin{ejemplo}[Dos cajeros de estacionamiento]
+Un estacionamiento tiene dos máquinas expendedoras de tiquetes.  La
+máquina~1 (más visible) recibe autos con tasa $\lambda=8$/hora; si está
+ocupada, el auto pasa a la máquina~2.  Si ambas están ocupadas, el auto
+se va.  La máquina~1 despacha con tasa $\mu_1=10$/hora y la~2 con
+$\mu_2=6$/hora.  Cada máquina atiende a un solo auto a la vez (sin cola).
+
+Estados: $(C_1,C_2)\in\{(0,0),(1,0),(0,1),(1,1)\}$, numerados
+$0,1,2,3$.
+
+\tcblower
+
+\textbf{Paso 1: generadora.}
+
+\begin{itemize}[nosep]
+  \item $(0,0)\to(1,0)$: llega auto, va a máq.~1. Tasa $8$.
+  \item $(1,0)\to(0,0)$: máq.~1 termina. Tasa $10$.
+  \item $(1,0)\to(1,1)$: llega auto, máq.~1 ocupada, va a máq.~2. Tasa $8$.
+  \item $(0,1)\to(1,1)$: llega auto, máq.~1 libre\ldots\ pero espere:
+        si máq.~1 está libre el auto va ahí, no a la~2.  Así que:
+        $(0,1)\to(1,1)$ con tasa $8$.
+  \item $(0,1)\to(0,0)$: máq.~2 termina. Tasa $6$.
+  \item $(1,1)\to(0,1)$: máq.~1 termina. Tasa $10$.
+  \item $(1,1)\to(1,0)$: máq.~2 termina. Tasa $6$.
+\end{itemize}
+
+\[
+  Q = \begin{pmatrix}
+    -8  & 8   & 0  & 0   \\
+    10  & -18 & 0  & 8   \\
+    6   & 0   & -14 & 8  \\
+    0   & 6   & 10 & -16
+  \end{pmatrix}.
+\]
+
+\textbf{Paso 2: resolver por balance global.}
+
+(E0): $10\pi_1 + 6\pi_2 = 8\pi_0$.
+
+(E1): $8\pi_0 + 6\pi_3 = 18\pi_1$.
+
+(E2): $10\pi_3 = 14\pi_2 - 6\pi_2 \ldots$ Escribámoslo correctamente.
+La ecuación de balance para el estado~2 es: flujo de entrada = flujo de
+salida.  Entrada a~2: desde $(0,0)$~no hay transición directa, desde
+$(1,1)$: tasa $10\pi_3$.  Salida: $14\pi_2$.  Pero espere,
+¿hay transición $(0,0)\to(0,1)$?  No, porque un auto que llega siempre
+va primero a máq.~1.  Así que el estado $(0,1)$ solo se alcanza desde
+$(1,1)$ cuando máq.~1 termina.
+
+Reescribamos:
+
+(E2): $10\pi_3 = 14\pi_2$.  Entonces $\pi_2 = (10/14)\pi_3 = (5/7)\pi_3$.
+
+(E3): $8\pi_1 + 8\pi_2 = 16\pi_3$.  Espere, revisemos.  Al estado~3
+se llega desde~1 (tasa $8$) y desde~2 (tasa $8$).  Se sale con tasa
+$16$.  Entonces: $8\pi_1+8\pi_2 = 16\pi_3$, es decir
+$\pi_1+\pi_2 = 2\pi_3$.
+
+De (E2): $\pi_2 = 5\pi_3/7$.  Sustituyendo en (E3):
+$\pi_1 + 5\pi_3/7 = 2\pi_3$, así $\pi_1 = 2\pi_3-5\pi_3/7 = 9\pi_3/7$.
+
+De (E1): $8\pi_0+6\pi_3 = 18(9\pi_3/7) = 162\pi_3/7$.
+Entonces $8\pi_0 = 162\pi_3/7 - 6\pi_3 = (162-42)\pi_3/7 = 120\pi_3/7$.
+$\pi_0 = 15\pi_3/7$.
+
+Normalización: $\pi_0+\pi_1+\pi_2+\pi_3 = 1$:
+\[
+  \frac{15}{7}\pi_3 + \frac{9}{7}\pi_3+\frac{5}{7}\pi_3+\pi_3 = 1
+  \quad\Longrightarrow\quad
+  \frac{15+9+5+7}{7}\pi_3 = 1
+  \quad\Longrightarrow\quad
+  \frac{36}{7}\pi_3 = 1.
+\]
+\[
+  \pi_3 = \frac{7}{36}, \quad
+  \pi_0 = \frac{15}{36} = \frac{5}{12}, \quad
+  \pi_1 = \frac{9}{36} = \frac{1}{4}, \quad
+  \pi_2 = \frac{5}{36}.
+\]
+
+En decimales:
+\[
+  \boldsymbol{\pi} \approx (0.4167,\;0.2500,\;0.1389,\;0.1944).
+\]
+Verificación: $0.4167+0.2500+0.1389+0.1944=1.0000$. \checkmark
+
+\textbf{Paso 3: métricas.}
+
+Número total de máquinas ocupadas $N=C_1+C_2$:
+\begin{align*}
+  \Prob(N=0) &= \pi_0 = 5/12 \approx 0.4167, \\
+  \Prob(N=1) &= \pi_1+\pi_2 = 1/4+5/36 = 14/36 = 7/18 \approx 0.3889, \\
+  \Prob(N=2) &= \pi_3 = 7/36 \approx 0.1944.
+\end{align*}
+
+\[
+  \E[N] = 0\times\frac{5}{12} + 1\times\frac{7}{18} + 2\times\frac{7}{36}
+  = \frac{7}{18}+\frac{14}{36} = \frac{14}{36}+\frac{14}{36}
+  = \frac{28}{36} = \frac{7}{9} \approx 0.7778.
+\]
+
+\[
+  \E[N^2] = 0+\frac{7}{18}+4\times\frac{7}{36}
+  = \frac{7}{18}+\frac{28}{36} = \frac{14}{36}+\frac{28}{36}
+  = \frac{42}{36} = \frac{7}{6} \approx 1.1667.
+\]
+
+\[
+  \Var[N] = \frac{7}{6}-\Bigl(\frac{7}{9}\Bigr)^2
+  = \frac{7}{6}-\frac{49}{81}
+  = \frac{7\times 81 - 49\times 6}{6\times 81}
+  = \frac{567-294}{486} = \frac{273}{486} = \frac{91}{162}
+  \approx 0.5617.
+\]
+
+\textbf{Probabilidad de bloqueo y throughput:}
+\[
+  P_{\text{bloqueo}} = \pi_3 = 7/36 \approx 19.44\%.
+\]
+\[
+  \lambda_{\text{ef}} = 8(1-\pi_3) = 8\times\frac{29}{36}
+  = \frac{232}{36} \approx 6.444 \text{ autos/hora}.
+\]
+
+\textbf{Análisis por máquina (dos variables):}
+\begin{align*}
+  \Prob(C_1=1) &= \pi_1+\pi_3 = 1/4+7/36 = 16/36 = 4/9 \approx 0.4444, \\
+  \Prob(C_2=1) &= \pi_2+\pi_3 = 5/36+7/36 = 12/36 = 1/3 \approx 0.3333.
+\end{align*}
+
+Covarianza:
+\[
+  \E[C_1 C_2] = \pi_3 = 7/36.
+\]
+\[
+  \Cov(C_1,C_2) = \frac{7}{36}-\frac{4}{9}\times\frac{1}{3}
+  = \frac{7}{36}-\frac{4}{27} = \frac{21-16}{108} = \frac{5}{108}
+  \approx 0.0463.
+\]
+
+La covarianza positiva refleja que cuando la máquina~1 está ocupada, hay
+más probabilidad de que los autos desborden a la máquina~2.
+
+Verificación de la varianza:
+\begin{align*}
+  \Var[C_1] &= \frac{4}{9}\times\frac{5}{9} = \frac{20}{81}, \\
+  \Var[C_2] &= \frac{1}{3}\times\frac{2}{3} = \frac{2}{9}, \\
+  \Var[N] &= \frac{20}{81}+\frac{2}{9}+2\times\frac{5}{108}
+  = \frac{20}{81}+\frac{18}{81}+\frac{10}{108}.
+\end{align*}
+Llevando a común denominador (324):
+$\frac{80}{324}+\frac{72}{324}+\frac{30}{324} = \frac{182}{324}
+= \frac{91}{162} \approx 0.5617$. \checkmark
+\end{ejemplo}
+
+% ======================================================================
+%  SECCIÓN 14 — EJERCICIOS
+% ======================================================================
+\section{Ejercicios propuestos}
+
+\begin{ejercicio}[Línea de ensamblaje]
+Una línea de ensamblaje tiene tres estaciones.  Las piezas llegan a la
+estación~1 con tasa $\lambda=12$/hora.  Si la estación~1 está ocupada,
+la pieza pasa a la estación~2; si esa también está ocupada, a la~3; si
+las tres están ocupadas, la pieza se descarta.  Las tasas de servicio
+son $\mu_1=15$, $\mu_2=10$, $\mu_3=8$ piezas/hora.
+
+\begin{enumerate}[label=(\alph*)]
+  \item Modele el sistema.
+        Simplifique observando que ciertas combinaciones son imposibles
+        (¿cuáles y por qué?).
+  \item Escriba la matriz $Q$ .
+  \item Calcule $\boldsymbol{\pi}$ y la tasa de piezas descartadas.
+  \item Calcule $\E[N]$, $\Var[N]$ donde $N$ es el total de estaciones
+        ocupadas.
+\end{enumerate}
+\end{ejercicio}
+
+\begin{ejercicio}[Cola $M/M/1/3$ --- estado estable vs.\ transitorio]
+Retome el sistema $M/M/1/3$ del ejercicio de la lectura anterior
+($\lambda=10$/hora, $\mu=15$/hora, capacidad 3).
+
+\begin{enumerate}[label=(\alph*)]
+  \item Calcule la distribución estacionaria.
+  \item Calcule $\E_\pi[N]$ y $\Var_\pi[N]$.
+  \item Compare con los valores transitorios que calculó para $t=6$
+        minutos.  ¿Se ha acercado el sistema al estado estable?
+  \item Calcule la probabilidad de bloqueo y el throughput.
+\end{enumerate}
+\end{ejercicio}
+
+\begin{ejercicio}[Dos impresoras con desbordamiento]
+Una oficina tiene dos impresoras.  Los trabajos llegan con tasa
+$\lambda=20$/hora.  Un trabajo va a la impresora~1 si está libre
+($\mu_1=25$/hora); si no, va a la impresora~2 ($\mu_2=15$/hora); si
+ambas están ocupadas, el trabajo se rechaza.
+
+\begin{enumerate}[label=(\alph*)]
+  \item Escriba la generadora $Q$ ($4\times 4$).
+  \item Calcule $\boldsymbol{\pi}$.
+  \item Determine la fracción de trabajos rechazados.
+  \item Calcule $\E[N]$, $\Var[N]$ y $\Cov(C_1,C_2)$.
+  \item Un empleado dice: ``como $\lambda<\mu_1+\mu_2$, nunca debería
+        haber rechazos''.  Explique por qué está equivocado.
+\end{enumerate}
+\end{ejercicio}
+
+
+% ======================================================================
+%  BIBLIOGRAFÍA SUGERIDA
+% ======================================================================
+\section*{Bibliografía sugerida}
+
+\begin{enumerate}[nosep]
+  \item W.~J.~Stewart, \textit{Probability, Markov Chains, Queues, and
+        Simulation}, Princeton University Press, 2009.
+        Capítulos sobre distribuciones estacionarias y balance detallado.
+  \item D.~Gross, J.~F.~Shortle, J.~M.~Thompson, C.~M.~Harris,
+        \textit{Fundamentals of Queueing Theory}, 4th ed., Wiley, 2008.
+        Análisis de estado estable para sistemas de colas.
+  \item G.~Bolch, S.~Greiner, H.~de~Meer, K.~S.~Trivedi,
+        \textit{Queueing Networks and Markov Chains}, 2nd ed., Wiley, 2006.
+        Métodos de solución y métricas de desempeño.
+  \item R.~Nelson, \textit{Probability, Stochastic Processes, and Queueing
+        Theory}, Springer, 1995.
+        Tratamiento accesible del teorema ergódico y aplicaciones.
+  \item S.~M.~Ross, \textit{Introduction to Probability Models}, 12th ed.,
+        Academic Press, 2019.  Capítulos sobre CTMC y estado estable.
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,2089 @@
+\documentclass[aspectratio=1610, 10pt]{beamer}
+\usepackage{mobi-beamer}
+
+% ============================================================
+%  Verificación y Validación de Modelos de Simulación  (T3.2)
+%  Sesiones 1 y 2 — Pregrado · MoBI · Uniandes
+% ============================================================
+
+% ── Listings con paleta MoBI ──────────────────────────────────
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{mobiblue}\bfseries,
+  commentstyle=\color{deepgreen}\itshape,
+  stringstyle=\color{red!70!black},
+  numberstyle=\tiny\color{gray},
+  numbers=left, stepnumber=1,
+  breaklines=true,
+  frame=single, framerule=0.4pt,
+  rulecolor=\color{gray!50},
+  backgroundcolor=\color{mobisoftgray},
+  showstringspaces=false, tabsize=2
+}
+
+% ── Estilo común para pgfplots (igual a T3.1) ─────────────────
+\pgfplotsset{
+  every axis/.append style={
+    font=\scriptsize,
+    label style={font=\scriptsize},
+    title style={font=\footnotesize\bfseries},
+    tick label style={font=\scriptsize},
+    legend style={font=\scriptsize, draw=mobiblue!30, fill=white,
+                  fill opacity=0.9, text opacity=1},
+    grid=both, grid style={mobiblue!10, very thin},
+    major grid style={mobiblue!20},
+    axis line style={mobiblue!70},
+    tick style={mobiblue!70}
+  }
+}
+
+\title[T3.2 V\&V]{%
+  Verificación y Validación de Modelos de Simulación\\[2pt]
+  \large ¿Construimos el modelo correctamente y construimos el modelo correcto?}
+\subtitle{T3.2 · Modelado de Sistemas bajo Incertidumbre}
+\author{Alejandra Tabares Pozos}
+\institute{Universidad de los Andes · Ingeniería Industrial}
+\date{2026}
+
+% ============================================================
+\begin{document}
+% ============================================================
+
+\begin{frame}\titlepage\end{frame}
+
+% ─────────────────────────────────────────────────────────────
+% AGENDA
+% ─────────────────────────────────────────────────────────────
+\begin{frame}{Estructura de las dos sesiones}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Sesión 1 — Verificación}
+        \footnotesize
+        \emph{¿El código implementa el modelo conceptual?}
+        \begin{itemize}\itemsep1pt
+          \item Distinción formal V\&V (marco de Sargent).
+          \item \emph{Debugging} con aserciones e invariantes.
+          \item Trazas de eventos y verificación contra cálculo manual.
+          \item Pruebas unitarias (patrón AAA).
+          \item Verificación contra resultado analítico ($M/M/1$).
+          \item \textbf{Ejemplo 1} — verificación completa de un $M/M/1$ básico.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Sesión 2 — Validación}
+        \footnotesize
+        \emph{¿El modelo conceptual representa al sistema real?}
+        \begin{itemize}\itemsep1pt
+          \item Niveles de validación (Sargent).
+          \item \emph{Face validity}: protocolo y cuestionario.
+          \item Validación de supuestos: $\chi^2$ y Kolmogorov--Smirnov.
+          \item Calibración y división de muestra.
+          \item Validación I/O con prueba $t$ pareada.
+          \item Test de Turing (Schruben).
+          \item \textbf{Ejemplo 2} — bug de parametrización detectado.
+          \item \textbf{Ejemplo 3} — celda $M/E_2/1$ + sensibilidad.
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \begin{notabox}[Idea central]
+    \footnotesize
+    Validar y verificar no son trámites finales: son las herramientas con las que
+    un modelo gana \textbf{credibilidad}. Sin V\&V, ningún tomador de decisiones
+    debería actuar sobre los resultados de la simulación.
+  \end{notabox}
+\end{frame}
+
+% =============================================================
+\section{Distinción V\&V}
+% =============================================================
+
+\begin{frame}{Las dos preguntas: validación y verificación}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{alertabox}[Validación]
+        \footnotesize
+        \emph{¿Estamos construyendo el modelo \textbf{correcto}?}\\[2pt]
+        Proceso de establecer que el \textbf{modelo conceptual} es una
+        representación adecuada del sistema real \emph{para los propósitos
+        del estudio}.\\[2pt]
+        $\Rightarrow$ Compara \textbf{modelo} contra \textbf{realidad}.
+      \end{alertabox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{definicionbox}[Verificación]
+        \footnotesize
+        \emph{¿Estamos construyendo el modelo \textbf{correctamente}?}\\[2pt]
+        Proceso de establecer que la \textbf{implementación computacional}
+        corresponde fielmente al \textbf{modelo conceptual}.\\[2pt]
+        $\Rightarrow$ Compara \textbf{código} contra \textbf{modelo conceptual}.
+      \end{definicionbox}
+    \end{column}
+  \end{columns}
+
+  \vspace{6pt}
+  \begin{notabox}[Orden conceptual vs.\ orden de ejecución]
+    \footnotesize
+    \textbf{Conceptualmente, la validación es primaria}: si el modelo conceptual no
+    representa al sistema, no importa qué tan bien programado esté el código.
+    \textbf{En la práctica}, se verifica el código a medida que se programa y se
+    valida el modelo de manera \emph{iterativa} contra la realidad.
+  \end{notabox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Ubicación de V\&V en el ciclo de modelado (Sargent)}
+  \begin{center}
+    \begin{tikzpicture}[scale=0.95, transform shape, >=Stealth]
+      \node[draw=mobiblue, thick, fill=mobilightblue, rounded corners,
+            minimum width=3.4cm, minimum height=1cm, align=center]
+            (real) at (0,0) {Sistema\\real};
+      \node[draw=mobiblue, thick, fill=mobilightblue, rounded corners,
+            minimum width=3.4cm, minimum height=1cm, align=center]
+            (conc) at (6,3) {Modelo\\conceptual};
+      \node[draw=mobiblue, thick, fill=mobilightblue, rounded corners,
+            minimum width=3.4cm, minimum height=1cm, align=center]
+            (comp) at (12,0) {Modelo\\computacional};
+
+      \draw[->, very thick, mobiblue]
+        (real) -- node[above left, font=\footnotesize, sloped]{Análisis y abstracción} (conc);
+      \draw[->, very thick, mobiblue]
+        (conc) -- node[above right, font=\footnotesize, sloped]{Programación} (comp);
+      \draw[<->, very thick, princetonorange, dashed]
+        (real.east) -- node[below=2pt, font=\footnotesize\bfseries]
+        {Validación operacional (I/O)} (comp.west);
+
+      \node[draw=princetonorange, thick, fill=mobilightgold,
+            rounded corners, font=\footnotesize\bfseries, align=center]
+            at (3,2) {VALIDACIÓN\\conceptual};
+      \node[draw=mobiblue, thick, fill=mobilightblue,
+            rounded corners, font=\footnotesize\bfseries, align=center]
+            at (9,2) {VERIFICACIÓN};
+
+      \node[font=\scriptsize, align=center, gray!70!black] at (3,0.4)
+        {Datos del sistema};
+      \node[font=\scriptsize, align=center, gray!70!black] at (9,0.4)
+        {Experimentación};
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{2pt}
+  \footnotesize
+  La \textbf{validación} actúa entre el sistema real y el modelo (conceptual y
+  operacional). La \textbf{verificación} actúa exclusivamente entre el modelo
+  conceptual y su implementación.\\
+  \emph{Adaptado de Sargent (2013) y Banks et al.\ (2010).}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Comparación lado a lado}
+  \footnotesize
+  \begin{center}
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{p{3.6cm}|p{5.1cm}|p{5.1cm}}
+      \toprule
+      & \textbf{\textcolor{red!70!black}{Validación}}
+      & \textbf{\textcolor{mobiblue}{Verificación}} \\
+      \midrule
+      Pregunta            & ¿El modelo correcto?
+                          & ¿Construido correctamente? \\
+      \hline
+      Compara             & Modelo vs.\ realidad
+                          & Código vs.\ modelo conceptual \\
+      \hline
+      Naturaleza          & Estadística y de modelado
+                          & Ingeniería de software \\
+      \hline
+      Errores que detecta & Supuestos inadecuados, distribuciones mal ajustadas,
+                            lógica de negocio incorrecta
+                          & Bugs, errores lógicos, errores numéricos \\
+      \hline
+      Herramientas        & Pruebas estadísticas, expertos del dominio,
+                            datos históricos
+                          & Debugger, trazas, pruebas unitarias \\
+      \hline
+      ¿Cuándo se hace?    & Antes, durante y después de modelar
+                          & Durante y después de programar \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{6pt}
+  \begin{alertabox}[Moraleja]
+    \footnotesize
+    Un modelo puede estar \textbf{verificado} (sin bugs) pero no
+    \textbf{validado} (con supuestos incorrectos), y viceversa. Ambos procesos
+    son necesarios; ninguno sustituye al otro.
+  \end{alertabox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Marco de Sargent: tres tipos de validez}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{tikzpicture}[>=Stealth,
+        layer/.style={rectangle, rounded corners=4pt, draw=mobiblue, thick,
+          fill=mobilightblue, minimum width=4.6cm, minimum height=0.9cm,
+          align=center, font=\footnotesize}]
+        \node[layer, fill=mobilightgreen, draw=deepgreen] (real)
+          {Sistema real (operación, datos)};
+        \node[layer, above=0.7cm of real] (conc)
+          {Modelo conceptual (supuestos, lógica)};
+        \node[layer, above=0.7cm of conc] (comp)
+          {Modelo computacional (código + datos)};
+
+        \draw[->, thick, deepgreen]
+          (real.east) to[bend right=55] node[right, font=\scriptsize]
+          {\textbf{V. operacional}} (comp.east);
+        \draw[->, thick, mobiblue]
+          (conc.west) to[bend left=35] node[left, font=\scriptsize]
+          {\textbf{V. computacional}} (comp.west);
+        \draw[<-, thick, princetonorange]
+          (real.west) to[bend left=35] node[left, font=\scriptsize, align=right]
+          {\textbf{V. conceptual}} (conc.west);
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \footnotesize
+      \begin{enumerate}\itemsep3pt
+        \item \textbf{Validez conceptual}\\
+          ¿Es razonable la teoría y la estructura del modelo? Supuestos,
+          distribuciones (T3.1), lógica de eventos.
+        \item \textbf{Validez computacional}\\
+          ¿La implementación reproduce el modelo conceptual? Es la verificación.
+        \item \textbf{Validez operacional}\\
+          ¿Las salidas del modelo coinciden con las del sistema real
+          dentro de un margen aceptable?
+      \end{enumerate}
+      \vspace{4pt}
+      \emph{Validez de datos} cruza las tres capas.
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \begin{notabox}[V\&V es un proceso continuo]
+    \footnotesize
+    Cada modificación al modelo (nueva distribución, nuevo evento, nuevo parámetro)
+    requiere re-verificación y potencialmente re-validación. Un modelo validado
+    para un rango de operación puede no serlo fuera de él.
+  \end{notabox}
+\end{frame}
+
+% =============================================================
+\section*{}
+\begin{frame}[plain,c]
+  \begin{center}
+    {\Huge \color{mobiblue}\textbf{Sesión 1}}\\[0.5cm]
+    {\Large Verificación del modelo computacional}\\[0.3cm]
+    {\large \emph{Debugging}, trazas y pruebas unitarias}\\[0.4cm]
+    {\color{mobigold}\rule{0.5\textwidth}{1.2pt}}
+  \end{center}
+\end{frame}
+
+% =============================================================
+\section{Sesión 1: Verificación}
+% =============================================================
+
+\begin{frame}{Panorama de técnicas de verificación}
+  \footnotesize
+  \textbf{Cuatro categorías} (Banks et al., cap.\ 10; Law, cap.\ 5):
+
+  \vspace{4pt}
+  \begin{enumerate}\itemsep4pt
+    \item \textbf{Inspección estática del código}
+      \begin{itemize}\scriptsize\itemsep0pt
+        \item Revisión por pares (\emph{code review}, \emph{walkthroughs}).
+        \item Análisis estático automatizado (\emph{linters}).
+      \end{itemize}
+    \item \textbf{Inspección dinámica de la ejecución}
+      \hfill {\small\textit{(\textbf{debugging} y \textbf{trazas})}}
+      \begin{itemize}\scriptsize\itemsep0pt
+        \item Depuradores interactivos, \emph{logging}, \emph{breakpoints}, \emph{watch}.
+        \item Trazas de eventos y de estado.
+      \end{itemize}
+    \item \textbf{Pruebas formales}
+      \hfill {\small\textit{(\textbf{pruebas unitarias})}}
+      \begin{itemize}\scriptsize\itemsep0pt
+        \item Pruebas unitarias (\emph{unit tests}).
+        \item Pruebas de integración.
+        \item Pruebas de regresión.
+      \end{itemize}
+    \item \textbf{Pruebas de coherencia con resultados conocidos}
+      \begin{itemize}\scriptsize\itemsep0pt
+        \item Comparación con soluciones analíticas ($M/M/1$, $M/M/c$, P-K).
+        \item Casos límite (degeneración, continuidad).
+      \end{itemize}
+  \end{enumerate}
+
+  \vspace{4pt}
+  \begin{metodobox}[Filosofía operativa]
+    \scriptsize
+    Una aserción violada \emph{detiene} la simulación y \emph{señala} dónde está
+    el error. Es radicalmente más eficiente que mirar reportes de salida tratando
+    de adivinar qué celda contiene el bug.
+  \end{metodobox}
+\end{frame}
+
+% =============================================================
+\subsection{Debugging}
+% =============================================================
+
+\begin{frame}{\emph{Debugging}: definición y herramientas formales}
+  \begin{definicionbox}[\emph{Debugging}]
+    \footnotesize
+    Proceso sistemático de identificar, localizar y corregir defectos
+    (\emph{bugs}) en el código. Tres fases:
+    \emph{(i)} \textbf{detección} (síntoma observable),
+    \emph{(ii)} \textbf{localización} (causa raíz),
+    \emph{(iii)} \textbf{corrección} (solución verificada).
+  \end{definicionbox}
+
+  \vspace{4pt}
+  \footnotesize
+  \textbf{Herramientas formales que usaremos:}
+  \begin{center}\scriptsize
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{p{3.2cm} p{4.6cm} p{6.0cm}}
+      \toprule
+      \textbf{Técnica} & \textbf{Mecanismo} & \textbf{Cuándo se usa} \\
+      \midrule
+      Aserciones (\texttt{assert})
+        & Detiene la ejecución si una invariante se viola
+        & Verificar pre/post-condiciones e invariantes \\
+      \emph{Logging} estructurado
+        & Registra eventos con marca de tiempo y nivel
+        & Ejecuciones largas, reproducción a posteriori \\
+      \emph{Breakpoints}
+        & Pausa en líneas o condiciones específicas
+        & Análisis interactivo del estado \\
+      Inspección de variables (\emph{watch})
+        & Vigila el cambio de un valor
+        & Detectar cuándo una variable toma valor inesperado \\
+      Reproducibilidad por semilla
+        & Fija la semilla aleatoria
+        & Aislar bugs intermitentes \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}[fragile]{Debugging con aserciones — ejemplo $M/M/1$}
+  \footnotesize
+  \textbf{Invariantes que debe respetar el simulador:}
+  \[
+    N_{\text{sis}}(t) = N_q(t) + N_s(t),\quad N\ge 0,\quad
+    t_{\text{ev},k+1}\ge t_{\text{ev},k}
+  \]
+
+\begin{lstlisting}[language=Python]
+def manejar_salida(self, t):
+    # Pre-condiciones (deben cumplirse SIEMPRE)
+    assert t >= self.reloj, f"Tiempo retrocede: {t} < {self.reloj}"
+    assert self.n_servicio == 1, "Salida sin cliente en servicio"
+    assert self.n_cola >= 0, f"Cola negativa: {self.n_cola}"
+
+    self.reloj = t
+    self.servidos += 1
+    self.n_servicio = 0
+
+    if self.n_cola > 0:                       # Toma el siguiente
+        self.n_cola -= 1
+        self.n_servicio = 1
+        self.programar_salida(t + self.gen_servicio())
+
+    # Post-condicion: invariante de conservacion
+    assert self.llegados == self.servidos + self.n_cola + self.n_servicio, \
+           "Violacion de conservacion de clientes"
+\end{lstlisting}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}[fragile]{\emph{Logging} estructurado: bugs sutiles}
+\begin{lstlisting}[language=Python]
+import logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s [%(levelname)s] %(message)s')
+
+def manejar_llegada(self, t):
+    self.reloj = t
+    self.llegados += 1
+    logging.debug(f"LLEGADA t={t:.4f} cliente={self.llegados} cola={self.n_cola}")
+
+    if self.n_servicio == 0:
+        self.n_servicio = 1
+        ts = self.gen_servicio()
+        self.programar_salida(t + ts)
+        logging.info(f"INICIO SERV. t={t:.4f} servicio={ts:.4f}")
+    else:
+        self.n_cola += 1
+        if self.n_cola > 100:
+            logging.warning(f"COLA GRANDE: {self.n_cola} en t={t:.4f}")
+
+    self.programar_llegada(t + self.gen_interarribo())
+\end{lstlisting}
+
+  \vspace{2pt}
+  \begin{notabox}[Por qué funciona]
+    \footnotesize
+    Reconstruye la historia completa de la corrida y permite filtrar por nivel
+    (\texttt{DEBUG}, \texttt{INFO}, \texttt{WARNING}). Detecta condiciones
+    anómalas \emph{sin detener} la simulación.
+  \end{notabox}
+\end{frame}
+
+% =============================================================
+\subsection{Trazas}
+% =============================================================
+
+\begin{frame}{Trazas: definición formal}
+  \begin{definicionbox}[Traza]
+    \footnotesize
+    Una \textbf{traza} es la secuencia ordenada de \emph{tuplas de estado} del
+    sistema simulado, registradas en cada cambio de estado:
+    \[
+      \mathcal{T} = \big\{ (t_k, e_k, \mathbf{s}_k) : k=1,2,\ldots,K \big\}
+    \]
+    donde $t_k$ es el reloj de simulación, $e_k$ el evento ejecutado y
+    $\mathbf{s}_k$ el vector de estado del sistema inmediatamente después
+    del evento.
+  \end{definicionbox}
+
+  \vspace{6pt}
+  \footnotesize\textbf{Tres usos formales de la traza para verificación:}
+  \begin{enumerate}\itemsep2pt
+    \item \textbf{Inspección manual} (\emph{eyeballing}): primeras 30--50
+      líneas para revisar lógica.
+    \item \textbf{Verificación de invariantes}: chequear automáticamente
+      propiedades sobre $\mathcal{T}$ (conservación, no-negatividad, monotonía).
+    \item \textbf{Comparación con cálculo a mano}: ejecutar el modelo con
+      \emph{inputs} prefijados (no aleatorios) y verificar la traza
+      contra resultados calculados manualmente.
+  \end{enumerate}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}[fragile]{Traza $M/M/1$ con \emph{inputs} prefijados}
+  \footnotesize
+  \textbf{Inputs deterministas} (un solo cajero):
+  \begin{itemize}\scriptsize\itemsep0pt
+    \item Tiempos entre llegadas: $1{,}2;\;0{,}5;\;1{,}8;\;0{,}6;\;2{,}1$
+    \item Tiempos de servicio: \;\;\;\;\;\;\;\;$0{,}8;\;1{,}5;\;0{,}4;\;1{,}1;\;0{,}7$
+  \end{itemize}
+
+  \vspace{4pt}
+  \textbf{Traza esperada (calculada a mano):}
+\begin{lstlisting}
+  t        Evento    Cliente  N_cola  N_serv  Acumulado
+  1.200    LLEG      C1       0       1       L=1
+  2.000    SAL       C1       0       0       (servicio = 0.8)
+  1.700    LLEG      C2       0       1       (1.2+0.5)
+  3.200    SAL       C2       0       0       (servicio = 1.5)
+  3.500    LLEG      C3       0       1       (1.7+1.8)
+  3.900    SAL       C3       0       0       (servicio = 0.4)
+  4.100    LLEG      C4       0       1       (3.5+0.6)
+  5.200    SAL       C4       0       0       (servicio = 1.1)
+  6.200    LLEG      C5       0       1
+  6.900    SAL       C5       0       0
+\end{lstlisting}
+
+  \vspace{2pt}
+  \begin{alertabox}[Regla de oro]
+    \footnotesize
+    La traza producida por el simulador debe ser \emph{idéntica} línea por línea.
+    Cualquier diferencia $\Rightarrow$ \textbf{bug localizado en ese evento}.
+  \end{alertabox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Verificación automática de invariantes sobre la traza}
+  \textbf{Invariantes formales} que se chequean al recorrer $\mathcal{T}$:
+
+  \vspace{4pt}
+  \footnotesize
+  \begin{center}
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabular}{p{4.5cm} p{8.5cm}}
+      \toprule
+      \textbf{Invariante} & \textbf{Expresión formal} \\
+      \midrule
+      Monotonicidad del reloj      & $t_{k+1} \geq t_k \;\;\forall k$ \\
+      No-negatividad de la cola    & $N_{q,k} \geq 0 \;\;\forall k$ \\
+      Conservación de clientes     & $A_k = D_k + N_{\text{sis},k}$
+                                     (arrivals = departures + WIP) \\
+      Capacidad del servidor       & $0 \leq N_{\text{serv},k} \leq c$ \\
+      FCFS (orden de salida)       & si $a_i < a_j \Rightarrow d_i \leq d_j$ \\
+      Trabajo conservado (Little)  & $L = \lambda W$ en estado estacionario
+                                     (con tolerancia) \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{6pt}
+  \begin{metodobox}[Implementación]
+    \footnotesize
+    Un \emph{post-procesador} lee la traza y verifica cada invariante.
+    Si alguna falla $\Rightarrow$ línea exacta donde aparece el bug.
+    El costo computacional es \emph{lineal} en el número de eventos,
+    despreciable frente al de la simulación.
+  \end{metodobox}
+\end{frame}
+
+% =============================================================
+\subsection{Pruebas unitarias}
+% =============================================================
+
+\begin{frame}{Pruebas unitarias: definición y patrón AAA}
+  \begin{definicionbox}[Prueba unitaria]
+    \footnotesize
+    Programa que ejecuta una unidad mínima de código (función, método o módulo)
+    con \emph{inputs} controlados y verifica automáticamente que el \emph{output}
+    coincida con el valor esperado.
+  \end{definicionbox}
+
+  \vspace{4pt}
+  \footnotesize
+  \textbf{Patrón \emph{Arrange–Act–Assert} (AAA):}
+  \begin{enumerate}\itemsep1pt
+    \item \textbf{Arrange}: preparar el escenario (datos, semilla, instancia).
+    \item \textbf{Act}: ejecutar la unidad bajo prueba.
+    \item \textbf{Assert}: comparar el resultado con el valor esperado.
+  \end{enumerate}
+
+  \vspace{4pt}
+  \textbf{Tres categorías de pruebas para un simulador:}
+  \begin{itemize}\itemsep1pt
+    \item \textbf{Pruebas de límite}: $\lambda=0$, $\mu\to\infty$, capacidad $\to 0$.
+    \item \textbf{Pruebas de invariantes}: conservación, no-negatividad, FCFS.
+    \item \textbf{Pruebas contra valor analítico}: $M/M/1$, $M/M/c$, $M/M/1/K$, $M/G/1$ (P-K).
+  \end{itemize}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}[fragile]{Pruebas unitarias para un $M/M/1$ (\texttt{pytest})}
+\begin{lstlisting}[language=Python]
+import pytest
+from simulador import SimuladorMM1
+
+def test_sin_llegadas_servidor_ocioso():
+    sim = SimuladorMM1(lam=0.0, mu=1.0, semilla=42)
+    sim.correr(t_max=1000)
+    assert sim.servidos == 0
+    assert sim.utilizacion() == 0.0
+
+def test_conservacion_clientes():
+    sim = SimuladorMM1(lam=0.8, mu=1.0, semilla=42)
+    sim.correr(t_max=1000)
+    assert sim.llegados == sim.servidos + sim.en_sistema()
+
+def test_estado_estacionario_vs_analitico():
+    """L = rho/(1-rho) para M/M/1; rho=0.5 -> L=1.0"""
+    sim = SimuladorMM1(lam=0.5, mu=1.0, semilla=42)
+    sim.correr(t_max=200_000, t_warmup=20_000)
+    assert sim.L_promedio() == pytest.approx(1.0, abs=0.05)
+
+def test_rho_mayor_uno_cola_crece():
+    sim = SimuladorMM1(lam=1.2, mu=1.0, semilla=42)
+    sim.correr(t_max=10_000)
+    assert sim.cola_max() > 100   # Sistema inestable
+\end{lstlisting}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{$M/M/1$ como banco de pruebas — verificación contra teoría}
+  \footnotesize
+  \textbf{Por qué $M/M/1$:} solución cerrada conocida; permite comprobar el
+  simulador con alta precisión.
+
+  \vspace{2pt}
+  \begin{formulabox}[Fórmulas analíticas]
+    \footnotesize
+    Con $\rho=\lambda/\mu<1$:
+    \[
+      L=\frac{\rho}{1-\rho},\quad
+      L_q=\frac{\rho^2}{1-\rho},\quad
+      W=\frac{1}{\mu-\lambda},\quad
+      W_q=\frac{\rho}{\mu-\lambda}
+    \]
+  \end{formulabox}
+
+  \vspace{4pt}
+  \textbf{Tabla de verificación} ($\lambda=0{,}8$; $\mu=1{,}0$; $\rho=0{,}8$;
+  30 réplicas; $T=10\,000$; \emph{warm-up} $=1\,000$):
+  \begin{center}\scriptsize
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabular}{lcccc}
+      \toprule
+      \textbf{Métrica} & \textbf{Analítico} & \textbf{Simulación}
+        & \textbf{IC 95\%} & \textbf{¿Aprueba?} \\
+      \midrule
+      $L$    & $4{,}000$ & $4{,}018$ & $[3{,}91;\;4{,}13]$ & \textcolor{deepgreen}{$\checkmark$} \\
+      $L_q$  & $3{,}200$ & $3{,}215$ & $[3{,}10;\;3{,}33]$ & \textcolor{deepgreen}{$\checkmark$} \\
+      $W$    & $5{,}000$ & $5{,}027$ & $[4{,}88;\;5{,}17]$ & \textcolor{deepgreen}{$\checkmark$} \\
+      $W_q$  & $4{,}000$ & $4{,}020$ & $[3{,}88;\;4{,}16]$ & \textcolor{deepgreen}{$\checkmark$} \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{2pt}
+  \begin{notabox}[Criterio formal]
+    \footnotesize
+    Verificación aceptada si el valor analítico cae dentro del IC al 95\% para
+    \textbf{todas} las métricas.
+  \end{notabox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{$W_q$ vs $\rho$: prueba de coherencia teórica}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5.4cm,
+          xlabel={$\rho$ (utilización)},
+          ylabel={$W_q$ (unidades de tiempo)},
+          xmin=0, xmax=0.99, ymin=0, ymax=20,
+          legend pos=north west, samples=120]
+          \addplot[thick, mobiblue, domain=0.01:0.97] {x/(1-x)};
+          \addlegendentry{Teórico $M/M/1$ ($\mu=1$)}
+          \addplot[only marks, mark=*, mark size=1.5pt, princetonorange]
+            coordinates {
+              (0.0,0.00) (0.1,0.10) (0.2,0.27) (0.3,0.42) (0.4,0.69)
+              (0.5,1.05) (0.6,1.55) (0.7,2.40) (0.8,4.02) (0.9,9.18)
+              (0.95,18.50)
+            };
+          \addlegendentry{Simulación (30 réplicas)}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \footnotesize
+      \textbf{Lectura:}
+      \begin{itemize}\itemsep1pt
+        \item Los puntos siguen la curva en todo el rango.
+        \item Comportamiento asintótico correcto cuando $\rho\to 1$
+          ($W_q\to\infty$).
+        \item No hay desviaciones sistemáticas (sesgo).
+      \end{itemize}
+
+      \vspace{4pt}
+      \begin{alertabox}[Si la curva no diverge]
+        \footnotesize
+        Hay un truncamiento o un límite ``invisible'' en el código (cola con
+        capacidad accidentalmente fijada).
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =============================================================
+% EJEMPLO 1 — Verificación completa M/M/1 básico
+% =============================================================
+\section{Ejemplo 1 (mínimo)}
+
+\begin{frame}{Ejemplo 1 — Verificación completa de un $M/M/1$}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{ejemplobox}[Sistema]
+        \footnotesize
+        Cola $M/M/1$ con $\lambda=3$ clientes/min y $\mu=5$ clientes/min.
+        Antes de usar el modelo para análisis, se aplica el catálogo
+        completo de pruebas de verificación.
+      \end{ejemplobox}
+
+      \vspace{4pt}
+      \textbf{Valores analíticos de referencia:}
+      \[
+        \rho=\frac{\lambda}{\mu}=0{,}60
+      \]
+      \[
+        W_q=\frac{\rho}{\mu(1-\rho)}=\frac{0{,}6}{5\times 0{,}4}=0{,}30 \text{ min}
+      \]
+      \[
+        L_q=\frac{\rho^2}{1-\rho}=\frac{0{,}36}{0{,}4}=0{,}90 \text{ clientes}
+      \]
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{tikzpicture}[>=Stealth]
+        \node[circle, draw=mobiblue, fill=mobilightblue, thick,
+              minimum size=0.9cm, font=\scriptsize] (q) at (0,0) {Cola};
+        \node[circle, draw=deepgreen, fill=mobilightgreen, thick,
+              minimum size=0.9cm, font=\scriptsize] (s) at (1.7,0) {$\mu$};
+        \node[font=\scriptsize] (in) at (-1.6,0) {$\lambda=3$};
+        \node[font=\scriptsize] (out) at (3.4,0) {salidas};
+        \draw[->, thick, mobiblue] (in) -- (q);
+        \draw[->, thick, mobiblue] (q) -- (s);
+        \draw[->, thick, deepgreen] (s) -- (out);
+        \node[font=\tiny] at (0.85,-0.8) {$\rho=0{,}6$};
+      \end{tikzpicture}
+
+      \vspace{4pt}
+      \textbf{Pruebas a realizar:}
+      \begin{itemize}\footnotesize\itemsep1pt
+        \item Degenerada $\lambda=0$
+        \item Conservación
+        \item Traza manual
+        \item Tráfico extremo $\rho\to 1$
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo 1 — Resultados de las pruebas}
+  \begin{center}\footnotesize
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabular}{lll}
+      \toprule
+      \textbf{Prueba} & \textbf{Esperado} & \textbf{Observado} \\
+      \midrule
+      Degenerada $\lambda=0$, $T=1000$
+        & $N(t)\equiv 0$, $\rho=0$, $W_q=0$
+        & Exactamente $0$ en todas las métricas $\checkmark$ \\
+      Conservación, $T=1000$
+        & $\sum_{\text{lleg}} = \sum_{\text{sal}} + N(T)$
+        & $3\,012 = 3\,012 + 0$ $\checkmark$ \\
+      Traza primeros 6 eventos
+        & Coincide con cálculo manual
+        & Tiempos exactos al 4to decimal $\checkmark$ \\
+      Tráfico extremo, $\rho=0{,}998$, $T=5000$
+        & $L_q$ crece sin cota
+        & $L_q > 500$ al final $\checkmark$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{8pt}
+  \begin{tikzpicture}
+    \begin{axis}[width=12cm, height=3.4cm,
+      xlabel={tiempo (min)}, ylabel={$N(t)$},
+      xmin=0, xmax=5000, ymin=0, ymax=520,
+      legend pos=north west]
+      \addplot[thick, mobiblue] coordinates {
+        (0,0) (200,5) (500,18) (1000,52) (1500,103) (2000,170)
+        (2500,238) (3000,305) (3500,372) (4000,432) (4500,484) (5000,520)
+      };
+      \addlegendentry{$\rho=0{,}998$ — divergencia}
+      \addplot[thick, deepgreen, dashed] coordinates {
+        (0,0) (200,1) (500,1) (1000,1) (1500,1) (2000,1) (2500,1)
+        (3000,1) (3500,1) (4000,1) (4500,1) (5000,1)
+      };
+      \addlegendentry{$\rho=0{,}60$ — estable}
+    \end{axis}
+  \end{tikzpicture}
+
+  \vspace{2pt}
+  \begin{resultadobox}[Verificación cerrada]
+    \footnotesize
+    Todas las pruebas pasan. El código implementa fielmente el modelo conceptual
+    $M/M/1$. Procedemos a \emph{validar} la salida.
+  \end{resultadobox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Cierre Sesión 1}
+  \begin{block}{Lo que hemos hecho}
+    Hemos cubierto las tres familias de técnicas formales para verificar el
+    modelo computacional:
+  \end{block}
+
+  \vspace{6pt}
+  \begin{enumerate}\itemsep2pt
+    \item \textbf{\emph{Debugging}} con aserciones de invariantes y
+      \emph{logging} estructurado.
+    \item \textbf{Trazas} con verificación contra cálculo manual y chequeo
+      automático de invariantes.
+    \item \textbf{Pruebas unitarias} con patrón AAA, incluyendo pruebas
+      contra resultados analíticos.
+  \end{enumerate}
+
+  \vspace{6pt}
+  \begin{alertblock}{Próxima sesión}
+    Suponer ahora que el modelo está \emph{verificado} (el código hace lo que
+    dice el modelo conceptual).\\
+    \textbf{¿Pero el modelo conceptual representa al sistema real?}\\
+    Esa es la pregunta de la \textbf{validación}.
+  \end{alertblock}
+\end{frame}
+
+% =============================================================
+\section*{}
+\begin{frame}[plain,c]
+  \begin{center}
+    {\Huge \color{princetonorange}\textbf{Sesión 2}}\\[0.5cm]
+    {\Large Calibración y Validación}\\
+    {\large del modelo conceptual}\\[0.4cm]
+    {\normalsize \emph{Face validity} $\,\cdot\,$ Validación de supuestos
+      $\,\cdot\,$ Calibración\\
+      Input--Output $\,\cdot\,$ Test de Turing $\,\cdot\,$ Sensibilidad}\\[0.4cm]
+    {\color{mobigold}\rule{0.5\textwidth}{1.2pt}}
+  \end{center}
+\end{frame}
+
+% =============================================================
+\section{Sesión 2: Validación}
+% =============================================================
+
+\begin{frame}{Niveles de validación (Sargent, 2013)}
+  \begin{center}
+    \begin{tikzpicture}[node distance=0.4cm]
+      \node[draw=princetonorange, very thick, rounded corners,
+            fill=mobilightgold, minimum width=11.5cm, minimum height=0.9cm,
+            font=\small] (op)
+        {\textbf{Validación operacional / Input--Output}: salidas del modelo
+          $\approx$ salidas reales};
+      \node[draw=princetonorange, very thick, rounded corners,
+            fill=mobilightgold!80, minimum width=11.5cm, minimum height=0.9cm,
+            font=\small, below=of op] (con)
+        {\textbf{Validación conceptual}: estructura y supuestos del modelo
+          $\approx$ realidad};
+      \node[draw=princetonorange, very thick, rounded corners,
+            fill=mobilightgold!60, minimum width=11.5cm, minimum height=0.9cm,
+            font=\small, below=of con] (datos)
+        {\textbf{Validación de datos}: distribuciones de \emph{inputs}
+          ajustadas correctamente};
+      \node[draw=princetonorange, very thick, rounded corners,
+            fill=mobilightgold!40, minimum width=11.5cm, minimum height=0.9cm,
+            font=\small, below=of datos] (face)
+        {\textbf{\emph{Face validity}}: el modelo es razonable a juicio de expertos};
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{6pt}
+  \begin{notabox}[Filosofía de fondo]
+    \footnotesize
+    Ningún test individual ``valida'' el modelo. La validación es una
+    \textbf{acumulación de evidencia} (Balci, 1997). Cada técnica aporta un
+    argumento. La confianza en el modelo crece con la cantidad y diversidad
+    de pruebas superadas.
+  \end{notabox}
+\end{frame}
+
+% =============================================================
+\subsection{Face Validity}
+% =============================================================
+
+\begin{frame}{\emph{Face Validity}: protocolo formal}
+  \begin{definicionbox}[\emph{Face validity}]
+    \footnotesize
+    Evaluación cualitativa del modelo por parte de \textbf{expertos del dominio}
+    (no necesariamente modeladores) sobre si la estructura, los supuestos y el
+    comportamiento del modelo \emph{aparentan} ser razonables.
+  \end{definicionbox}
+
+  \vspace{4pt}
+  \begin{metodobox}[Protocolo de \emph{face validity} (Sargent)]
+    \footnotesize
+    \begin{enumerate}\itemsep1pt
+      \item Identificar 3--5 expertos del sistema real (operadores, gerentes, ingenieros).
+      \item Presentarles, por separado:
+        \begin{itemize}\scriptsize\itemsep0pt
+          \item Diagrama de flujo del modelo conceptual.
+          \item Lista explícita de supuestos.
+          \item Animación o resultados gráficos del modelo.
+        \end{itemize}
+      \item Aplicar un cuestionario estructurado.
+      \item Documentar discrepancias y \textbf{re-modelar} antes de continuar.
+    \end{enumerate}
+  \end{metodobox}
+
+  \vspace{4pt}
+  \footnotesize
+  \textbf{Ejemplo (call center):} el supervisor observa la animación. Detecta que
+  el modelo nunca refleja ``rebalanceos de agentes a otra línea''. Esto cambia
+  la \emph{estructura} del modelo, no solo sus parámetros.
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Cuestionario estructurado para \emph{face validity}}
+  \footnotesize
+  \textbf{Plantilla} (puntuación 1 = totalmente en desacuerdo;
+  5 = totalmente de acuerdo):
+
+  \vspace{2pt}
+  \begin{center}
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{p{10cm}c}
+      \toprule
+      \textbf{Ítem} & \textbf{Puntaje} \\
+      \midrule
+      1.\ Las entidades modeladas (clientes, agentes, recursos) corresponden
+          a las que existen en el sistema real.
+        & \rule[-2pt]{0.6cm}{0.4pt} \\
+      2.\ Los eventos modelados cubren los procesos relevantes del sistema.
+        & \rule[-2pt]{0.6cm}{0.4pt} \\
+      3.\ La política de operación implementada coincide con la real.
+        & \rule[-2pt]{0.6cm}{0.4pt} \\
+      4.\ Los volúmenes y tiempos observados en la animación parecen realistas.
+        & \rule[-2pt]{0.6cm}{0.4pt} \\
+      5.\ Los casos extremos (picos, fallas, ausencias) están razonablemente
+          representados.
+        & \rule[-2pt]{0.6cm}{0.4pt} \\
+      6.\ Las exclusiones del modelo (qué \emph{no} se modela) están justificadas.
+        & \rule[-2pt]{0.6cm}{0.4pt} \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{4pt}
+  \begin{notabox}[Criterio]
+    \footnotesize
+    Promedio $\geq 4{,}0$ \textbf{y} ningún ítem por debajo de 3 (todos los
+    expertos). De lo contrario, revisar el modelo.\\
+    \emph{Inspirado en Sargent (2013) y Balci (1997).}
+  \end{notabox}
+\end{frame}
+
+% =============================================================
+\subsection{Validación de supuestos}
+% =============================================================
+
+\begin{frame}{Validación de supuestos: estructurales y de datos}
+  \footnotesize
+  \textbf{Dos categorías formales} (Law, cap.\ 5):
+
+  \vspace{2pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Supuestos estructurales}
+        \footnotesize
+        Sobre la \emph{lógica} del sistema:
+        \begin{itemize}\itemsep0pt
+          \item Disciplina de cola (FIFO, prioridad).
+          \item Independencia entre recursos.
+          \item Bloqueo, abandonos, reintentos.
+          \item Política de despacho.
+        \end{itemize}
+        \textbf{Validación:} observación directa, entrevistas con operadores,
+        manuales de operación.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Supuestos sobre datos}
+        \footnotesize
+        Sobre las \emph{distribuciones} de los \emph{inputs}:
+        \begin{itemize}\itemsep0pt
+          \item Tiempos entre llegadas $\sim\mathrm{Exp}(\lambda)$.
+          \item Tiempos de servicio $\sim\mathrm{LogN}(\mu,\sigma)$.
+          \item Independencia entre observaciones.
+          \item Estacionariedad.
+        \end{itemize}
+        \textbf{Validación:} pruebas estadísticas formales
+        (\emph{goodness-of-fit}).
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \begin{notabox}[Lazo con T3.1]
+    \footnotesize
+    Las pruebas $\chi^2$, Kolmogorov--Smirnov y Anderson--Darling vistas en T3.1
+    se usan ahora con un \textbf{propósito explícito de validación}: aceptar o
+    rechazar la hipótesis estructural sobre los datos del sistema real.
+  \end{notabox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Validación estructural — sucursal bancaria}
+  \footnotesize
+  \textbf{Sistema:} sucursal con 3 cajeros, una sola cola común.
+
+  \vspace{2pt}
+  \textbf{Supuestos del modelo conceptual:}
+  \begin{enumerate}\itemsep0pt
+    \item Cola única, FIFO.
+    \item Cuando un cajero queda libre, toma al primero de la cola.
+    \item Servicios independientes entre cajeros.
+    \item No hay abandonos.
+  \end{enumerate}
+
+  \vspace{4pt}
+  \textbf{Procedimiento de validación estructural:}
+  \begin{center}
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{p{4.5cm} p{8.5cm}}
+      \toprule
+      \textbf{Supuesto} & \textbf{Cómo validar} \\
+      \midrule
+      Cola única FIFO          & Observar 2 h en sucursal: ¿hay corte de fila?
+                                 ¿saltos? \\
+      Cajero libre toma al primero
+                               & Observar transiciones: ¿algún cajero llama por
+                                 número? \\
+      Servicios independientes & Comparar tiempos de servicio entre cajeros
+                                 (ANOVA). \\
+      Sin abandonos            & Conteo de clientes que entran vs.\ que salen
+                                 sin servicio. \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{4pt}
+  \begin{alertabox}[Hallazgo típico]
+    \footnotesize
+    Se detecta un 4\% de abandonos $\Rightarrow$ \textbf{el supuesto 4 falla},
+    hay que modelar abandonos. Esto no se descubre con pruebas estadísticas;
+    se descubre \emph{mirando el sistema}.
+  \end{alertabox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Validación de datos: prueba $\chi^2$ de bondad de ajuste}
+  \begin{definicionbox}[Prueba $\chi^2$]
+    \footnotesize
+    \textbf{Hipótesis:} $H_0$: los datos provienen de la distribución $F_0$
+    propuesta.\\
+    \textbf{Estadístico:}
+    \[
+      \chi^2_0 = \sum_{i=1}^{k} \frac{(O_i - E_i)^2}{E_i}
+    \]
+    $O_i$ = frecuencia observada en la clase $i$;
+    $E_i = n\,p_i$ = frecuencia esperada bajo $F_0$.\\
+    \textbf{Distribución:} $\chi^2_0 \sim \chi^2_{k-s-1}$ bajo $H_0$, con
+    $s$ = parámetros estimados de los datos.\\
+    \textbf{Decisión:} rechazar $H_0$ si $\chi^2_0 > \chi^2_{\alpha,\,k-s-1}$.
+  \end{definicionbox}
+
+  \vspace{4pt}
+  \begin{notabox}[Reglas prácticas]
+    \footnotesize
+    (i) cada $E_i \geq 5$;\quad
+    (ii) usar al menos $k=5$ clases;\quad
+    (iii) preferir clases de \emph{probabilidad igual} bajo $F_0$.
+  \end{notabox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{$\chi^2$ trabajado — ¿interarribos $\sim$ Exponencial?}
+  \footnotesize
+  \textbf{Datos:} $n=100$ tiempos entre llegadas a un cajero. Media muestral
+  $\bar X=2{,}50$ min $\Rightarrow \hat\lambda=1/\bar X=0{,}40$.
+
+  \vspace{2pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Construcción de clases con probabilidades iguales}
+      ($k=5$, $p_i=0{,}20$):
+      \begin{center}\scriptsize
+        \renewcommand{\arraystretch}{1.15}
+        \begin{tabular}{cccccc}
+          \toprule
+          $i$ & Intervalo & $p_i$ & $E_i$ & $O_i$ & $\frac{(O-E)^2}{E}$ \\
+          \midrule
+          1 & $[0;\;0{,}558)$        & 0.20 & 20 & 23 & 0.450 \\
+          2 & $[0{,}558;\;1{,}277)$  & 0.20 & 20 & 17 & 0.450 \\
+          3 & $[1{,}277;\;2{,}291)$  & 0.20 & 20 & 18 & 0.200 \\
+          4 & $[2{,}291;\;4{,}023)$  & 0.20 & 20 & 24 & 0.800 \\
+          5 & $[4{,}023;\;\infty)$   & 0.20 & 20 & 18 & 0.200 \\
+          \midrule
+          \multicolumn{5}{r}{$\chi^2_0=$} & \textbf{2.100} \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+
+      \vspace{2pt}
+      Con $\alpha=0{,}05$, $k=5$, $s=1$: $\chi^2_{0{,}05,\,3}=7{,}815$.
+      Como $2{,}10 < 7{,}815$ \textbf{no se rechaza $H_0$}.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.6cm,
+          title={Densidad $\chi^2_3$ y región de rechazo},
+          xlabel={$x$}, ylabel={$f(x)$},
+          xmin=0, xmax=14, ymin=0, ymax=0.27,
+          legend pos=north east]
+          \addplot[name path=A, thick, mobiblue, domain=0.01:14, samples=160]
+            {(1/(2^1.5*1.7725))*x^0.5*exp(-x/2)};
+          \addlegendentry{$\chi^2_3$}
+          \addplot[name path=B, draw=none, domain=7.815:14, samples=80]
+            {(1/(2^1.5*1.7725))*x^0.5*exp(-x/2)};
+          \addplot[fill=princetonorange!30] fill between[of=A and B,
+            soft clip={domain=7.815:14}];
+          \draw[thick, princetonorange, dashed] (axis cs:7.815,0)
+            -- (axis cs:7.815,0.05) node[above, font=\tiny]{$\chi^2_{0{,}05}$};
+          \draw[thick, mobiblue] (axis cs:2.10,0)
+            -- (axis cs:2.10,0.18) node[above, font=\tiny]{$\chi^2_0=2{,}10$};
+        \end{axis}
+      \end{tikzpicture}
+      \vspace{-2pt}
+      {\centering\scriptsize El estadístico cae lejos de la región crítica.\par}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \begin{resultadobox}[Conclusión]
+    \footnotesize
+    \textcolor{deepgreen}{El supuesto exponencial es razonable para los interarribos}
+    a este nivel de evidencia.
+  \end{resultadobox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Validación de datos: prueba de Kolmogorov--Smirnov}
+  \begin{definicionbox}[Prueba KS]
+    \footnotesize
+    \textbf{Estadístico:}
+    \[
+      D_n = \sup_x \big| F_n(x) - F_0(x) \big|
+    \]
+    $F_n$ = CDF empírica; $F_0$ = CDF teórica propuesta.\\
+    \textbf{Decisión:} rechazar $H_0$ si $D_n > D_{\alpha,n}$ (valor crítico).
+  \end{definicionbox}
+
+  \vspace{4pt}
+  \footnotesize
+  \textbf{Ventajas sobre $\chi^2$:}
+  \begin{itemize}\itemsep1pt
+    \item No requiere agrupación en clases (válido para muestras pequeñas).
+    \item Más potente para distribuciones continuas.
+  \end{itemize}
+
+  \vspace{4pt}
+  \begin{alertabox}[Limitación]
+    \footnotesize
+    Cuando los parámetros se estiman de los datos (Exp, Normal, Weibull) los
+    valores críticos tabulados son \textbf{conservadores}. Hay tablas corregidas:
+    \textbf{Lilliefors} (normal), \textbf{KS para exponencial con} $\hat\lambda$.
+  \end{alertabox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{KS trabajado — muestra pequeña de tiempos de servicio}
+  \footnotesize
+  \textbf{Datos:} $n=10$ tiempos de servicio (min):
+  $\{0{,}45;\;0{,}80;\;1{,}20;\;1{,}55;\;2{,}10;\;2{,}40;\;3{,}05;\;3{,}80;\;4{,}50;\;6{,}15\}$.\\
+  $\bar X=2{,}60 \Rightarrow \hat\lambda=0{,}3846$. $H_0$: Exp$(\hat\lambda)$.
+
+  \vspace{2pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{center}\scriptsize
+        \renewcommand{\arraystretch}{1.15}
+        \begin{tabular}{cccccc}
+          \toprule
+          $i$ & $x_{(i)}$ & $F_n$ & $F_0$ & $|F_n-F_0|$ & $|F_n^- - F_0|$ \\
+          \midrule
+          1  & 0.45 & 0.10 & 0.1585 & 0.0585 & 0.1585 \\
+          2  & 0.80 & 0.20 & 0.2659 & 0.0659 & 0.1659 \\
+          3  & 1.20 & 0.30 & 0.3700 & 0.0700 & 0.1700 \\
+          4  & 1.55 & 0.40 & 0.4493 & 0.0493 & 0.1493 \\
+          5  & 2.10 & 0.50 & 0.5538 & 0.0538 & 0.1538 \\
+          6  & 2.40 & 0.60 & 0.6020 & 0.0020 & 0.1020 \\
+          7  & 3.05 & 0.70 & 0.6904 & 0.0096 & 0.0904 \\
+          8  & 3.80 & 0.80 & 0.7676 & 0.0324 & 0.0676 \\
+          9  & 4.50 & 0.90 & 0.8254 & 0.0746 & 0.0254 \\
+          10 & 6.15 & 1.00 & 0.9062 & 0.0938 & 0.0062 \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+
+      \vspace{2pt}
+      $D_{10}=0{,}1700$. Crítico (Lilliefors-exp): $D_{0{,}05;\,10}\approx 0{,}338$.\\
+      $0{,}170 < 0{,}338 \Rightarrow$
+      \textcolor{deepgreen}{no se rechaza $H_0$}.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.6cm,
+          title={ECDF $F_n$ vs.\ teórica $F_0$},
+          xlabel={$x$ (min)}, ylabel={$F(x)$},
+          xmin=0, xmax=7, ymin=0, ymax=1.05,
+          legend pos=south east]
+          \addplot[const plot, thick, mobiblue, mark=none] coordinates {
+            (0,0) (0.45,0) (0.45,0.10) (0.80,0.10) (0.80,0.20)
+            (1.20,0.20) (1.20,0.30) (1.55,0.30) (1.55,0.40)
+            (2.10,0.40) (2.10,0.50) (2.40,0.50) (2.40,0.60)
+            (3.05,0.60) (3.05,0.70) (3.80,0.70) (3.80,0.80)
+            (4.50,0.80) (4.50,0.90) (6.15,0.90) (6.15,1.00) (7,1.00)
+          };
+          \addlegendentry{$F_n$}
+          \addplot[thick, princetonorange, domain=0:7, samples=120]
+            {1-exp(-0.3846*x)};
+          \addlegendentry{Exp$(0{,}3846)$}
+          \draw[thick, deepgreen, dashed] (axis cs:1.20,0.30)
+            -- (axis cs:1.20,0.47);
+          \node[font=\tiny, deepgreen, right] at (axis cs:1.25,0.38) {$D_{10}$};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =============================================================
+\subsection{Calibración}
+% =============================================================
+
+\begin{frame}{Calibración: definición y proceso}
+  \begin{definicionbox}[Calibración]
+    \footnotesize
+    Ajuste iterativo de los \textbf{parámetros} y, ocasionalmente, de la
+    \textbf{estructura} del modelo, hasta que sus salidas reproducen
+    razonablemente las del sistema real bajo condiciones conocidas.
+  \end{definicionbox}
+
+  \vspace{4pt}
+  \footnotesize
+  \textbf{Calibración $\neq$ Validación:}
+  \begin{itemize}\itemsep1pt
+    \item \textbf{Calibrar:} \emph{ajustar} para que el modelo se parezca a los datos.
+    \item \textbf{Validar:} \emph{probar} el modelo contra datos
+      \textbf{independientes} a los usados para calibrar.
+  \end{itemize}
+
+  \vspace{6pt}
+  \begin{metodobox}[Procedimiento de división de muestra]
+    \footnotesize
+    \begin{enumerate}\itemsep1pt
+      \item Particionar los datos en \textbf{conjunto de calibración} (70\%) y
+        \textbf{conjunto de validación} (30\%).
+      \item Ajustar parámetros sobre el conjunto de calibración (MLE).
+      \item Correr la simulación y comparar con el conjunto de validación.
+      \item Si el desempeño en validación es pobre, revisar
+        \emph{estructura} (no solo parámetros) y repetir.
+    \end{enumerate}
+  \end{metodobox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Ejemplo de calibración — tiempos de servicio del cajero}
+  \footnotesize
+  \textbf{Sistema:} sucursal bancaria. $n=600$ observaciones de tiempos de servicio.
+
+  \vspace{2pt}
+  \textbf{Paso 1.\ Partición:}\\
+  Calibración: 420 obs (70\%).\quad Validación: 180 obs (30\%).
+
+  \vspace{4pt}
+  \textbf{Paso 2.\ Calibración por máxima verosimilitud:}\\
+  Suponemos $\mathrm{LogN}(\mu,\sigma)$. MLE sobre el conjunto de calibración:\\
+  $\hat\mu=0{,}812$, $\hat\sigma=0{,}443$ \quad ($\bar X_{\text{cal}}=2{,}48$ min).
+
+  \vspace{4pt}
+  \textbf{Paso 3.\ Validación cruzada:} prueba KS de los 180 datos de validación
+  contra $\mathrm{LogN}(0{,}812;\,0{,}443)$.\\
+  $D_{180}=0{,}061$. Crítico Lilliefors $=0{,}066$ a $\alpha=0{,}05$.\\
+  \textcolor{deepgreen}{$0{,}061 < 0{,}066 \Rightarrow$ ajuste valida en datos no usados.}
+
+  \vspace{6pt}
+  \begin{alertabox}[Advertencia]
+    \footnotesize
+    Si la prueba KS hubiera fallado en la \emph{misma} muestra usada para calibrar,
+    no significaría nada (autocomplacencia). La prueba en \textbf{datos
+    independientes} es lo que da validez.
+  \end{alertabox}
+\end{frame}
+
+% =============================================================
+\subsection{Validación Input-Output}
+% =============================================================
+
+\begin{frame}{Validación Input--Output: idea general}
+  \begin{definicionbox}[Validación I/O]
+    \footnotesize
+    Comparar las \textbf{salidas} del modelo de simulación con las
+    \textbf{salidas observadas} del sistema real, cuando ambos operan bajo
+    \textbf{las mismas condiciones de entrada}.
+  \end{definicionbox}
+
+  \vspace{6pt}
+  \begin{center}
+    \begin{tikzpicture}[node distance=0.8cm, >=Stealth]
+      \node[draw=mobiblue, fill=mobilightblue, rounded corners,
+            minimum width=2.5cm, minimum height=1cm, font=\footnotesize] (in)
+        {Mismos \emph{inputs}};
+      \node[draw=mobiblue, fill=mobilightblue, rounded corners,
+            minimum width=3cm, minimum height=1cm, right=of in,
+            yshift=1cm, font=\footnotesize] (real) {Sistema real};
+      \node[draw=mobiblue, fill=mobilightblue, rounded corners,
+            minimum width=3cm, minimum height=1cm, right=of in,
+            yshift=-1cm, font=\footnotesize] (sim) {Simulación};
+      \node[draw=princetonorange, fill=mobilightgold, rounded corners,
+            minimum width=3.5cm, minimum height=1.2cm, align=center,
+            right=of real, yshift=-1cm, xshift=0.5cm, font=\footnotesize]
+            (test) {\textbf{Prueba estadística}\\¿$Y_{\text{real}}\approx Y_{\text{sim}}$?};
+      \draw[->, thick, mobiblue] (in) -- (real);
+      \draw[->, thick, mobiblue] (in) -- (sim);
+      \draw[->, thick, mobiblue] (real) --
+        node[above, font=\scriptsize]{$Y_{\text{real}}$}
+        ([yshift=2pt]test.west|-real);
+      \draw[->, thick, mobiblue] (sim) --
+        node[below, font=\scriptsize]{$Y_{\text{sim}}$}
+        ([yshift=-2pt]test.west|-sim);
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{4pt}
+  \footnotesize\textbf{Pruebas estadísticas comunes:}
+  \begin{itemize}\itemsep1pt
+    \item Prueba $t$ \textbf{pareada} (cuando hay correspondencia uno-a-uno
+      entre días/horas).
+    \item Prueba $t$ de \textbf{dos muestras} (cuando no la hay).
+    \item IC para la diferencia de medias: si $0\in IC \Rightarrow$ no hay
+      evidencia de diferencia.
+  \end{itemize}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{I/O con prueba $t$ pareada — definición formal}
+  \begin{formulabox}[Prueba $t$ pareada]
+    \footnotesize
+    Sean $Y_i^{\text{real}}, Y_i^{\text{sim}}$ con $i=1,\ldots,n$ pares
+    (mismo día/hora). Definir
+    $D_i = Y_i^{\text{real}}-Y_i^{\text{sim}}$, $\bar D$ y $S_D$ media y
+    desviación muestrales.
+    \[
+      T = \frac{\bar D}{S_D/\sqrt{n}} \sim t_{n-1}\;\;\text{ bajo }\;
+      H_0:\mu_D=0
+    \]
+    IC del $100(1-\alpha)\%$ para $\mu_D$:
+    \[
+      \bar D \pm t_{\alpha/2,\,n-1}\,\frac{S_D}{\sqrt{n}}
+    \]
+  \end{formulabox}
+
+  \vspace{6pt}
+  \begin{notabox}[Por qué pareada]
+    \footnotesize
+    Controla la variabilidad común a real y simulación (mismo día = mismas
+    condiciones), aumentando la potencia frente a la prueba de dos muestras.
+  \end{notabox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{I/O trabajado — tiempo medio de espera diario, $n=10$ días}
+  \footnotesize
+  \textbf{Sistema:} cola de servicio al cliente. Para cada día se mide el tiempo
+  medio de espera real y se ejecuta una réplica con los \emph{inputs} de ese día.
+
+  \vspace{2pt}
+  \begin{center}\scriptsize
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{ccccccccccc}
+      \toprule
+      Día $i$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 \\
+      \midrule
+      $Y_i^{\text{real}}$ (min) & 4.2 & 5.1 & 3.8 & 6.0 & 4.7 & 5.5 & 3.9 & 4.4 & 5.8 & 4.6 \\
+      $Y_i^{\text{sim}}$  (min) & 4.5 & 4.8 & 3.6 & 5.7 & 4.9 & 5.2 & 4.1 & 4.2 & 5.5 & 4.8 \\
+      $D_i$                     & -0.3 & 0.3 & 0.2 & 0.3 & -0.2 & 0.3 & -0.2 & 0.2 & 0.3 & -0.2 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{4pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \footnotesize
+      \textbf{Cálculos:}
+      \[
+        \bar D=0{,}07,\;\; S_D=0{,}2627,\;\; n=10
+      \]
+      \[
+        T=\frac{0{,}07}{0{,}2627/\sqrt{10}}=\frac{0{,}07}{0{,}0831}=0{,}843
+      \]
+      Con $\alpha=0{,}05$, $t_{0{,}025;9}=2{,}262$:
+      $|T|=0{,}843 < 2{,}262$ $\Rightarrow$ no se rechaza $H_0$.\\[2pt]
+      IC 95\% para $\mu_D$:
+      $0{,}07 \pm 2{,}262\cdot 0{,}0831 = [-0{,}118;\;0{,}258]$.\\
+      Como $0\in IC$,
+      \textcolor{deepgreen}{\textbf{no hay evidencia de diferencia}}.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.4cm,
+          title={Diferencias diarias $D_i$ y su IC},
+          xlabel={Día}, ylabel={$D_i$ (min)},
+          xmin=0, xmax=11, ymin=-0.4, ymax=0.4,
+          legend pos=south east]
+          \addplot[only marks, mark=*, mark size=1.6pt, mobiblue]
+            coordinates {
+              (1,-0.3) (2,0.3) (3,0.2) (4,0.3) (5,-0.2)
+              (6,0.3) (7,-0.2) (8,0.2) (9,0.3) (10,-0.2)
+            };
+          \addlegendentry{$D_i$}
+          \addplot[thick, princetonorange, dashed, domain=0:11] {0.07};
+          \addlegendentry{$\bar D$}
+          \addplot[thick, mobigold, domain=0:11] {-0.118};
+          \addplot[thick, mobigold, domain=0:11] {0.258};
+        \end{axis}
+      \end{tikzpicture}
+      \vspace{-2pt}
+      {\centering\scriptsize El IC contiene $0$.\par}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Significancia estadística vs.\ operacional}
+  \footnotesize
+  \textbf{Caso opuesto:} con $n$ muy grande, casi cualquier diferencia se vuelve
+  estadísticamente significativa. ¿Significa eso que el modelo no es válido?
+
+  \vspace{4pt}
+  \begin{metodobox}[Criterio adicional: tolerancia operacional $\delta^*$]
+    \footnotesize
+    Definir \emph{a priori} un umbral $\delta^*$ de diferencia que es
+    \textbf{operacionalmente irrelevante}.
+    \begin{itemize}\itemsep1pt
+      \item $IC \subset (-\delta^*,\delta^*)$ $\Rightarrow$
+        \textbf{validación fuerte} (diferencia indistinguible de irrelevante).
+      \item $0 \in IC$ pero $IC \not\subset (-\delta^*,\delta^*)$ $\Rightarrow$
+        \textbf{validación débil} (no se detecta diferencia, pero podría haberla
+        relevante; aumentar $n$).
+      \item $0 \notin IC$ y $IC \subset (-\delta^*,\delta^*)$ $\Rightarrow$
+        \textbf{diferencia detectada pero irrelevante}.
+      \item $0 \notin IC$ y $IC \not\subset (-\delta^*,\delta^*)$ $\Rightarrow$
+        \textbf{revisar el modelo}.
+    \end{itemize}
+  \end{metodobox}
+
+  \vspace{4pt}
+  \begin{alertabox}[El criterio que separa al modelador del estudiante]
+    \footnotesize
+    Esta clasificación es la que separa al modelador entrenado del estudiante
+    que mira solo el $p$-valor (Law, cap.\ 5).
+  \end{alertabox}
+\end{frame}
+
+% =============================================================
+\subsection{Test de Turing}
+% =============================================================
+
+\begin{frame}{Test de Turing para simulación (Schruben, 1980)}
+  \begin{definicionbox}[Test de Turing]
+    \footnotesize
+    Se le presentan a un experto del sistema $K$ reportes mezclados, algunos
+    generados por el sistema real y otros por la simulación. El experto debe
+    clasificar cada reporte como ``real'' o ``simulado''. Si el experto
+    \textbf{no puede distinguir} mejor que el azar, el modelo se considera válido.
+  \end{definicionbox}
+
+  \vspace{4pt}
+  \begin{metodobox}[Procedimiento de Schruben]
+    \footnotesize
+    \begin{enumerate}\itemsep1pt
+      \item Generar $K_R$ reportes del sistema real y $K_S$ reportes de la
+        simulación, con \emph{el mismo formato}.
+      \item Mezclarlos aleatoriamente; etiquetar internamente.
+      \item Presentar al experto, sin decirle cuáles son cuáles.
+      \item El experto clasifica cada reporte.
+      \item Construir tabla de aciertos $\to$ prueba estadística.
+    \end{enumerate}
+  \end{metodobox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Test de Turing: análisis estadístico de los aciertos}
+  \footnotesize
+  \textbf{Diseño $K_R=K_S=K$ con $K=10$ reportes de cada tipo (total 20).}
+
+  \vspace{2pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Tabla de contingencia} (clasificación del experto):
+      \begin{center}\scriptsize
+        \renewcommand{\arraystretch}{1.2}
+        \begin{tabular}{l|cc|c}
+          \toprule
+          & Clasif.\ ``Real'' & Clasif.\ ``Sim.'' & Total \\
+          \midrule
+          Realmente real      & 6 & 4 & 10 \\
+          Realmente simulado  & 5 & 5 & 10 \\
+          \midrule
+          Total               & 11 & 9 & 20 \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+
+      \vspace{2pt}
+      \textbf{Aciertos:} $6+5=11$ de 20 $\Rightarrow$ tasa $=0{,}55$.
+
+      \vspace{4pt}
+      \textbf{Prueba binomial:} $H_0$: $p=0{,}5$ (el experto adivina).
+      \[
+        \Prob(X\geq 11\mid n=20,\,p=0{,}5) = 0{,}412
+      \]
+      $p$-valor alto $\Rightarrow$
+      \textcolor{deepgreen}{no se rechaza $H_0$}: el experto no logra distinguir
+      mejor que el azar.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=4.6cm,
+          title={Distribución de aciertos bajo $H_0$ ($n=20$, $p=0{,}5$)},
+          xlabel={aciertos $X$}, ylabel={$\Prob(X=k)$},
+          xmin=4, xmax=16, ymin=0, ymax=0.20,
+          ybar, bar width=6pt, legend pos=north east]
+          \addplot[fill=mobiblue!50, draw=mobiblue] coordinates {
+            (5,0.0148) (6,0.0370) (7,0.0739) (8,0.1201) (9,0.1602)
+            (10,0.1762) (11,0.1602) (12,0.1201) (13,0.0739) (14,0.0370)
+            (15,0.0148)
+          };
+          \addlegendentry{Binomial$(20,0{,}5)$}
+          \addplot[fill=princetonorange!50, draw=princetonorange]
+            coordinates {(11,0.1602)};
+          \addlegendentry{$X=11$ obs.}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \begin{resultadobox}[Conclusión]
+    \footnotesize
+    Las salidas simuladas son \textbf{indistinguibles}, en juicio experto, de
+    las reales.
+  \end{resultadobox}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Buenas prácticas del Test de Turing}
+  \footnotesize
+  \begin{itemize}\itemsep2pt
+    \item Usar formato \textbf{idéntico} en reportes reales y simulados (incluso
+      números de decimales y orden de filas). Cualquier diferencia de formato
+      es una pista que invalida el test.
+    \item Usar \textbf{varios expertos independientes}, no uno solo.
+    \item Pedirle al experto que \textbf{justifique} su clasificación: las
+      razones revelan qué aspectos del modelo son débiles, incluso cuando el
+      test pasa.
+    \item Repetir el test con $K$ moderadamente grande (al menos 10 de cada
+      tipo) para tener potencia estadística.
+    \item No es un test único: combinar con I/O y validación de supuestos.
+  \end{itemize}
+
+  \vspace{6pt}
+  \begin{alertabox}[Cuidado]
+    \footnotesize
+    Un test de Turing aprobado \textbf{no} significa que el modelo sea correcto,
+    solo que es \emph{indistinguible} en los \emph{outputs} examinados. El
+    experto puede pasar por alto patrones sutiles.
+  \end{alertabox}
+\end{frame}
+
+% =============================================================
+% EJEMPLO 2 — Validación que detecta un bug sutil
+% =============================================================
+\section{Ejemplo 2 (intermedio)}
+
+\begin{frame}{Ejemplo 2 — Validación del $M/M/1$ y un bug sutil}
+  \begin{ejemplobox}[Sistema y dos versiones del código]
+    \footnotesize
+    Mismo sistema $M/M/1$ con $\lambda=3$, $\mu=5$ que el Ejemplo 1.
+    Comparamos:
+    \begin{itemize}\itemsep1pt
+      \item \textbf{Versión correcta:} $\mu=5$ en el código.
+      \item \textbf{Versión con bug:} el programador escribió $\mu=4$ por
+        error de transcripción.
+    \end{itemize}
+    Ambas pasan la verificación estructural sin problemas.
+  \end{ejemplobox}
+
+  \vspace{4pt}
+  \footnotesize\textbf{Resultados de $n_R=30$ réplicas con $T=2000$ min:}
+  \begin{center}\scriptsize
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabular}{lcccc}
+      \toprule
+      \textbf{Métrica} & \textbf{Analítico} & $\bar Y_{30}$ & \textbf{IC 95\%}
+        & \textbf{Diagnóstico} \\
+      \midrule
+      \multicolumn{5}{l}{\textcolor{deepgreen}{\textbf{Versión correcta}
+        ($\mu=5$, $\rho=0{,}60$)}} \\
+      $W_q$ (min) & $0{,}300$ & $0{,}308$ & $[0{,}293;\;0{,}323]$
+        & \textcolor{deepgreen}{Validado $\checkmark$} \\
+      $L_q$ (cl.) & $0{,}900$ & $0{,}924$ & $[0{,}877;\;0{,}971]$
+        & \textcolor{deepgreen}{Validado $\checkmark$} \\
+      $\rho$      & $0{,}600$ & $0{,}598$ & $[0{,}596;\;0{,}600]$
+        & \textcolor{deepgreen}{Validado $\checkmark$} \\
+      \midrule
+      \multicolumn{5}{l}{\textcolor{red!70!black}{\textbf{Versión con bug}
+        ($\mu=4$, $\rho_{\text{aparente}}=0{,}75$)}} \\
+      $W_q$ (min) & $0{,}300$ & $0{,}762$ & $[0{,}701;\;0{,}823]$
+        & \textcolor{red!70!black}{Rechazado} \\
+      $\rho$      & $0{,}600$ & $0{,}749$ & $[0{,}745;\;0{,}753]$
+        & \textcolor{red!70!black}{Rechazado} \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Ejemplo 2 — Lectura del bug a partir del IC}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=5.0cm,
+          title={IC al 95\% para $\rho$},
+          xbar, bar width=8pt, xmin=0.55, xmax=0.78,
+          symbolic y coords={Bug $\mu=4$, Correcto $\mu=5$, Referencia},
+          ytick=data, nodes near coords,
+          nodes near coords style={font=\tiny},
+          enlarge y limits=0.4]
+          \addplot[fill=princetonorange!20, draw=princetonorange,
+                   error bars/.cd, x dir=both, x explicit] coordinates {
+            (0.749,Bug $\mu=4$) +- (0.004,0)
+          };
+          \addplot[fill=mobiblue!30, draw=mobiblue,
+                   error bars/.cd, x dir=both, x explicit] coordinates {
+            (0.598,Correcto $\mu=5$) +- (0.002,0)
+          };
+          \addplot[mark=*, mark size=2pt, deepgreen, only marks] coordinates {
+            (0.600,Referencia)
+          };
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \footnotesize
+      \textbf{Diagnóstico mecánico:}
+      \begin{itemize}\itemsep1pt
+        \item $\hat\rho_{\text{bug}} \approx 0{,}749 \approx 3/4$.
+        \item Si la tasa de llegada es la documentada ($\lambda=3$),
+          la tasa de servicio efectiva es $\hat\mu=\lambda/\hat\rho\approx 4$.
+        \item Apunta directamente al parámetro mal cargado.
+      \end{itemize}
+
+      \vspace{4pt}
+      \begin{alertabox}[Verificación pasó, validación detectó]
+        \footnotesize
+        El código \emph{funcionaba} correctamente — solo con el parámetro equivocado.
+        Trazas, conservación y pruebas degeneradas habrían pasado idénticas.
+        Sin la comparación contra una referencia analítica, el bug habría llegado
+        a producción.
+      \end{alertabox}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \begin{resultadobox}[Resultado del Ejemplo 2]
+    \footnotesize
+    Errores en \textbf{parámetros} no se detectan por verificación (todo pasa);
+    se detectan por \textbf{validación} (los IC no contienen la referencia).
+    Por eso ambos procesos son obligatorios.
+  \end{resultadobox}
+\end{frame}
+
+% =============================================================
+% EJEMPLO 3 — APLICADO M/E_2/1 + SENSIBILIDAD
+% =============================================================
+\section{Ejemplo 3 (aplicado)}
+
+\begin{frame}{Ejemplo 3 — Celda de manufactura $M/E_2/1$}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{situacionbox}[Sistema]
+        \footnotesize
+        Una celda de manufactura recibe piezas en proceso de Poisson con
+        $\lambda=8$ pzas/h. El servicio tiene dos etapas (carga y mecanizado)
+        exponenciales con $\mu_{\text{fase}}=10$ op/h cada una:
+        \[
+          S \sim E_2(10),\;\; \E[S]=0{,}2 \text{ h},\;\; \mathrm{CV}_S=1/\sqrt{2}
+        \]
+      \end{situacionbox}
+
+      \vspace{4pt}
+      \textbf{Parámetros derivados:}
+      \[
+        \rho=8\times 0{,}2=0{,}80
+      \]
+      \[
+        \E[S^2]=\Var[S]+\E[S]^2=0{,}02+0{,}04=0{,}06
+      \]
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tikzpicture}[>=Stealth, node distance=1.4cm,
+        proc/.style={rectangle, rounded corners=3pt, draw=mobiblue, thick,
+          fill=mobilightblue, minimum width=1.4cm, minimum height=0.9cm,
+          align=center, font=\scriptsize}]
+        \node[proc] (q) {Cola};
+        \node[proc, right=of q, fill=mobilightgold] (s1) {$F_1$\\$\mu_f=10$};
+        \node[proc, right=of s1, fill=mobilightgold] (s2) {$F_2$\\$\mu_f=10$};
+        \node[font=\scriptsize, left=0.6cm of q] (in) {$\lambda=8$};
+        \node[font=\scriptsize, right=0.6cm of s2] (out) {salidas};
+        \draw[->, thick, mobiblue] (in) -- (q);
+        \draw[->, thick, mobiblue] (q) -- (s1);
+        \draw[->, thick, princetonorange] (s1) -- (s2);
+        \draw[->, thick, deepgreen] (s2) -- (out);
+        \node[font=\tiny, below=0.0cm of s1] {Erlang-2 servidor único};
+      \end{tikzpicture}
+
+      \vspace{6pt}
+      \textbf{Modelo conceptual:} cola $M/E_2/1$ (Poisson + Erlang-2 + 1 servidor).
+      Aplicaremos los \textbf{6 pasos} del proceso integrado de V\&V.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Ejemplo 3 — Verificación}
+  \begin{center}\footnotesize
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabular}{p{4.0cm}p{5.0cm}p{4.4cm}}
+      \toprule
+      \textbf{Prueba} & \textbf{Esperado} & \textbf{Resultado} \\
+      \midrule
+      Tráfico extremo $\lambda=9{,}9$    & $L_q\to\infty$ en $T=500$ h
+                                         & $L_q>200$ pzas $\checkmark$ \\
+      Simplificación: $E_2$ vs.\ $S_1+S_2$
+                                         & $\E[S]=0{,}2$, $\Var=0{,}02$,
+                                           asimetría $\sqrt{2}\approx 1{,}41$
+                                         & Coincide al 4to decimal $\checkmark$ \\
+      Conservación, $T=2000$ h           & $\approx 16\,000$ llegadas
+                                         & $16\,023 = 16\,023 + 0$ $\checkmark$ \\
+      Aserciones                         & Ninguna falla
+                                         & 0 violaciones en $10^7$ eventos $\checkmark$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{6pt}
+  \begin{tikzpicture}
+    \begin{axis}[width=12cm, height=3.6cm,
+      title={Distribución empírica del servicio $S$ vs.\ Erlang-2},
+      xlabel={$s$ (h)}, ylabel={densidad},
+      xmin=0, xmax=0.8, ymin=0, ymax=4.0,
+      legend pos=north east]
+      \addplot[ybar, fill=mobiblue!30, draw=mobiblue, bar width=2pt]
+        coordinates {
+          (0.05,2.20) (0.10,3.30) (0.15,3.50) (0.20,3.10) (0.25,2.50)
+          (0.30,1.80) (0.35,1.20) (0.40,0.85) (0.45,0.55) (0.50,0.36)
+          (0.55,0.22) (0.60,0.13) (0.65,0.08) (0.70,0.05) (0.75,0.03)
+        };
+      \addlegendentry{Histograma simulado ($n=10^4$)}
+      \addplot[thick, princetonorange, domain=0:0.8, samples=120]
+        {100*x*exp(-10*x)};
+      \addlegendentry{Erlang-2 teórica}
+    \end{axis}
+  \end{tikzpicture}
+
+  \vspace{2pt}
+  \begin{notabox}[Lectura]
+    \footnotesize
+    El generador de tiempos de servicio implementa correctamente $S=S_1+S_2$
+    con $S_i\sim\mathrm{Exp}(10)$. La verificación está cerrada.
+  \end{notabox}
+\end{frame}
+
+\begin{frame}{Ejemplo 3 — Validación con Pollaczek--Khinchine}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{formulabox}[P-K para $M/G/1$]
+        \footnotesize
+        \[
+          W_q^{\text{P-K}} = \frac{\lambda\,\E[S^2]}{2(1-\rho)}
+        \]
+      \end{formulabox}
+
+      \vspace{2pt}
+      \footnotesize
+      \textbf{Cálculo:}
+      \[
+        W_q^{\text{P-K}} = \frac{8\times 0{,}06}{2\times 0{,}2}
+                         = \frac{0{,}48}{0{,}4}
+                         = 1{,}20 \text{ h}
+      \]
+
+      \vspace{4pt}
+      \textbf{Comparación con $M/M/1$ equivalente} ($\E[S]=0{,}2$):
+      \[
+        W_q^{M/M/1} = \frac{0{,}8}{5\times 0{,}2} = 1{,}60 \text{ h}
+      \]
+      $\Rightarrow$ Erlang-2 reduce $W_q$ en 25\% gracias a la
+      menor variabilidad del servicio.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \footnotesize
+      \textbf{Resultados de simulación}\\
+      ($n_R=50$ réplicas, $T=2000$ h)
+      \begin{center}\scriptsize
+        \renewcommand{\arraystretch}{1.25}
+        \begin{tabular}{lccc}
+          \toprule
+          \textbf{Métrica} & \textbf{P-K} & \textbf{Sim.} & \textbf{IC 95\%} \\
+          \midrule
+          $W_q$ (h)    & $1{,}200$ & $1{,}214$ & $[1{,}176;\,1{,}252]$ \\
+          $L_q$ (pzas) & $9{,}600$ & $9{,}712$ & $[9{,}408;\,10{,}016]$ \\
+          $\rho$       & $0{,}800$ & $0{,}799$ & $[0{,}795;\,0{,}803]$ \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+
+      \vspace{4pt}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=3.6cm,
+          xlabel={Métrica}, ylabel={Valor},
+          ybar, bar width=8pt, ymin=0, ymax=11,
+          symbolic x coords={$W_q$, $L_q$, $\rho$},
+          xtick=data, nodes near coords,
+          nodes near coords style={font=\tiny},
+          legend pos=north east]
+          \addplot[fill=mobiblue!70, draw=mobiblue]
+            coordinates {($W_q$,1.20) ($L_q$,9.60) ($\rho$,0.80)};
+          \addlegendentry{P-K}
+          \addplot[fill=princetonorange!70, draw=princetonorange]
+            coordinates {($W_q$,1.21) ($L_q$,9.71) ($\rho$,0.80)};
+          \addlegendentry{Sim.}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \begin{resultadobox}[Validación operacional]
+    \footnotesize
+    Todos los IC al 95\% contienen el valor de referencia.
+    Error relativo $<1{,}2\%$ en las tres métricas.
+    \textbf{El modelo está validado.}
+  \end{resultadobox}
+\end{frame}
+
+\begin{frame}{Ejemplo 3 — Análisis de sensibilidad sobre $\lambda$}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \begin{center}\scriptsize
+        \renewcommand{\arraystretch}{1.25}
+        \begin{tabular}{ccccc}
+          \toprule
+          $\lambda$ & $\rho$ & $W_q^{\text{P-K}}$ & $\bar W_q^{\text{sim}}$ & \textbf{Dir.} \\
+          \midrule
+          $6{,}4$  & $0{,}64$ & $0{,}53$ & $0{,}55$ & $\checkmark$ \\
+          $7{,}2$  & $0{,}72$ & $0{,}77$ & $0{,}79$ & $\checkmark$ \\
+          $8{,}0$  & $0{,}80$ & $1{,}20$ & $1{,}21$ & --- \\
+          $8{,}8$  & $0{,}88$ & $2{,}20$ & $2{,}24$ & $\checkmark$ \\
+          $9{,}6$  & $0{,}96$ & $7{,}20$ & $7{,}45$ & $\checkmark$ \\
+          \bottomrule
+        \end{tabular}
+      \end{center}
+
+      \vspace{4pt}
+      \footnotesize
+      \textbf{Tres lecturas:}
+      \begin{itemize}\itemsep1pt
+        \item Dirección correcta ($W_q$ aumenta con $\lambda$). $\checkmark$
+        \item No-linealidad: $+20\%$ en $\lambda$ produce $+500\%$ en $W_q$
+          — coherente con teoría de colas cerca de saturación. $\checkmark$
+        \item Error relativo $<4\%$ en todos los puntos. $\checkmark$
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[width=\textwidth, height=6.0cm,
+          title={$W_q$ vs.\ $\lambda$ (sensibilidad)},
+          xlabel={$\lambda$ (pzas/h)}, ylabel={$W_q$ (h)},
+          xmin=6, xmax=10, ymin=0, ymax=8,
+          legend pos=north west]
+          \addplot[thick, mobiblue, domain=6:9.8, samples=80]
+            {x*0.06/(2*(1-x*0.2))};
+          \addlegendentry{P-K analítica}
+          \addplot[only marks, mark=*, mark size=2pt, princetonorange]
+            coordinates {
+              (6.4,0.55) (7.2,0.79) (8.0,1.21) (8.8,2.24) (9.6,7.45)
+            };
+          \addlegendentry{Simulación}
+          \addplot[dashed, deepgreen, thick]
+            coordinates {(8,0) (8,8)};
+          \node[font=\tiny, deepgreen] at (axis cs:8.0,7.5) {base};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \begin{resultadobox}[V\&V cerrada para el Ejemplo 3]
+    \footnotesize
+    Verificación: conservación, trazas y pruebas extremas correctas.
+    Validación: $W_q$, $L_q$, $\rho$ caen dentro del IC 95\% de la referencia P-K
+    (error rel.\ $<1{,}2\%$). Sensibilidad: dirección, magnitud y monotonía
+    coherentes. \textbf{El modelo gana credibilidad para análisis fuera del
+    alcance analítico} (percentiles, prioridades, múltiples colas).
+  \end{resultadobox}
+\end{frame}
+
+% =============================================================
+\section{Síntesis}
+% =============================================================
+
+\begin{frame}{El conjunto de evidencias}
+  \footnotesize
+  \textbf{Validar un modelo no es un único test, sino un \emph{conjunto} de
+  evidencias:}
+  \begin{center}
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabular}{p{4.2cm} p{4.2cm} p{4.4cm}}
+      \toprule
+      \textbf{Sesión 1: Verificación} & \textbf{Sesión 2: Validación}
+        & \textbf{Aporta evidencia sobre} \\
+      \midrule
+      \emph{Debugging}, aserciones    & --- & Código sin defectos puntuales \\
+      Trazas + invariantes            & --- & Código respeta lógica del modelo \\
+      Pruebas unitarias               & --- & Casos límite y analíticos correctos \\
+      \midrule
+      --- & \emph{Face validity}      & Modelo razonable a juicio experto \\
+      --- & Validación estructural    & Lógica del modelo refleja el sistema \\
+      --- & $\chi^2$, KS sobre datos  & Distribuciones de \emph{inputs} correctas \\
+      --- & Calibración (división de muestra)
+                                      & Parámetros ajustados generalizan \\
+      --- & I/O con $t$ pareada       & Salidas del modelo $\approx$ realidad \\
+      --- & Test de Turing            & Salidas indistinguibles para expertos \\
+      --- & Análisis de sensibilidad  & Modelo responde \emph{como debe} a cambios \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{4pt}
+  \begin{notabox}[Definición operativa de modelo válido]
+    \footnotesize
+    Un modelo es ``válido'' cuando la evidencia acumulada en estos planos es
+    suficiente para que las decisiones que se tomen con él tengan
+    \textbf{respaldo razonable}.
+  \end{notabox}
+\end{frame}
+
+\begin{frame}{Errores frecuentes en V\&V}
+  \begin{center}\footnotesize
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{p{4.4cm}p{4.4cm}p{4.6cm}}
+      \toprule
+      \textbf{Error} & \textbf{Síntoma} & \textbf{Cómo evitarlo} \\
+      \midrule
+      Validar con los mismos datos usados para calibrar
+        & Error relativo $<1\%$ ``demasiado bueno''
+        & Partir el histórico en $\sim 70/30$ — calibrar / validar \\
+      Validar solo la media
+        & La media coincide pero los percentiles no
+        & Comparar también $W_q^{(95)}$, varianza y forma de la distribución \\
+      Olvidar el período de calentamiento
+        & Sesgo persistente en los IC
+        & Descartar el transiente (ver T3.4) \\
+      Usar pocas réplicas
+        & IC muy ancho, no decidible
+        & Aumentar $n_R$ hasta que el IC sea $<5\%$ del valor estimado \\
+      Validar solo en el punto base
+        & Modelo válido localmente, falso fuera
+        & Análisis de sensibilidad con varios escenarios \\
+      Confundir significancia estadística con práctica
+        & ``Rechazar $H_0$'' por diferencia trivial
+        & Acompañar la prueba con error relativo y juicio del experto \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{6pt}
+  \begin{alertabox}[Anti-patrón típico]
+    \footnotesize
+    ``El modelo coincide con los datos del año pasado, así que está validado para
+    proyectar el próximo''. La validez \emph{histórica} no garantiza la validez
+    \emph{prospectiva} si el sistema cambió (políticas, demanda, tecnología).
+  \end{alertabox}
+\end{frame}
+
+\begin{frame}{Mensajes finales}
+  \begin{enumerate}\small\itemsep4pt
+    \item \textbf{Validación} (¿modelo correcto?) es \textbf{conceptualmente
+      primaria}; la verificación (¿correctamente construido?) es indispensable
+      pero secundaria.
+    \item Cada técnica formal vista hoy responde a \textbf{una pregunta distinta};
+      no se sustituyen entre sí.
+    \item Reportar siempre \textbf{intervalos de confianza}, no solo $p$-valores;
+      distinguir \textbf{significancia estadística} de \textbf{relevancia operacional}.
+    \item Calibrar y validar con \textbf{datos independientes} (división de muestra).
+    \item El \textbf{análisis de sensibilidad} cierra el ciclo: dirección,
+      magnitud y monotonía deben ser consistentes con la teoría.
+    \item V\&V es \textbf{iterativa}: cada cambio en el modelo exige
+      re-verificar y re-validar.
+  \end{enumerate}
+
+  \vspace{6pt}
+  \begin{alertabox}[Mensaje para llevar]
+    \footnotesize
+    Un modelo verificado pero no validado es código limpio que responde la
+    pregunta equivocada. Un modelo validado pero no verificado es una opinión
+    correcta sobre un sistema mal programado. \textbf{Hacen falta los dos.}
+  \end{alertabox}
+\end{frame}
+
+\begin{frame}{Próximo tema — T3.3: Análisis de salida (terminales)}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{situacionbox}[De la V\&V al uso del modelo]
+        \footnotesize
+        Con el modelo \emph{verificado} y \emph{validado}, podemos finalmente
+        usarlo para responder preguntas que la teoría no resuelve.
+        Pero antes de reportar \emph{cualquier} número, debemos saber
+        \textbf{cómo promediar las réplicas}.
+      \end{situacionbox}
+
+      \vspace{4pt}
+      \textbf{En T3.3 veremos:}
+      \begin{itemize}\footnotesize\itemsep2pt
+        \item Simulaciones \emph{terminales} vs.\ estacionarias.
+        \item Réplicas independientes y construcción de IC.
+        \item Determinación del número de réplicas necesarias.
+        \item Reporte de métricas con incertidumbre.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{tikzpicture}[>=Stealth, node distance=1.4cm,
+        proc/.style={rectangle, rounded corners=3pt, draw=mobiblue, thick,
+          fill=mobilightblue, minimum width=2.4cm, minimum height=0.8cm,
+          align=center, font=\scriptsize}]
+        \node[proc, fill=mobilightgreen, draw=deepgreen] (in) {T3.1\\Entradas};
+        \node[proc, below=of in, fill=mobilightgold, draw=mobigold] (vv)
+          {\textbf{T3.2 — V\&V}\\(estamos aquí)};
+        \node[proc, below=of vv] (ot) {T3.3\\Salida (terminal)};
+        \node[proc, below=of ot] (oe) {T3.4\\Salida (estacionaria)};
+        \draw[->, thick, mobiblue] (in) -- (vv);
+        \draw[->, thick, mobiblue] (vv) -- (ot);
+        \draw[->, thick, mobiblue] (ot) -- (oe);
+      \end{tikzpicture}
+
+      \vspace{4pt}
+      \begin{notabox}[Continuidad]
+        \footnotesize
+        Lo que validamos aquí (medias, IC) es exactamente lo que T3.3 usará para
+        \emph{reportar} los resultados de la simulación.
+      \end{notabox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}{Referencias}
+  \footnotesize
+  \begin{thebibliography}{9}
+  \bibitem{banks} Banks, J., Carson, J.\,S., Nelson, B.\,L., Nicol, D.\,M. (2010).
+    \emph{Discrete-Event System Simulation} (5th ed.). Pearson. Caps.\ 1, 10.
+  \bibitem{law} Law, A.\,M. (2015).
+    \emph{Simulation Modeling and Analysis} (5th ed.). McGraw-Hill. Cap.\ 5.
+  \bibitem{kelton} Kelton, W.\,D., Sadowski, R.\,P., Zupick, N.\,B. (2015).
+    \emph{Simulation with Arena} (6th ed.). McGraw-Hill.
+  \bibitem{ross} Ross, S.\,M. (2013).
+    \emph{Simulation} (5th ed.). Academic Press.
+  \bibitem{sargent} Sargent, R.\,G. (2013).
+    Verification and Validation of Simulation Models.
+    \emph{Journal of Simulation}, 7(1), 12--24.
+  \bibitem{schruben} Schruben, L.\,W. (1980).
+    Establishing the Credibility of Simulations.
+    \emph{Simulation}, 34(3), 101--105.
+  \bibitem{naylor} Naylor, T.\,H., Finger, J.\,M. (1967).
+    Verification of Computer Simulation Models.
+    \emph{Management Science}, 14(2), 92--101.
+  \bibitem{balci} Balci, O. (1997).
+    Verification, Validation and Accreditation of Simulation Models.
+    \emph{Proceedings of the 1997 Winter Simulation Conference}.
+  \bibitem{lilliefors} Lilliefors, H.\,W. (1969).
+    On the KS Test for the Exponential Distribution with Mean Unknown.
+    \emph{JASA}, 64(325), 387--389.
+  \end{thebibliography}
+\end{frame}
+
+% ------------------------------------------------------------
+\begin{frame}
+  \begin{center}
+    {\Huge \color{mobiblue}\textbf{¿Preguntas?}}\\[0.5cm]
+    \large Verificación y Validación\\ en Simulación de Eventos Discretos\\[0.5cm]
+    {\color{mobigold}\rule{0.5\textwidth}{1.2pt}}
+  \end{center}
+\end{frame}
+
+\end{document}

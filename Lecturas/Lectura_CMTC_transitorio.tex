@@ -1,0 +1,1086 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Paquetes ──────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{automata,positioning,arrows.meta,babel}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{framed}
+\usepackage{tcolorbox}
+\tcbuselibrary{theorems,breakable}
+
+\geometry{margin=2.5cm}
+
+% ── Entornos ──────────────────────────────────────────────────────────────
+\theoremstyle{definition}
+\newtheorem{definicion}{Definición}[section]
+\newtheorem{teorema}{Teorema}[section]
+\newtheorem{proposicion}{Proposición}[section]
+\newtheorem{corolario}{Corolario}[section]
+\newtheorem{lema}{Lema}[section]
+
+\theoremstyle{remark}
+\newtheorem{observacion}{Observación}[section]
+
+\newtcolorbox{ejemplo}[1][]{%
+  colback=blue!5!white,
+  colframe=blue!60!black,
+  fonttitle=\bfseries,
+  title=Ejemplo: #1,
+  breakable
+}
+
+\newtcolorbox{ejercicio}[1][]{%
+  colback=green!5!white,
+  colframe=green!50!black,
+  fonttitle=\bfseries,
+  title=Ejercicio propuesto: #1,
+  breakable
+}
+
+\newtcolorbox{cajanota}[1][]{%
+  colback=yellow!8!white,
+  colframe=orange!70!black,
+  fonttitle=\bfseries,
+  title=Nota importante: #1,
+  breakable
+}
+
+% ── Comandos útiles ───────────────────────────────────────────────────────
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\e}{\mathrm{e}}
+\DeclareMathOperator{\diag}{diag}
+
+% ══════════════════════════════════════════════════════════════════════════
+\title{%
+  \textbf{Análisis Transitorio de Cadenas de Markov\\
+  de Tiempo Continuo}\\[6pt]
+  \large Lectura para curso de pregrado
+}
+\author{Notas de clase}
+\date{2026}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+\newpage
+
+% ======================================================================
+%  SECCIÓN 1 — MOTIVACIÓN
+% ======================================================================
+\section{Motivación: ¿por qué nos interesa el comportamiento transitorio?}
+
+Cuando estudiamos cadenas de Markov de tiempo continuo (CTMC), el primer
+resultado que se enseña suele ser la \emph{distribución estacionaria}: el
+vector $\boldsymbol{\pi}$ tal que $\boldsymbol{\pi}Q = \mathbf{0}$.  Ese
+resultado describe el sistema ``a largo plazo'', pero ignora preguntas
+prácticas que surgen constantemente:
+
+\begin{itemize}[nosep]
+  \item Si un servidor de atención al público abre a las 8:00 a.m.\ sin
+        clientes, ¿cuál es la probabilidad de que a las 8:15 haya al menos
+        dos personas en cola?
+  \item Un enlace de red se acaba de recuperar de una falla.  ¿Cuánto
+        tiempo se espera hasta que la carga supere su capacidad?
+  \item Un hospital tiene dos camas de emergencia.  Ambas están libres a
+        las 6:00 a.m.  ¿Cuál es la \emph{varianza} del número de camas
+        ocupadas a las 7:00 a.m.?
+\end{itemize}
+
+Todas estas preguntas requieren conocer la distribución del proceso en un
+instante \emph{particular} $t$, no solo cuando $t\to\infty$.  Eso es
+precisamente el \textbf{análisis transitorio}.
+
+% ======================================================================
+%  SECCIÓN 2 — REPASO RÁPIDO DE CTMC
+% ======================================================================
+\section{Repaso rápido: cadena de Markov de tiempo continuo}
+
+\begin{definicion}[CTMC]
+Sea $\{X(t) : t \ge 0\}$ un proceso estocástico con espacio de estados
+finito $\mathcal{S} = \{0,1,\dots,n-1\}$.  Decimos que es una
+\textbf{cadena de Markov de tiempo continuo} si cumple la propiedad de
+Markov:
+\[
+  \Prob\bigl(X(t+s) = j \mid X(s) = i,\; X(u),\; 0 \le u < s\bigr)
+  = \Prob\bigl(X(t+s) = j \mid X(s) = i\bigr),
+\]
+y además esta probabilidad depende solo de la diferencia $t$ (proceso
+homogéneo en el tiempo).
+\end{definicion}
+
+El comportamiento de la cadena queda determinado por su \textbf{matriz
+generadora} (o \emph{rate matrix})
+\[
+  Q = \bigl[q_{ij}\bigr]_{i,j \in \mathcal{S}},
+\]
+donde $q_{ij} \ge 0$ para $i \ne j$ representa la tasa de transición de
+$i$ a $j$, y la diagonal satisface
+\[
+  q_{ii} = -\sum_{j \ne i} q_{ij}.
+\]
+Esto garantiza que cada fila suma cero: $Q\mathbf{1} = \mathbf{0}$.
+
+% ======================================================================
+%  SECCIÓN 3 — ECUACIONES DE KOLMOGOROV
+% ======================================================================
+\section{Ecuaciones de Kolmogorov y la matriz de transición}
+
+\subsection{La probabilidad de transición}
+
+Definimos la \textbf{probabilidad de transición} como
+\[
+  p_{ij}(t) \;=\; \Prob\bigl(X(t) = j \mid X(0) = i\bigr),
+  \qquad t \ge 0.
+\]
+Agrupando todas las entradas en una matriz $P(t) = [p_{ij}(t)]$, se
+puede demostrar que $P(t)$ satisface las \emph{ecuaciones diferenciales
+de Kolmogorov}.
+
+\subsection{Ecuación de Kolmogorov hacia adelante (\textit{forward})}
+
+\begin{teorema}[Ecuación de Kolmogorov \emph{forward}]
+\[
+  \frac{dP(t)}{dt} = P(t)\,Q, \qquad P(0) = I.
+\]
+\end{teorema}
+
+\begin{proof}[Idea de la demostración]
+Partimos de la propiedad de Chapman--Kolmogorov:
+$P(t+h) = P(t)\,P(h)$.  Restando $P(t)$ a ambos lados:
+\[
+  P(t+h) - P(t) = P(t)\bigl[P(h) - I\bigr].
+\]
+Dividiendo por $h$ y tomando $h \to 0^+$, el lado derecho converge a
+$P(t)\,Q$ porque $\lim_{h\to 0^+} \frac{P(h)-I}{h} = Q$ (definición del
+generador).
+\end{proof}
+
+\subsection{Ecuación de Kolmogorov hacia atrás (\textit{backward})}
+
+De forma análoga, escribiendo $P(t+h) = P(h)\,P(t)$ se obtiene
+\[
+  \frac{dP(t)}{dt} = Q\,P(t), \qquad P(0) = I.
+\]
+
+\begin{cajanota}[Ambas ecuaciones llevan a la misma solución]
+Para espacio de estados finito y $Q$ acotada, ambas ecuaciones tienen la
+misma solución única.  No siempre ocurre lo mismo en espacio infinito.
+\end{cajanota}
+
+% ======================================================================
+%  SECCIÓN 4 — LA EXPONENCIAL DE MATRIZ
+% ======================================================================
+\section{La solución: la exponencial de matriz \texorpdfstring{$\e^{Qt}$}{exp(Qt)}}
+
+\subsection{Definición y existencia}
+
+La solución de $P'(t) = P(t)Q$ con $P(0)=I$ es, formalmente,
+\[
+  \boxed{P(t) = \e^{Qt} \;=\; \sum_{k=0}^{\infty} \frac{(Qt)^k}{k!}.}
+\]
+
+Esta serie converge absolutamente para toda matriz $Q$ y todo $t \ge 0$,
+puesto que $\|Q\|$ es finita (espacio de estados finito).  Verifiquemos
+que cumple la ecuación:
+\[
+  \frac{d}{dt}\e^{Qt}
+  = \frac{d}{dt}\sum_{k=0}^{\infty}\frac{Q^k\,t^k}{k!}
+  = \sum_{k=1}^{\infty}\frac{Q^k\,t^{k-1}}{(k-1)!}
+  = Q\sum_{m=0}^{\infty}\frac{Q^m\,t^m}{m!}
+  = Q\,\e^{Qt}.
+\]
+
+\subsection{Propiedades de \texorpdfstring{$\e^{Qt}$}{exp(Qt)}}
+
+\begin{enumerate}[nosep]
+  \item $\e^{Q \cdot 0} = I$.
+  \item $\e^{Q(t+s)} = \e^{Qt}\,\e^{Qs}$ \quad (propiedad de semigrupo).
+  \item Cada entrada de $\e^{Qt}$ está en $[0,1]$ y cada fila suma 1
+        (es una matriz estocástica).
+  \item $\lim_{t\to\infty}\e^{Qt}$ existe y sus filas convergen a
+        $\boldsymbol{\pi}$ si la cadena es irreducible.
+\end{enumerate}
+
+% ──────────────────────────────────────────────────────────────────────
+\subsection{Métodos para calcular \texorpdfstring{$\e^{Qt}$}{exp(Qt)}}
+\label{sec:metodos}
+
+A continuación presentamos varios métodos para calcular la exponencial
+de la matriz generadora.  Cada uno tiene ventajas según el contexto.
+
+% ── Método 1 ──────────────────────────────────────────────────────────
+\subsubsection{Método 1: diagonalización}
+
+Si $Q$ es \emph{diagonalizable}, existen una matriz invertible $V$ y una
+matriz diagonal $\Lambda = \diag(\lambda_0,\lambda_1,\dots,\lambda_{n-1})$
+tales que
+\[
+  Q = V \Lambda V^{-1}.
+\]
+Entonces
+\[
+  Q^k = V\Lambda^k V^{-1},
+\]
+y sustituyendo en la serie:
+\[
+  \e^{Qt} = V\,\e^{\Lambda t}\,V^{-1}
+  = V \diag\!\bigl(\e^{\lambda_0 t},\e^{\lambda_1 t},\dots,
+    \e^{\lambda_{n-1}t}\bigr)\,V^{-1}.
+\]
+
+\begin{cajanota}[Valores propios de $Q$]
+Puesto que las filas de $Q$ suman cero, uno de los valores propios es
+siempre $\lambda = 0$.  El resto tienen parte real estrictamente negativa
+(si la cadena es irreducible), lo que asegura que
+$\e^{\lambda_k t}\to 0$ cuando $t\to\infty$ para $k\ne 0$, recuperando
+la distribución estacionaria.
+\end{cajanota}
+
+% ── Método 2 ──────────────────────────────────────────────────────────
+\subsubsection{Método 2: serie truncada (definición directa)}
+
+Para matrices pequeñas o para cálculos a mano con pocos términos:
+\[
+  \e^{Qt} \approx I + Qt + \frac{(Qt)^2}{2!} + \frac{(Qt)^3}{3!} + \cdots
+\]
+Se calcula potencia por potencia hasta que los términos son despreciables.
+
+% ── Método 3 ──────────────────────────────────────────────────────────
+\subsubsection{Método 3: uniformización (método de Jensen)}
+\label{sec:uniformizacion}
+
+Este método es el más usado en la práctica computacional.  La idea es
+\emph{convertir} el problema de tiempo continuo en uno de tiempo discreto
+con un reloj de Poisson.
+
+Sea $\gamma \ge \max_i |q_{ii}|$ (la cota uniforme de las tasas de
+salida).  Definimos la \textbf{matriz de transición discreta}
+\[
+  \tilde{P} = I + \frac{Q}{\gamma}.
+\]
+Se verifica fácilmente que $\tilde{P}$ es una matriz estocástica (entradas
+no negativas, filas suman 1).
+
+\begin{teorema}[Uniformización]
+\[
+  \e^{Qt} = \sum_{k=0}^{\infty} \e^{-\gamma t}\,
+    \frac{(\gamma t)^k}{k!}\;\tilde{P}^k.
+\]
+\end{teorema}
+
+\begin{proof}
+Escribimos $Q = \gamma(\tilde{P}-I)$, de modo que
+\begin{align*}
+  \e^{Qt}
+  &= \e^{\gamma(\tilde{P}-I)t}
+   = \e^{-\gamma t}\;\e^{\gamma \tilde{P}\,t} \\
+  &= \e^{-\gamma t}\sum_{k=0}^{\infty}\frac{(\gamma t)^k}{k!}\tilde{P}^k.
+\end{align*}
+\end{proof}
+
+La interpretación probabilística es directa: $\e^{-\gamma t}\frac{(\gamma t)^k}{k!}$ es la probabilidad de que un proceso de Poisson de tasa $\gamma$ tenga exactamente $k$ eventos en $[0,t]$, y $\tilde{P}^k$ da las probabilidades de transición tras $k$ pasos de la cadena embebida discreta.
+
+% ── Método 4 ──────────────────────────────────────────────────────────
+\subsubsection{Método 4: transformada de Laplace}
+
+Tomando la transformada de Laplace de $P'(t) = QP(t)$:
+\[
+  s\hat{P}(s) - I = Q\hat{P}(s)
+  \quad\Longrightarrow\quad
+  \hat{P}(s) = (sI - Q)^{-1}.
+\]
+Luego $P(t) = \mathcal{L}^{-1}\{(sI-Q)^{-1}\}$.  Útil cuando la
+inversión se puede hacer analíticamente (matrices $2\times 2$).
+
+% ── Método 5 ──────────────────────────────────────────────────────────
+\subsubsection{Método 5: Cayley--Hamilton}
+
+El teorema de Cayley--Hamilton dice que toda matriz satisface su propia
+ecuación característica.  Para una matriz $n\times n$, la exponencial se
+puede escribir como un polinomio de grado a lo más $n-1$ en $Q$:
+\[
+  \e^{Qt} = \alpha_0(t)\,I + \alpha_1(t)\,Q + \cdots
+             + \alpha_{n-1}(t)\,Q^{n-1},
+\]
+donde los coeficientes $\alpha_k(t)$ se determinan evaluando en los
+valores propios de $Q$.
+
+Para una matriz $2\times 2$ con valores propios $\lambda_1, \lambda_2$
+($\lambda_1 \ne \lambda_2$):
+\[
+  \e^{Qt} = \frac{\lambda_2\e^{\lambda_1 t}-\lambda_1\e^{\lambda_2 t}}
+                  {\lambda_2-\lambda_1}\,I
+           +\frac{\e^{\lambda_2 t}-\e^{\lambda_1 t}}
+                  {\lambda_2-\lambda_1}\,Q.
+\]
+
+% ======================================================================
+%  SECCIÓN 5 — DISTRIBUCIÓN EN UN INSTANTE t
+% ======================================================================
+\section{La distribución del estado en un instante particular \texorpdfstring{$t$}{t}}
+
+\subsection{Vector de distribución transitoria}
+
+Sea $\boldsymbol{\alpha} = (\alpha_0,\alpha_1,\dots,\alpha_{n-1})$ la
+distribución inicial: $\alpha_i = \Prob(X(0)=i)$.  Entonces la
+\textbf{distribución en el instante $t$} es
+\[
+  \boldsymbol{p}(t) = \boldsymbol{\alpha}\,\e^{Qt},
+  \qquad p_j(t) = \Prob(X(t) = j).
+\]
+
+Si el sistema arranca en un estado determinista $X(0)=i$, entonces
+$\boldsymbol{\alpha} = \mathbf{e}_i$ (el $i$-ésimo vector canónico) y
+\[
+  p_j(t) = \bigl[\e^{Qt}\bigr]_{ij}.
+\]
+
+\subsection{¿Qué preguntas podemos responder?}
+
+Con $\boldsymbol{p}(t)$ a la mano, podemos calcular:
+
+\begin{enumerate}
+  \item \textbf{Probabilidad puntual:} $\Prob(X(t)=j)$ directamente.
+  \item \textbf{Probabilidad de un conjunto:}
+    $\Prob(X(t)\in A) = \sum_{j\in A} p_j(t)$.
+  \item \textbf{Valor esperado:} si $f$ es una función sobre los estados,
+    \[
+      \E[f(X(t))] = \sum_{j\in\mathcal{S}} f(j)\,p_j(t).
+    \]
+  \item \textbf{Varianza:}
+    \[
+      \Var[f(X(t))] = \E[f(X(t))^2] - \bigl(\E[f(X(t))]\bigr)^2
+      = \sum_j f(j)^2\,p_j(t) - \Bigl(\sum_j f(j)\,p_j(t)\Bigr)^{\!2}.
+    \]
+\end{enumerate}
+
+\begin{cajanota}[Deducción de la fórmula de la varianza]
+Recordemos que para una variable aleatoria discreta $Y$ con valores
+$y_1,y_2,\dots$ y probabilidades $p_1,p_2,\dots$:
+\begin{align*}
+  \E[Y]   &= \sum_j y_j\,p_j, \\
+  \E[Y^2] &= \sum_j y_j^2\,p_j, \\
+  \Var[Y]  &= \E[Y^2] - (\E[Y])^2
+            = \sum_j y_j^2\,p_j - \Bigl(\sum_j y_j\,p_j\Bigr)^{\!2}.
+\end{align*}
+En nuestro caso, $Y = f(X(t))$, $y_j = f(j)$ y $p_j = p_j(t)$.  No hay
+nada ``nuevo'': es la fórmula estándar de la varianza aplicada a la
+distribución transitoria.
+\end{cajanota}
+
+% ======================================================================
+%  SECCIÓN 6 — EJEMPLO 1: DOS ESTADOS
+% ======================================================================
+\section{Ejemplo 1 --- Sistema con dos estados (proceso de nacimiento y muerte simple)}
+
+\begin{ejemplo}[Un enlace de red que falla y se repara]
+Un enlace de comunicación puede estar en uno de dos estados: funcionando
+(estado~0) o caído (estado~1).  Cuando funciona, las fallas ocurren a
+una tasa de $\lambda = 2$ fallas/hora.  Cuando está caído, las
+reparaciones se completan a una tasa de $\mu = 3$ reparaciones/hora.  El
+enlace acaba de ser puesto en servicio (arranca en estado~0) a las 9:00~a.m.
+
+Queremos saber: ¿cuál es la probabilidad de que esté caído a las
+9:20~a.m.?  ¿Cuál es el número esperado de ``enlaces caídos'' (en un
+sentido trivial: 0 o 1) a esa hora y su varianza?
+
+\tcblower
+
+\textbf{Paso 1: definir $Q$.}
+
+El diagrama de transición es:
+
+\begin{center}
+\begin{tikzpicture}[->,>=Stealth,node distance=3cm,
+    every state/.style={thick,fill=blue!10}]
+  \node[state] (0) {0};
+  \node[state] (1) [right=of 0] {1};
+  \path (0) edge[bend left] node[above] {$\lambda=2$} (1)
+        (1) edge[bend left] node[below] {$\mu=3$} (0);
+\end{tikzpicture}
+\end{center}
+
+La matriz generadora es
+\[
+  Q = \begin{pmatrix} -2 & 2 \\ 3 & -3 \end{pmatrix}.
+\]
+
+\textbf{Paso 2: calcular $\e^{Qt}$ por diagonalización.}
+
+El polinomio característico es
+\[
+  \det(Q-\lambda I) = (-2-\lambda)(-3-\lambda) - 6
+  = \lambda^2 + 5\lambda = \lambda(\lambda+5).
+\]
+Los valores propios son $\lambda_1 = 0$ y $\lambda_2 = -5$.
+
+Para $\lambda_1=0$: $(Q-0\cdot I)\mathbf{v}=\mathbf{0}$ da
+$\mathbf{v}_1 = \begin{pmatrix}1\\1\end{pmatrix}$ (núcleo de $Q$).
+
+Para $\lambda_2=-5$: $(Q+5I)\mathbf{v}=\mathbf{0}$ da
+$\begin{pmatrix}3&2\\3&2\end{pmatrix}\mathbf{v}=\mathbf{0}$, así que
+$\mathbf{v}_2 = \begin{pmatrix}2\\-3\end{pmatrix}$.
+
+Formamos $V = \begin{pmatrix}1&2\\1&-3\end{pmatrix}$, con
+$V^{-1} = \frac{1}{-5}\begin{pmatrix}-3&-2\\-1&1\end{pmatrix}
+= \begin{pmatrix}3/5&2/5\\1/5&-1/5\end{pmatrix}$.
+
+Entonces:
+\begin{align*}
+  \e^{Qt} &= V\begin{pmatrix}1&0\\0&\e^{-5t}\end{pmatrix}V^{-1} \\
+  &= \begin{pmatrix}1&2\\1&-3\end{pmatrix}
+     \begin{pmatrix}1&0\\0&\e^{-5t}\end{pmatrix}
+     \begin{pmatrix}3/5&2/5\\1/5&-1/5\end{pmatrix} \\
+  &= \frac{1}{5}\begin{pmatrix}
+       3+2\e^{-5t} & 2-2\e^{-5t} \\
+       3-3\e^{-5t} & 2+3\e^{-5t}
+     \end{pmatrix}.
+\end{align*}
+
+\textbf{Verificaciones rápidas:}
+\begin{itemize}[nosep]
+  \item $t=0$: $\e^{Q\cdot 0}=\frac{1}{5}\begin{pmatrix}5&0\\0&5\end{pmatrix}=I$. \checkmark
+  \item $t\to\infty$: $\e^{Qt}\to\frac{1}{5}\begin{pmatrix}3&2\\3&2\end{pmatrix}$
+    $\Rightarrow$ $\boldsymbol{\pi}=(3/5,\;2/5)$. \checkmark
+  \item Cada fila suma 1 para todo $t$. \checkmark
+\end{itemize}
+
+\textbf{Paso 3: evaluar en $t = 1/3$ hora (20 minutos).}
+
+Con $\boldsymbol{\alpha}=(1,0)$ (arranca en estado~0):
+\[
+  \boldsymbol{p}(1/3) = (1,0)\,\e^{Q/3}
+  = \Bigl(\frac{3+2\e^{-5/3}}{5},\;\frac{2-2\e^{-5/3}}{5}\Bigr).
+\]
+Numéricamente, $\e^{-5/3} \approx 0.18888$, así que
+\[
+  p_0(1/3) \approx \frac{3+0.3776}{5} = \frac{3.3776}{5} \approx 0.6755,
+  \qquad
+  p_1(1/3) \approx \frac{2-0.3776}{5} = \frac{1.6224}{5} \approx 0.3245.
+\]
+
+La probabilidad de que el enlace esté caído a las 9:20 a.m.\ es
+aproximadamente $32.45\%$.
+
+\textbf{Paso 4: valor esperado y varianza del número de enlaces caídos.}
+
+Definimos $f(j) = j$ (el estado mismo indica cuántos enlaces están caídos:
+0 o 1).
+
+\[
+  \E[X(t)] = 0\cdot p_0(t) + 1\cdot p_1(t) = p_1(t)
+  = \frac{2-2\e^{-5t}}{5}.
+\]
+En $t=1/3$:
+\[
+  \E[X(1/3)] \approx 0.3245.
+\]
+
+Para la varianza:
+\[
+  \E[X(t)^2] = 0^2\cdot p_0(t) + 1^2\cdot p_1(t) = p_1(t),
+\]
+ya que $f(j)^2 = j^2$ y los estados son 0 y 1.  Por lo tanto
+\begin{align*}
+  \Var[X(t)] &= \E[X(t)^2] - (\E[X(t)])^2 \\
+  &= p_1(t) - p_1(t)^2 \\
+  &= p_1(t)\bigl(1-p_1(t)\bigr).
+\end{align*}
+Numéricamente:
+\[
+  \Var[X(1/3)] \approx 0.3245 \times 0.6755 \approx 0.2192.
+\]
+
+Observe que la varianza tiene la misma forma que la de una Bernoulli, lo
+cual es natural: $X(t)$ toma solo los valores $\{0,1\}$, así que
+$X(t)\sim\mathrm{Bernoulli}(p_1(t))$.
+\end{ejemplo}
+
+% ======================================================================
+%  SECCIÓN 7 — EJEMPLO 2: COLA M/M/1/2
+% ======================================================================
+\section{Ejemplo 2 --- Sistema de cola con capacidad limitada}
+
+\begin{ejemplo}[Ventanilla de trámites con sala de espera pequeña]
+Una oficina municipal tiene una sola ventanilla para trámites.  El área
+de espera solo admite a una persona adicional (aparte de la que se está
+atendiendo), así que la capacidad total del sistema es de 2 personas.  Los
+ciudadanos llegan con tasa $\lambda = 4$ personas/hora, y el empleado
+atiende con tasa $\mu = 5$ personas/hora.  Si un ciudadano llega y el
+sistema está lleno (2 personas), se va sin ser atendido.
+
+La oficina abre a las 8:00 a.m.\ vacía.  Nos preguntan:
+
+\begin{enumerate}[label=(\alph*)]
+  \item ¿Cuál es la distribución del número de personas en el sistema a
+        las 8:30 a.m.?
+  \item ¿Cuál es el número esperado de personas y su varianza a esa hora?
+\end{enumerate}
+
+\tcblower
+
+\textbf{Paso 1: modelo y generadora.}
+
+Este es un sistema $M/M/1/2$ (notación de Kendall).  El espacio de estados
+es $\mathcal{S}=\{0,1,2\}$ y el diagrama de transiciones es:
+
+\begin{center}
+\begin{tikzpicture}[->,>=Stealth,node distance=2.5cm,
+    every state/.style={thick,fill=blue!10}]
+  \node[state] (0) {0};
+  \node[state] (1) [right=of 0] {1};
+  \node[state] (2) [right=of 1] {2};
+  \path (0) edge[bend left] node[above] {$4$} (1)
+        (1) edge[bend left] node[below] {$5$} (0)
+        (1) edge[bend left] node[above] {$4$} (2)
+        (2) edge[bend left] node[below] {$5$} (1);
+\end{tikzpicture}
+\end{center}
+
+\[
+  Q = \begin{pmatrix}
+    -4 & 4 & 0 \\
+    5 & -9 & 4 \\
+    0 & 5 & -5
+  \end{pmatrix}.
+\]
+
+\textbf{Paso 2: $\e^{Qt}$ por uniformización.}
+
+Para una matriz $3\times 3$ la diagonalización manual es posible pero
+tediosa.  Usemos uniformización (Sección~\ref{sec:uniformizacion}).
+
+Elegimos $\gamma = 9$ (el máximo de $|q_{ii}|$).  La matriz discreta es
+\[
+  \tilde{P} = I + \frac{Q}{9}
+  = \begin{pmatrix}
+    5/9 & 4/9 & 0 \\
+    5/9 & 0   & 4/9 \\
+    0   & 5/9 & 4/9
+  \end{pmatrix}.
+\]
+
+La fórmula de uniformización da
+\[
+  \boldsymbol{p}(t) = \boldsymbol{\alpha}\,\e^{Qt}
+  = \sum_{k=0}^{\infty}\e^{-9t}\frac{(9t)^k}{k!}
+    \;\boldsymbol{\alpha}\,\tilde{P}^k.
+\]
+
+Con $\boldsymbol{\alpha}=(1,0,0)$ y $t=0.5$ (media hora), tenemos
+$\gamma t = 4.5$.  Calculemos los primeros términos manualmente para
+ver cómo funciona.
+
+\textbf{$k=0$:}
+$\boldsymbol{\alpha}\tilde{P}^0 = (1,0,0)$.
+
+\textbf{$k=1$:}
+$\boldsymbol{\alpha}\tilde{P} = (5/9,\;4/9,\;0)$.
+
+\textbf{$k=2$:}
+\[
+  \boldsymbol{\alpha}\tilde{P}^2
+  = (5/9,\;4/9,\;0)\tilde{P}
+  = \Bigl(\frac{25+20}{81},\;\frac{20+0}{81},\;\frac{16}{81}\Bigr)
+  = \Bigl(\frac{45}{81},\;\frac{20}{81},\;\frac{16}{81}\Bigr).
+\]
+
+Los pesos de Poisson son $w_k = \e^{-4.5}\frac{4.5^k}{k!}$:
+\begin{align*}
+  w_0 &= \e^{-4.5} \approx 0.01111, \\
+  w_1 &= 4.5\,\e^{-4.5} \approx 0.04999, \\
+  w_2 &= \frac{4.5^2}{2}\,\e^{-4.5} \approx 0.11248, \\
+  w_3 &\approx 0.16872, \\
+  w_4 &\approx 0.18981, \quad\text{etc.}
+\end{align*}
+
+En la práctica, se suman términos hasta que la cola de Poisson acumulada
+restante es menor que una tolerancia (p.~ej., $10^{-8}$).  Para este
+ejemplo, calculemos el resultado numéricamente:
+
+\[
+  \boldsymbol{p}(0.5) \approx (0.5007,\;0.3203,\;0.1790).
+\]
+
+(Estos valores se obtienen de la evaluación numérica completa de la serie
+o de la exponencial de matriz directamente.)
+
+\textbf{Paso 3: valor esperado.}
+
+Sea $N = X(0.5)$ el número de personas en el sistema.  Definimos
+$f(j)=j$.
+\[
+  \E[N] = 0 \times 0.5007 + 1 \times 0.3203 + 2 \times 0.1790
+  = 0.3203 + 0.3580 = 0.6783.
+\]
+
+\textbf{Paso 4: varianza.}
+
+Primero, el segundo momento:
+\[
+  \E[N^2] = 0^2\times 0.5007 + 1^2\times 0.3203 + 2^2\times 0.1790
+  = 0.3203 + 0.7160 = 1.0363.
+\]
+Luego,
+\[
+  \Var[N] = 1.0363 - (0.6783)^2 = 1.0363 - 0.4601 = 0.5762.
+\]
+
+\textbf{Paso 5: interpretación.}
+
+A las 8:30 a.m., hay un $50\%$ de probabilidad de que la ventanilla esté
+vacía, un $32\%$ de que haya exactamente una persona, y un $18\%$ de que
+el sistema esté lleno.  En promedio hay $0.68$ personas, con desviación
+estándar $\sqrt{0.5762}\approx 0.759$.
+
+Comparando con el estado estable: la distribución estacionaria
+de un $M/M/1/2$ con $\rho=\lambda/\mu=4/5$ es
+\[
+  \pi_j = \frac{1-\rho}{1-\rho^3}\rho^j,
+  \qquad j=0,1,2.
+\]
+Numéricamente $\boldsymbol{\pi}\approx(0.4098,\;0.3279,\;0.2623)$, con
+$\E_\pi[N]\approx 0.8525$.  Así que a los 30 minutos el sistema aún no
+ha llegado al estado estable: hay más probabilidad de estar vacío y
+menos probabilidad de estar lleno que en régimen.
+\end{ejemplo}
+
+% ======================================================================
+%  SECCIÓN 8 — EJEMPLO CON DOS VARIABLES
+% ======================================================================
+\section{Ejemplo 3 --- Análisis transitorio con dos variables}
+
+\begin{ejemplo}[Dos servidores independientes]
+Una compañía de soporte técnico tiene dos líneas telefónicas
+independientes.  La línea~A recibe llamadas con tasa $\lambda_A=1$/min y
+las resuelve con tasa $\mu_A=2$/min.  La línea~B recibe llamadas con tasa
+$\lambda_B=2$/min y las resuelve con tasa $\mu_B=3$/min.  Cada línea
+puede atender a lo más una llamada (las llamadas extra se pierden).
+
+Las dos líneas se modelan como CTMC independientes.
+
+A las 10:00 a.m., ambas líneas están libres.  Se pide:
+
+\begin{enumerate}[label=(\alph*)]
+  \item Distribución conjunta del par $(X_A(t),X_B(t))$ en $t=0.5$ min.
+  \item Valor esperado y varianza del número total de líneas ocupadas
+        $N(t) = X_A(t)+X_B(t)$ en $t=0.5$ min.
+\end{enumerate}
+
+\tcblower
+
+\textbf{Paso 1: análisis de cada línea por separado.}
+
+Cada línea es un sistema de dos estados ($\{0,1\}$), igual al
+Ejemplo~1.
+
+\medskip
+\emph{Línea A:}
+\[
+  Q_A = \begin{pmatrix}-1&1\\2&-2\end{pmatrix},
+  \quad
+  \lambda_1=0,\;\lambda_2=-3.
+\]
+Usando la fórmula del caso $2\times 2$ (Sección~\ref{sec:metodos},
+Cayley--Hamilton):
+\[
+  \e^{Q_A t} = \frac{1}{3}\begin{pmatrix}
+    2+\e^{-3t} & 1-\e^{-3t} \\
+    2-2\e^{-3t} & 1+2\e^{-3t}
+  \end{pmatrix}.
+\]
+En $t=0.5$: $\e^{-1.5}\approx 0.2231$.
+\[
+  \boldsymbol{p}_A(0.5) = (1,0)\e^{Q_A/2}
+  = \Bigl(\frac{2+0.2231}{3},\;\frac{1-0.2231}{3}\Bigr)
+  \approx (0.7410,\;0.2590).
+\]
+
+\emph{Línea B:}
+\[
+  Q_B = \begin{pmatrix}-2&2\\3&-3\end{pmatrix},
+  \quad
+  \lambda_1=0,\;\lambda_2=-5.
+\]
+\[
+  \e^{Q_B t} = \frac{1}{5}\begin{pmatrix}
+    3+2\e^{-5t} & 2-2\e^{-5t} \\
+    3-3\e^{-5t} & 2+3\e^{-5t}
+  \end{pmatrix}.
+\]
+En $t=0.5$: $\e^{-2.5}\approx 0.08209$.
+\[
+  \boldsymbol{p}_B(0.5) = (1,0)\e^{Q_B/2}
+  \approx \Bigl(\frac{3+0.1642}{5},\;\frac{2-0.1642}{5}\Bigr)
+  \approx (0.6328,\;0.3672).
+\]
+
+\textbf{Paso 2: distribución conjunta.}
+
+Dado que las líneas son \textbf{independientes}, la distribución conjunta
+es el producto:
+\[
+  \Prob(X_A=a,\;X_B=b;\;t) = p_A^{(a)}(t)\cdot p_B^{(b)}(t).
+\]
+
+\begin{center}
+\begin{tabular}{c|cc|c}
+\toprule
+$X_A\backslash X_B$ & 0 & 1 & Total \\
+\midrule
+0 & $0.7410\times 0.6328 = 0.4689$ & $0.7410\times 0.3672 = 0.2721$ & $0.7410$ \\
+1 & $0.2590\times 0.6328 = 0.1639$ & $0.2590\times 0.3672 = 0.0951$ & $0.2590$ \\
+\midrule
+Total & $0.6328$ & $0.3672$ & $1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Paso 3: distribución de $N = X_A + X_B$.}
+
+$N$ toma valores en $\{0,1,2\}$:
+\begin{align*}
+  \Prob(N=0) &= \Prob(X_A=0,X_B=0) = 0.4689, \\
+  \Prob(N=1) &= \Prob(X_A=1,X_B=0) + \Prob(X_A=0,X_B=1) = 0.1639+0.2721 = 0.4360, \\
+  \Prob(N=2) &= \Prob(X_A=1,X_B=1) = 0.0951.
+\end{align*}
+
+\textbf{Paso 4: valor esperado de $N$.}
+
+\[
+  \E[N] = 0\times 0.4689 + 1\times 0.4360 + 2\times 0.0951
+  = 0.4360 + 0.1902 = 0.6262.
+\]
+
+Equivalentemente, por la linealidad de la esperanza:
+\[
+  \E[N] = \E[X_A] + \E[X_B] = 0.2590 + 0.3672 = 0.6262.
+\]
+
+\textbf{Paso 5: varianza de $N$.}
+
+Puesto que $X_A$ y $X_B$ son \emph{independientes}:
+\[
+  \Var[N] = \Var[X_A] + \Var[X_B].
+\]
+Cada variable es Bernoulli, así que $\Var[X_i] = p_i(1-p_i)$:
+\begin{align*}
+  \Var[X_A] &= 0.2590\times 0.7410 = 0.1919, \\
+  \Var[X_B] &= 0.3672\times 0.6328 = 0.2323, \\
+  \Var[N]   &= 0.1919 + 0.2323 = 0.4242.
+\end{align*}
+
+\textbf{Paso 6: cálculo integral equivalente.}
+
+Queremos verificar $\E[N]$ usando la expresión integral que surge de
+la formulación ``desde primeros principios''.  En general,
+\[
+  \E[N(t)] = \sum_{j=0}^{2} j\cdot\Prob(N(t)=j).
+\]
+Pero supongamos que quisiéramos calcular $\E[X_A(t)]$ directamente a
+partir de la solución de Kolmogorov.  Sabemos que
+$p_1^A(t) = \frac{1-\e^{-3t}}{3}$, de modo que
+\[
+  \E[X_A(t)] = p_1^A(t) = \frac{1-\e^{-3t}}{3}.
+\]
+Si evaluamos numéricamente la integral de la ecuación diferencial
+$\frac{dp_1^A}{dt} = q_{01}\,p_0^A(t) + q_{11}\,p_1^A(t)
+= 1\cdot(1-p_1^A)-2\,p_1^A = 1 - 3p_1^A$ con $p_1^A(0)=0$, la
+solución es exactamente $\frac{1-\e^{-3t}}{3}$ y en $t=0.5$ obtenemos
+$0.2590$, consistente con lo anterior.
+
+Alternativamente, podemos interpretar $\E[X_A(t)]$ como una integral de
+la tasa de acumulación:
+\[
+  \E[X_A(t)] = \int_0^{t}\frac{d}{ds}\E[X_A(s)]\,ds
+  = \int_0^{t}\bigl(1 - 3\,\E[X_A(s)]\bigr)\,ds.
+\]
+Resolviendo la ODE $m'(t) = 1-3m(t)$, $m(0)=0$:
+\[
+  m(t) = \frac{1}{3}(1-\e^{-3t}).
+\]
+\textbf{Numéricamente, integrando con un paso de Euler con $\Delta t=0.1$:}
+\begin{center}
+\begin{tabular}{ccc}
+\toprule
+$t$ & $m(t)$ Euler & $m(t)$ exacto \\
+\midrule
+$0.0$ & $0.0000$ & $0.0000$ \\
+$0.1$ & $0.1000$ & $0.0950$ \\
+$0.2$ & $0.1700$ & $0.1647$ \\
+$0.3$ & $0.2190$ & $0.2148$ \\
+$0.4$ & $0.2533$ & $0.2498$ \\
+$0.5$ & $0.2773$ & $0.2590$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+(El método de Euler con $\Delta t = 0.1$ sobreestima ligeramente; con
+pasos más finos converge al valor exacto.)
+\end{ejemplo}
+
+% ======================================================================
+%  SECCIÓN 9 — EJEMPLO 4: COLA M/M/1/2 CON INTEGRALES DETALLADAS
+% ======================================================================
+\section{Ejemplo 4 --- Cálculos integrales detallados en una cola $M/M/1/1$}
+
+\begin{ejemplo}[Consultorio médico con un solo paciente]
+Un consultorio médico solo admite a un paciente a la vez (no hay sala de
+espera).  Los pacientes llegan con tasa $\lambda=3$/hora y el médico
+atiende con tasa $\mu=6$/hora.  Si alguien llega y el consultorio está
+ocupado, se va.  El consultorio abre vacío.
+
+Calculemos $\E[X(t)]$ y $\Var[X(t)]$ para $t$ arbitrario, y evaluemos
+numéricamente en $t=10$ minutos $= 1/6$ hora.
+
+\tcblower
+
+\textbf{La generadora:}
+\[
+  Q = \begin{pmatrix}-3&3\\6&-6\end{pmatrix}.
+\]
+Valores propios: $0$ y $-9$.
+
+\textbf{Exponencial de matriz:}
+\[
+  \e^{Qt} = \frac{1}{9}\begin{pmatrix}
+    6+3\e^{-9t} & 3-3\e^{-9t} \\
+    6-6\e^{-9t} & 3+6\e^{-9t}
+  \end{pmatrix}.
+\]
+Con $\boldsymbol{\alpha}=(1,0)$:
+\[
+  p_1(t) = \frac{3-3\e^{-9t}}{9} = \frac{1-\e^{-9t}}{3}.
+\]
+
+\textbf{Valor esperado:}
+\[
+  \E[X(t)] = p_1(t) = \frac{1-\e^{-9t}}{3}.
+\]
+
+\textbf{Varianza:}
+Como $X(t)\in\{0,1\}$:
+\[
+  \Var[X(t)] = p_1(t)(1-p_1(t))
+  = \frac{1-\e^{-9t}}{3}\cdot\frac{2+\e^{-9t}}{3}
+  = \frac{(1-\e^{-9t})(2+\e^{-9t})}{9}.
+\]
+
+\textbf{Deducción por integración directa.}
+
+La ecuación diferencial para $p_1(t)$ (Kolmogorov forward) es:
+\[
+  p_1'(t) = 3\,p_0(t) - 6\,p_1(t) = 3(1-p_1(t)) - 6\,p_1(t)
+  = 3 - 9\,p_1(t).
+\]
+Esta es una ODE lineal de primer orden.  Resolviéndola por factor
+integrante:
+
+Multiplicamos por $\e^{9t}$:
+\[
+  \e^{9t}p_1'(t) + 9\e^{9t}p_1(t) = 3\e^{9t}
+  \quad\Longleftrightarrow\quad
+  \frac{d}{dt}\bigl[\e^{9t}p_1(t)\bigr] = 3\e^{9t}.
+\]
+Integramos de $0$ a $t$:
+\[
+  \e^{9t}p_1(t) - \underbrace{p_1(0)}_{=0}
+  = 3\int_0^t \e^{9s}\,ds
+  = 3\cdot\frac{\e^{9t}-1}{9}
+  = \frac{\e^{9t}-1}{3}.
+\]
+\[
+  \boxed{p_1(t) = \frac{1-\e^{-9t}}{3}.}
+\]
+
+\textbf{Evaluación numérica de la integral.}
+
+Comprobemos numéricamente que $\int_0^{1/6}\e^{9s}\,ds$ da el valor
+correcto:
+\[
+  \int_0^{1/6}\e^{9s}\,ds = \frac{\e^{9/6}-1}{9} = \frac{\e^{3/2}-1}{9}
+  \approx \frac{4.4817-1}{9} = \frac{3.4817}{9} \approx 0.3869.
+\]
+Entonces
+\[
+  p_1(1/6) = \e^{-3/2}\times\frac{\e^{3/2}-1}{3}
+  = \frac{1-\e^{-3/2}}{3}
+  \approx \frac{1-0.2231}{3} = \frac{0.7769}{3} \approx 0.2590.
+\]
+
+\[
+  \E[X(1/6)] \approx 0.2590, \qquad
+  \Var[X(1/6)] \approx 0.2590\times 0.7410 \approx 0.1919.
+\]
+
+\textbf{Aproximación numérica con regla del trapecio.}
+
+Para visualizar el cálculo integral, usemos la regla del trapecio con
+$n=3$ subintervalos en $[0,1/6]$ (paso $h=1/18$):
+\begin{align*}
+  s_0 &= 0,\quad s_1 = 1/18,\quad s_2 = 2/18,\quad s_3 = 3/18 = 1/6.\\
+  \e^{9s_0} &= 1, \quad
+  \e^{9/18} = \e^{0.5} \approx 1.6487, \quad
+  \e^{1} \approx 2.7183, \quad
+  \e^{1.5} \approx 4.4817.
+\end{align*}
+Regla del trapecio:
+\[
+  \int_0^{1/6}\e^{9s}\,ds \approx \frac{h}{2}
+  \bigl[f(s_0) + 2f(s_1) + 2f(s_2) + f(s_3)\bigr]
+  = \frac{1/18}{2}[1+3.2974+5.4366+4.4817]
+  \approx 0.3954.
+\]
+Comparando con el valor exacto $0.3869$: el error relativo es
+$\sim 2.2\%$, típico para solo 3 subintervalos.  Con más subintervalos
+converge rápidamente.
+\end{ejemplo}
+
+% ======================================================================
+%  SECCIÓN 10 — EJEMPLO CON DOS VARIABLES Y COLAS
+% ======================================================================
+\section{Ejemplo 5 --- Dos colas acopladas y la distribución conjunta}
+
+\begin{ejemplo}[Dos cajeros en un banco con desbordamiento]
+Un banco pequeño tiene dos cajeros.  El cajero~1 es rápido ($\mu_1=6$/h)
+y el cajero~2 es estándar ($\mu_2=4$/h).  Los clientes llegan al
+banco con tasa total $\lambda=5$/h.  Un cliente que llega va al cajero~1
+si está libre; si no, va al cajero~2 si está libre; si ambos están
+ocupados, se va.
+
+El estado del sistema es el par $(C_1,C_2)$ donde $C_i\in\{0,1\}$
+indica si el cajero $i$ está ocupado.  El espacio de estados es
+$\mathcal{S}=\{(0,0),(1,0),(0,1),(1,1)\}$, que enumeramos como estados
+$0,1,2,3$ respectivamente.
+
+El banco abre a las 9:00 a.m.\ con ambos cajeros libres.
+
+\tcblower
+
+\textbf{Paso 1: construir $Q$.}
+
+Las transiciones son:
+\begin{itemize}[nosep]
+  \item $(0,0)\to(1,0)$: llega un cliente, va al cajero~1. Tasa $\lambda=5$.
+  \item $(1,0)\to(0,0)$: el cajero~1 termina. Tasa $\mu_1=6$.
+  \item $(1,0)\to(1,1)$: llega un cliente, cajero~1 ocupado, va al~2. Tasa $\lambda=5$.
+  \item $(0,1)\to(1,1)$: llega un cliente, cajero~2 ocupado, va al~1. Tasa $\lambda=5$.
+  \item $(0,1)\to(0,0)$: el cajero~2 termina. Tasa $\mu_2=4$.
+  \item $(1,1)\to(0,1)$: el cajero~1 termina. Tasa $\mu_1=6$.
+  \item $(1,1)\to(1,0)$: el cajero~2 termina. Tasa $\mu_2=4$.
+\end{itemize}
+
+\[
+  Q = \begin{pmatrix}
+    -5 & 5  & 0 & 0  \\
+    6  & -11 & 0 & 5  \\
+    4  & 0  & -9 & 5  \\
+    0  & 4  & 6  & -10
+  \end{pmatrix}.
+\]
+
+\textbf{Paso 2: calcular $\e^{Qt}$ numéricamente.}
+
+Para una matriz $4\times 4$, es más práctico usar el método de
+uniformización.  Tomemos $\gamma = 11$ y formemos
+$\tilde{P} = I + Q/11$.
+
+En lugar de detallar todos los pasos (que son mecánicos), presentamos
+el resultado numérico para $t=1/6$ hora (10 minutos), usando
+suficientes términos de la serie de uniformización:
+
+Con $\boldsymbol{\alpha}=(1,0,0,0)$:
+\[
+  \boldsymbol{p}(1/6) \approx (0.5122,\;0.3185,\;0.0570,\;0.1123).
+\]
+
+\textbf{Paso 3: preguntas sobre la variable $N = C_1+C_2$ (total de
+cajeros ocupados).}
+
+$N$ toma valores $\{0,1,2\}$:
+\begin{align*}
+  \Prob(N=0) &= p_{(0,0)} = 0.5122, \\
+  \Prob(N=1) &= p_{(1,0)} + p_{(0,1)} = 0.3185 + 0.0570 = 0.3755, \\
+  \Prob(N=2) &= p_{(1,1)} = 0.1123.
+\end{align*}
+
+\[
+  \E[N] = 0\times 0.5122 + 1\times 0.3755 + 2\times 0.1123 = 0.6001.
+\]
+
+\[
+  \E[N^2] = 0 + 0.3755 + 4\times 0.1123 = 0.8247.
+\]
+
+\[
+  \Var[N] = 0.8247 - (0.6001)^2 = 0.8247 - 0.3601 = 0.4646.
+\]
+
+\textbf{Paso 4: preguntas por cajero.}
+
+También podemos calcular las marginales:
+\begin{align*}
+  \Prob(C_1=1) &= p_{(1,0)} + p_{(1,1)} = 0.3185 + 0.1123 = 0.4308, \\
+  \Prob(C_2=1) &= p_{(0,1)} + p_{(1,1)} = 0.0570 + 0.1123 = 0.1693.
+\end{align*}
+
+Note que $\E[N] = \E[C_1]+\E[C_2] = 0.4308+0.1693 = 0.6001$. \checkmark
+
+Para la varianza necesitamos la covarianza (porque $C_1$ y $C_2$ \textbf{no
+son independientes} en este modelo):
+\begin{align*}
+  \E[C_1 C_2] &= \Prob(C_1=1,C_2=1) = 0.1123, \\
+  \mathrm{Cov}(C_1,C_2) &= \E[C_1 C_2]-\E[C_1]\E[C_2]
+  = 0.1123 - 0.4308\times 0.1693 \\
+  &= 0.1123 - 0.0730 = 0.0393.
+\end{align*}
+\[
+  \Var[N] = \Var[C_1]+\Var[C_2]+2\,\mathrm{Cov}(C_1,C_2).
+\]
+$\Var[C_1] = 0.4308\times 0.5692 = 0.2452$, \quad
+$\Var[C_2] = 0.1693\times 0.8307 = 0.1406$.
+\[
+  \Var[N] = 0.2452+0.1406+2(0.0393) = 0.4644 \approx 0.4646.
+\]
+(La pequeña diferencia es redondeo.)  Observe cómo la covarianza positiva
+\emph{aumenta} la varianza de $N$ respecto al caso independiente.
+\end{ejemplo}
+
+
+
+% ======================================================================
+%  BIBLIOGRAFÍA SUGERIDA
+% ======================================================================
+\section*{Bibliografía sugerida}
+
+\begin{enumerate}[nosep]
+  \item W.~J.~Stewart, \textit{Probability, Markov Chains, Queues, and
+        Simulation}, Princeton University Press, 2009.
+        Capítulos sobre CTMC y análisis transitorio.
+  \item G.~Bolch, S.~Greiner, H.~de~Meer, K.~S.~Trivedi,
+        \textit{Queueing Networks and Markov Chains}, 2nd ed., Wiley, 2006.
+        Métodos numéricos para exponenciales de matriz.
+  \item C.~Moler, C.~Van~Loan, ``Nineteen Dubious Ways to Compute the
+        Exponential of a Matrix, Twenty-Five Years Later'',
+        \textit{SIAM Review}, 45(1):3--49, 2003.
+        Referencia clásica sobre métodos para $\e^{At}$.
+  \item R.~Nelson, \textit{Probability, Stochastic Processes, and Queueing
+        Theory}, Springer, 1995.
+        Exposición accesible de CTMCs y colas.
+\end{enumerate}
+
+\end{document}

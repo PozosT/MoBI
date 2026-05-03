@@ -486,7 +486,7 @@ A continuación se muestra un histograma generado con datos que siguen una distr
     nodes near coords, % Muestra el valor sobre la barra
     every node near coord/.append style={font=\tiny},
     axis lines=left,
-    xmajorgrids=true,
+    grid=vertical,
     ]
     % Datos empíricos simulados (Frecuencias por clase)
     \addplot[fill=blue!40, draw=blue!70] coordinates {
@@ -873,7 +873,7 @@ El \textbf{correlograma} es la representación gráfica de los coeficientes $r_k
     mark=*, % Añade un círculo al final de la línea
     xtick={1,2,3,4,5,6,7,8,9},
     axis lines=left,
-    ymajorgrids=true,
+    grid=horizontal,
     ]
     
     % Límites de confianza (ej: +/- 0.3 para un n simulado)
