@@ -36,3 +36,14 @@ __pycache__/
 # Claude Code (config local e instrucciones del proyecto, no se versionan)
 .claude/
 CLAUDE.md
+
+# --- Solo se publica lo que el sitio necesita para funcionar ---
+# (HTML, assets/css, compiled/ y los Codigos/*.ipynb que se abren en Colab).
+# Las fuentes y la maquinaria de construcción se mantienen en LOCAL pero NO se
+# suben a GitHub. Si las quieres volver a publicar, borra la línea correspondiente.
+/Lecturas/
+/Presentaciones/
+/Makefile
+/Modelado Bajo Incertidumbre_VF_modificado.pdf
+/Codigos/custom_slides.css
+/Codigos/*.slides.html
